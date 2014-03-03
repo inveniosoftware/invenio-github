@@ -20,27 +20,34 @@
 ## granted to it by virtue of its status as an Intergovernmental Organization
 ## or submit itself to any jurisdiction.
 
-GITHUB_WEBHOOK_RECEIVER_ID = "github"
-"""
-Local name of webhook receiver.
-"""
+from __future__ import absolute_import
 
-GITHUB_BASE_URL = "https://api.github.com"
-"""
-Base URL of the GitHub API
-"""
 
-GITHUB_SHARED_SECRET = "CHANGEME"
-"""
-Shared secret between you and GitHub. Used to make GitHub sign webhook requests
-with HMAC.
+from flask import url_for, redirect, current_app, abort
+from flask.ext.login import current_user
+from invenio.modules.oauthclient.handlers import oauth2_token_setter
 
-See http://developer.github.com/v3/repos/hooks/#example
-"""
+from ..utils import init_account
 
-GITHUB_INSECURE_SSL = False
-"""
-Determines if the GitHub webhook request will check the SSL certificate. Never
-set to True in a production environment, but can be useful for development and
-integration servers.
-"""
+
+def authorized(resp, remote):
+    """
+    Authorized callback handler for GitHub
+    """
+    # User must be authenticated
+    if not current_user.is_authenticated():
+        return current_app.login_manager.unauthorized()
+
+    if resp is None:
+        # User rejected authorization request
+        return redirect(url_for('github.rejected'))
+
+    # Store or update acquired access token
+    token = oauth2_token_setter(remote, resp)
+    if token is None:
+        abort(500)
+
+    if not token.remote_account.extra_data:
+        init_account(token)
+
+    return redirect(url_for('zenodo_github.index'))
