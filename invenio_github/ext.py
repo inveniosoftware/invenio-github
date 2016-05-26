@@ -26,6 +26,8 @@
 
 from __future__ import absolute_import, print_function
 
+from sqlalchemy import event
+
 from . import config
 
 
@@ -42,12 +44,35 @@ class InvenioGitHub(object):
         self.init_config(app)
         app.extensions['invenio-github'] = self
 
+        @app.before_first_request
+        def connect_signals():
+            """Connect OAuthClient signals."""
+            from invenio_oauthclient.models import RemoteAccount
+            from invenio_oauthclient.signals import account_setup_received
+
+            from .api import GitHubAPI
+            from .handlers import account_setup
+
+            account_setup_received.connect(
+                account_setup, sender=GitHubAPI.remote
+            )
+
+            @event.listens_for(RemoteAccount, 'before_delete')
+            def receive_before_delete(mapper, connection, target):
+                """Listen for the 'before_delete' event."""
+                # TODO remove hooks
+
     def init_config(self, app):
         """Initialize configuration."""
         app.config.setdefault(
             'GITHUB_BASE_TEMPLATE',
             app.config.get('BASE_TEMPLATE',
                            'invenio_github/base.html'))
+
+        app.config.setdefault(
+            'GITHUB_SETTINGS_TEMPLATE',
+            app.config.get('SETTINGS_TEMPLATE',
+                           'invenio_oauth2server/settings/base.html'))
 
         for k in dir(config):
             if k.startswith('GITHUB_'):

@@ -21,60 +21,19 @@
 
 from __future__ import absolute_import
 
-from flask_login import current_user
-from invenio_oauthclient.handlers import token_getter
-from invenio_oauthclient.models import RemoteAccount, RemoteToken
-from invenio_oauthclient.proxies import current_oauthclient
 from requests import ConnectionError
 
-from .utils import init_api, is_valid_token
+from .utils import is_valid_token
 
 
 #
 # Helpers
 #
-def get_remote():
-    """Get the Flask-Oauthlib remote application object."""
-    return current_oauthclient.oauth.remote_apps['github']
-
-
-def get_client_id():
-    """Get GitHub app client id."""
-    return get_remote().consumer_key
-
-
-def get_api(user_id=None):
-    """Get an authenticated GitHub API interface."""
-    if user_id:
-        access_token = RemoteToken.get(user_id, get_client_id()).access_token
-    else:
-        access_token = get_remote().get_request_token()[0]
-    return init_api(access_token)
-
-
-def get_token(user_id=None):
-    """Retrieve token for linked GitHub account."""
-    session_token = None
-    if user_id is None:
-        session_token = token_getter(get_remote())
-    if session_token:
-        token = RemoteToken.get(
-            current_user.get_id(), get_client_id(),
-            access_token=session_token[0]
-        )
-        return token
-    return None
-
-
-def get_account(user_id=None):
-    """Retrieve linked GitHub account."""
-    return RemoteAccount.get(user_id or current_user.get_id(), get_client_id())
-
-
 def check_token(token):
     """Check validity of a GitHub access token."""
     try:
-        return is_valid_token(get_remote(), token.access_token)
+        from .api import GitHubAPI
+        return is_valid_token(GitHubAPI.remote, token.access_token)
     except ConnectionError:
         # Ignore connection errors
         return True

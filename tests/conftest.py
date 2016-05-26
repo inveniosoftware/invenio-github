@@ -47,6 +47,9 @@ from invenio_db import db as db_
 from invenio_db import InvenioDB
 from invenio_deposit import InvenioDepositREST
 from invenio_files_rest import InvenioFilesREST
+from invenio_files_rest.models import Location
+from invenio_indexer import InvenioIndexer
+from invenio_jsonschemas import InvenioJSONSchemas
 from invenio_oauth2server import InvenioOAuth2Server
 from invenio_oauth2server.models import Token
 from invenio_oauth2server.views import server_blueprint, settings_blueprint
@@ -54,14 +57,17 @@ from invenio_oauthclient import InvenioOAuthClient
 from invenio_oauthclient.contrib.github import REMOTE_APP
 from invenio_oauthclient.views.client import blueprint as oauthclient_blueprint
 from invenio_pidstore import InvenioPIDStore
+from invenio_records import InvenioRecords
 from invenio_records_rest import InvenioRecordsREST
 from invenio_records_rest.utils import PIDConverter
+from invenio_search import InvenioSearch
 from invenio_webhooks import InvenioWebhooks
 from invenio_webhooks.models import Receiver
 from invenio_webhooks.views import blueprint as webhooks_blueprint
 from sqlalchemy_utils.functions import create_database, database_exists
 
 from invenio_github import InvenioGitHub
+from invenio_github.api import GitHubAPI
 from invenio_github.receivers import GitHubReceiver
 
 
@@ -95,14 +101,17 @@ def app(request):
                                           'sqlite:///test.db'),
         SECURITY_PASSWORD_HASH='plaintext',
         SECURITY_PASSWORD_SCHEMES=['plaintext'],
+        SECURITY_DEPRECATED_PASSWORD_SCHEMES=[],
         TESTING=True,
         WTF_CSRF_ENABLED=False,
     )
+    app.config['OAUTHCLIENT_REMOTE_APPS']['github']['params'][
+        'request_token_params'][
+        'scope'] = 'user:email,admin:repo_hook,read:org'
     app.url_map.converters['pid'] = PIDConverter
 
     FlaskCLI(app)
     celeryext = FlaskCeleryExt(app)
-    celeryext.celery.flask_app = app  # Make sure both apps are the same!
     Babel(app)
     Mail(app)
     Menu(app)
@@ -116,9 +125,15 @@ def app(request):
     app.register_blueprint(server_blueprint)
     app.register_blueprint(settings_blueprint)
     InvenioPIDStore(app)
+    InvenioJSONSchemas(app)
+    InvenioRecords(app)
+    InvenioSearch(app)
+    InvenioIndexer(app)
+    InvenioFilesREST(app)
     InvenioRecordsREST(app)
     InvenioDepositREST(app)
     InvenioWebhooks(app)
+    celeryext.celery.flask_app = app  # Make sure both apps are the same!
     app.register_blueprint(webhooks_blueprint)
     InvenioGitHub(app)
 
@@ -148,6 +163,24 @@ def tester_id(app, db):
     )
     db.session.commit()
     return tester.id
+
+
+@pytest.yield_fixture()
+def location(db):
+    """File system location."""
+    tmppath = tempfile.mkdtemp()
+
+    loc = Location(
+        name='testloc',
+        uri=tmppath,
+        default=True
+    )
+    db.session.add(loc)
+    db.session.commit()
+
+    yield loc
+
+    shutil.rmtree(tmppath)
 
 
 @pytest.fixture
@@ -193,12 +226,11 @@ def access_token_no_scope(app, tester_id):
 def remote_token(app, db, tester_id):
     """Create a remove token for accessing GitHub API."""
     from invenio_oauthclient.models import RemoteToken
-    from invenio_github.helpers import get_client_id
 
     # Create GitHub link
     token = RemoteToken.create(
         tester_id,
-        get_client_id(),
+        GitHubAPI.remote.consumer_key,
         'test',
         '',
     )
@@ -245,14 +277,14 @@ def tclient_request_factory(client, method, endpoint, urlargs, data,
 
 
 @pytest.yield_fixture()
-def request_factory(app, db, remote_token):
+def request_factory(app, db, tester_id, remote_token):
+    """Prepare GitHub requests."""
     from . import fixtures
-    from invenio_github.utils import init_account
 
     # Init GitHub account and mock up GitHub API
     httpretty.enable()
     fixtures.register_github_api()
-    init_account(remote_token)
+    GitHubAPI(user_id=tester_id).init_account()
     httpretty.disable()
 
     db.session.commit()

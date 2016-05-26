@@ -24,44 +24,20 @@
 
 from __future__ import absolute_import
 
+import github3
 from flask import current_app, redirect, url_for
 from flask_login import current_user
-from invenio_oauthclient.errors import OAuthResponseError
-from invenio_oauthclient.handlers import authorized_signup_handler, \
-    oauth_error_handler
 from invenio_oauthclient.models import RemoteToken
+from invenio_oauthclient.signals import account_setup_received
 
-from ..tasks import disconnect_github
-from ..utils import init_account, init_api
-
-
-def account_info(remote, resp):
-    """Extract account information."""
-    gh = init_api(resp['access_token'])
-    ghuser = gh.user()
-    return dict(email=ghuser.email, nickname=ghuser.login)
+from .api import GitHubAPI
+from .tasks import disconnect_github
 
 
-def account_setup(remote, token):
+def account_setup(remote, token=None, response=None,
+                  account_setup=None):
     """Setup user account."""
-    init_account(token)
-
-
-@oauth_error_handler
-def authorized(resp, remote):
-    """Authorized callback handler for GitHub."""
-    if resp and 'error' in resp:
-        if resp['error'] == 'bad_verification_code':
-            # See https://developer.github.com/v3/oauth/#bad-verification-code
-            # which recommends starting auth flow again.
-            return redirect(url_for('oauthclient.login', remote_app='github'))
-        elif resp['error'] in ['incorrect_client_credentials',
-                               'redirect_uri_mismatch']:
-            raise OAuthResponseError(
-                "Application mis-configuration in GitHub", remote, resp
-            )
-
-    return authorized_signup_handler(resp, remote)
+    GitHubAPI(user_id=token.remote_account.user_id).init_account()
 
 
 def disconnect(remote):
@@ -82,8 +58,3 @@ def disconnect(remote):
         token.remote_account.delete()
 
     return redirect(url_for('oauthclient_settings.index'))
-
-
-def signup(remote):
-    """Signup callback handler for GitHub."""
-    pass

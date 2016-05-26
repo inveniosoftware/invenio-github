@@ -1,0 +1,63 @@
+{#
+# This file is part of Invenio.
+# Copyright (C) 2014, 2015, 2016 CERN.
+#
+# Invenio is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# Invenio is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Invenio; if not, write to the Free Software Foundation, Inc.,
+# 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
+#}
+
+{# FIXME Import from future formatter. #}
+{%- from "invenio_github/settings/_macros.html" import render_field with context%}
+{%- import "invenio_github/settings/helpers.html" as helpers with context %}
+
+{%- extends config.GITHUB_SETTINGS_TEMPLATE %}
+
+{%- block settings_content %}
+{{ helpers.panel_start(
+  _('Repository %(repo_name)s', repo_name=repo.name),
+  icon="fa fa-github",
+  with_body=False,
+) }}
+<div class="panel-body">
+  {{ repo.enabled }}  {{ repo.ping }} {{ repo.hook }}
+</div>
+<table class="table table-striped">
+  <tbody>
+    {% if not repo.releases %}
+    <tr>
+      <td colspan="2">
+        <div align="center">
+          <em>
+            There are not archived releases.<br >
+            Go to <a href="http://github.com/{{ repo.name }}/releases">GitHub</a>
+            and create your first release.
+          </em>
+        </div>
+      </td>
+    </tr>
+    {% endif %}
+    {%- for release in repo.releases %}
+    <tr>
+      <td>
+        {{ release }}
+      </td>
+      <td>
+        {{ release.created }}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{{ helpers.panel_end(with_body=False) }}
+{%- endblock %}

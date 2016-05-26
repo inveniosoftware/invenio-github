@@ -64,10 +64,11 @@ install_requires = [
     'Flask-BabelEx>=0.9.2',
     'Flask-Menu>=0.5.0',
     'Flask-Breadcrumbs>=0.3.0',
-    'github3.py>=0.9.5',
+    'github3.py>=1.0.0a4',
+    'humanize>=0.5.1',
     'invenio-db>=1.0.0a9',
     'invenio-formatter>=1.0.0a1',
-    'invenio-oauthclient>=1.0.0a3',
+    'invenio-oauthclient>=1.0.0a4',
     'invenio-oauth2server>=1.0.0a2',
     'invenio-webhooks>=1.0.0a1',
 ]
@@ -102,7 +103,6 @@ setup(
         'invenio_base.blueprints': [
             'invenio_github_badge = invenio_github.views.badge:blueprint',
             'invenio_github_github = invenio_github.views.github:blueprint',
-            'invenio_github_handler = invenio_github.views.handler:blueprint',
         ],
         'invenio_db.models': [
             'invenio_github = invenio_github.models',

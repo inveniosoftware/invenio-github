@@ -30,10 +30,9 @@ import urllib
 
 from flask import Blueprint, abort, current_app, make_response, redirect, \
     request, url_for
-from invenio_pidstore.models import PersistentIdentifier
 
+from ..api import GitHubAPI
 from ..badge import create_badge
-from ..helpers import get_account
 
 blueprint = Blueprint(
     'invenio_github_badge',
@@ -65,14 +64,11 @@ def badge(doi, style=None):
         try:
             create_badge('DOI', doi, 'blue', badge_path, style=style)
         except Exception:
-            current_app.logger.warning(
-                '%s is down.' % cfg['GITHUB_SHIELDSIO_BASE_URL'],
-                exc_info=True
+            msg = '{0} is down.'.format(
+                current_app.config['GITHUB_SHIELDSIO_BASE_URL']
             )
-            return make_response(
-                '%s is down.' % cfg['GITHUB_SHIELDSIO_BASE_URL'],
-                503
-            )
+            current_app.logger.warning(msg, exc_info=True)
+            return make_response(msg, 503)
 
     resp = make_response(open(badge_path, 'r').read())
     resp.content_type = 'image/svg+xml'
@@ -85,7 +81,7 @@ def badge(doi, style=None):
 @blueprint.route('/<int:user_id>/<path:repository>.svg', methods=['GET'])
 def index(user_id, repository):
     """Generate a badge for a specific GitHub repository."""
-    account = get_account(user_id=user_id)
+    account = GitHubAPI(user_id=user_id)
 
     if repository not in account.extra_data['repos']:
         return abort(404)
@@ -119,7 +115,7 @@ def index_old(user_id, repository):
 @blueprint.route('/latestdoi/<int:user_id>/<path:repository>', methods=['GET'])
 def latest_doi(user_id, repository):
     """Redirect to the newest record version."""
-    account = get_account(user_id=user_id)
+    account = GitHubAPI(user_id=user_id).account
     if account is None:
         return abort(404)
 

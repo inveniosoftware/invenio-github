@@ -65,25 +65,28 @@ def FIXME_test_handle_payload(app, db, tester_id, remote_token):
     assert dep['github_ref'] == "v1.0"
 
 
-def test_extract_files(app, db, remote_token, request_factory):
-    from invenio_github.tasks import extract_files
+def test_extract_files(app, db, remote_token, tester_id, request_factory):
+    from invenio_webhooks.models import Event
+    from invenio_github.api import GitHubRelease
 
     httpretty.enable()
-    files = extract_files(
-        fixtures.PAYLOAD('auser', 'repo-1', tag='v1.0'),
-        remote_token.access_token
+    event = Event(
+        receiver_id='github',
+        user_id=tester_id,
+        payload=fixtures.PAYLOAD('auser', 'repo-1', tag='v1.0'),
     )
-    assert len(files) == 1
 
-    fileobj, filename = files[0]
-    assert filename == "repo-1-v1.0.zip"
+    files = list(GitHubRelease(event).files)
+    assert len(files) == 1
+    httpretty.disable()
+
+    filename, _ = files[0]
+    assert filename == "auser/repo-1-v1.0.zip"
 
 
 def test_extract_metadata(app, db, tester_id, request_factory):
-    from invenio_github.tasks import extract_metadata
-    from invenio_github.helpers import get_api
-
-    gh = get_api(user_id=tester_id)
+    from invenio_webhooks.models import Event
+    from invenio_github.api import GitHubRelease
 
     # Mock up responses
     httpretty.enable()
@@ -105,10 +108,11 @@ def test_extract_metadata(app, db, tester_id, request_factory):
             ))
         )
     )
-
-    metadata = extract_metadata(
-        gh,
-        fixtures.PAYLOAD('auser', 'repo-2', tag='v1.0'),
+    event = Event(
+        receiver_id='github',
+        user_id=tester_id,
+        payload=fixtures.PAYLOAD('auser', 'repo-2', tag='v1.0'),
     )
+    metadata = GitHubRelease(event).metadata
 
     assert metadata['upload_type'] == 'dataset'

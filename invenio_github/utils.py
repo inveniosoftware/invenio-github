@@ -19,19 +19,14 @@
 
 """Various utility functions."""
 
-import copy
 import json
 from datetime import datetime
 from operator import itemgetter
 
 import dateutil.parser
-import github3
 import pytz
 import requests
 from flask import current_app
-from invenio_db import db
-from invenio_oauth2server.models import Token as ProviderToken
-from invenio_webhooks.models import CeleryReceiver
 
 
 def utcnow():
@@ -50,160 +45,6 @@ def parse_timestamp(x):
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=pytz.utc)
     return dt
-
-
-def init_api(access_token):
-    """Get API interface."""
-    return github3.login(token=access_token)
-
-
-def init_provider_tokens(user_id):
-    """Create local access token.
-
-    It is used to authenticate GitHub webhook as well as the upload using
-    the API.
-    """
-    webhook_token = ProviderToken.create_personal(
-        'github-webhook',
-        user_id,
-        scopes=['webhooks:event'],
-        is_internal=True,
-    )
-
-    internal_token = ProviderToken.create_personal(
-        'github-upload',
-        user_id,
-        scopes=['deposit:write', 'deposit:actions'],
-        is_internal=True,
-    )
-
-    return webhook_token, internal_token
-
-
-def init_account(remote_token):
-    """Setup a new GitHub account."""
-    gh = init_api(remote_token.access_token)
-    ghuser = gh.user()
-
-    # Setup local access tokens
-    hook_token, internal_token = init_provider_tokens(
-        remote_token.remote_account.user_id
-    )
-
-    # Initial structure of extra data
-    extra_data = dict(
-        login=ghuser.login,
-        name=ghuser.name,
-        tokens=dict(
-            webhook=hook_token.id,
-            internal=internal_token.id,
-        ),
-        repos=dict(),
-        last_sync=iso_utcnow(),
-    )
-
-    # Fetch list of repositories
-    sync(gh, extra_data)
-
-    # Store extra data
-    remote_token.remote_account.extra_data = extra_data
-    db.session.commit()
-
-
-def sync(gh, extra_data, sync_hooks=True):
-    """Helper method to sync list of repositories."""
-    repo_data = dict(
-        hook=None,
-        description='',
-        depositions=[],
-        errors=None,
-    )
-
-    existing_set = set(extra_data['repos'].keys())
-    new_set = set()
-
-    repos = gh.iter_repos(type='all', sort='full_name')
-    repos.headers['Accept'] = 'application/vnd.github.moondragon+json'
-
-    for r in repos:
-        # Next line to be replaced with 'r.permissions['admin']' once
-        # fix has been integrated in github3.py
-        if r.to_json()['permissions']['admin']:
-            # Add if not in list
-            if r.full_name not in extra_data['repos']:
-                extra_data['repos'][r.full_name] = copy.copy(repo_data)
-            # Update description
-            extra_data['repos'][r.full_name]['description'] = r.description
-            new_set.add(r.full_name)
-
-        # # TODO:
-        # if sync_hooks:
-        #     for h in r.iter_hooks():
-        #         if h.name == 'web' and 'url' in h.config:
-        #             h.config['url'] ==
-
-    # Remove repositories no longer available in github
-    for full_name in (existing_set-new_set):
-        del extra_data['repos'][full_name]
-
-    # Update last sync
-    extra_data['last_sync'] = iso_utcnow()
-
-
-def remove_hook(gh, extra_data, full_name):
-    """Remove an existing webhook."""
-    owner, repo = full_name.split('/')
-    hook_id = extra_data['repos'][full_name]['hook']
-
-    if hook_id:
-        ghrepo = gh.repository(owner, repo)
-        if ghrepo:
-            hook = ghrepo.hook(hook_id)
-            if not hook or (hook and hook.delete()):
-                extra_data['repos'][full_name]['hook'] = None
-                return True
-    return False
-
-
-def create_hook(gh, extra_data, full_name):
-    """Create a new webhook."""
-    owner, repo = full_name.split('/')
-    webhook_token = ProviderToken.query.filter_by(
-        id=extra_data['tokens']['webhook']
-    ).first()
-    config = dict(
-        url=CeleryReceiver.get_hook_url(
-            current_app.config['GITHUB_WEBHOOK_RECEIVER_ID'],
-            webhook_token.access_token
-        ),
-        content_type='json',
-        secret=current_app.config['GITHUB_SHARED_SECRET'],
-        insecure_ssl='1' if current_app.config['GITHUB_INSECURE_SSL'] else '0',
-    )
-
-    ghrepo = gh.repository(owner, repo)
-    if ghrepo:
-        try:
-            hook = ghrepo.create_hook(
-                'web',  # GitHub identifier for webhook service
-                config,
-                events=['release'],
-            )
-            if hook:
-                extra_data['repos'][full_name]['hook'] = hook.id
-                return True
-        except github3.GitHubError as e:
-            # Check if hook is already installed
-            for m in e.errors:
-                if m['code'] == 'custom' and m['resource'] == 'Hook':
-                    for h in ghrepo.iter_hooks():
-                        if h.config.get('url', '') == config['url']:
-                            extra_data['repos'][full_name]['hook'] = h.id
-                            h.edit(
-                                config=config, events=['release'], active=True
-                            )
-                            return True
-    return False
 
 
 def get_extra_metadata(gh, owner, repo_name, ref):
@@ -258,11 +99,8 @@ def get_contributors(gh, owner, repo_name):
 
             # Sort according to number of contributions
             contributors.sort(key=itemgetter('contributions'))
-            contributors.reverse()
-            contributors = map(
-                get_author,
-                filter(lambda x: x['type'] == 'User', contributors)
-            )
+            contributors = [get_author(x) for x in reversed(contributors)
+                            if x['type'] == 'User']
             contributors = filter(lambda x: x is not None, contributors)
 
             return contributors
@@ -307,17 +145,3 @@ def revoke_token(remote, access_token):
 def is_valid_sender(extra_data, payload):
     """Check if the sender is valid."""
     return payload['repository']['full_name'] in extra_data['repos']
-
-
-def submitted_deposition(extra_data, full_name, deposition, github_ref,
-                         errors=None):
-    """Append submitted deposition."""
-    deposition = dict(
-        deposition_id=deposition.get('id', None),
-        record_id=deposition.get('record_id', None),
-        doi=deposition.get('doi', None),
-        submitted=deposition.get('modified', None),
-        errors=errors,
-        github_ref=github_ref,  # TODO
-    )
-    extra_data['repos'][full_name]['depositions'].append(deposition)
