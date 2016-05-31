@@ -73,3 +73,6 @@ GITHUB_BADGE_DEFAULT_COLOR = 'blue'
 
 GITHUB_METADATA_FILE = '.zenodo.json'
 """File with extra metadata stored in GitHub repository."""
+
+GITHUB_DEPOSIT_CLASS = 'invenio_deposit.api:Deposit'
+"""Deposit class that implements a `publish` method."""

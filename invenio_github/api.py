@@ -33,7 +33,7 @@ from invenio_oauthclient.models import RemoteAccount, RemoteToken
 from invenio_oauthclient.proxies import current_oauthclient
 from invenio_webhooks.proxies import current_webhooks
 from werkzeug.local import LocalProxy
-from werkzeug.utils import cached_property
+from werkzeug.utils import cached_property, import_string
 
 from .models import Release, Repository
 from .utils import get_extra_metadata, iso_utcnow
@@ -208,6 +208,12 @@ class GitHubRelease(object):
         self.gh = GitHubAPI(user_id=event.user_id)
 
     @cached_property
+    def deposit_class(self):
+        """Return a class implementing `publish` method."""
+        cls = current_app.config['GITHUB_DEPOSIT_CLASS']
+        return cls if isinstance(cls, type) else import_string(cls)
+
+    @cached_property
     def payload(self):
         """Return event payload."""
         return self.event.payload
@@ -314,12 +320,10 @@ class GitHubRelease(object):
 
     def publish(self):
         """Publish GitHub release as record."""
-        from invenio_deposit.api import Deposit
-
         repository = self.repository_model
 
         with db.session.begin_nested():
-            deposit = Deposit.create(self.metadata)
+            deposit = self.deposit_class.create(self.metadata)
             deposit['_deposit']['created_by'] = self.event.user_id
             deposit['_deposit']['owners'] = [self.event.user_id]
 
