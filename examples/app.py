@@ -100,6 +100,7 @@ from flask_babelex import Babel
 from flask_celeryext import FlaskCeleryExt
 from flask_cli import FlaskCLI
 from flask_mail import Mail
+from invenio_access import InvenioAccess
 from invenio_accounts import InvenioAccounts
 from invenio_accounts.views import blueprint as accounts_blueprint
 from invenio_assets import InvenioAssets
@@ -164,6 +165,9 @@ app.config.update(
     WTF_CSRF_ENABLED=False,
 )
 
+app.config['OAUTHCLIENT_REMOTE_APPS']['github']['params'][
+    'request_token_params']['scope'] = 'user:email,admin:repo_hook,read:org'
+
 ULTRAHOOK_NAME = os.getenv('ULTRAHOOK_NAME')
 if ULTRAHOOK_NAME:
     app.config['WEBHOOKS_DEBUG_RECEIVER_URLS'] = dict(
@@ -188,6 +192,7 @@ app.register_blueprint(oauthclient_settings_blueprint)
 InvenioOAuth2Server(app)
 app.register_blueprint(server_blueprint)
 app.register_blueprint(settings_blueprint)
+InvenioAccess(app)
 InvenioPIDStore(app)
 InvenioJSONSchemas(app)
 InvenioRecords(app)

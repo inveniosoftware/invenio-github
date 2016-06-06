@@ -59,7 +59,7 @@ from datetime import datetime, timedelta
 import humanize
 import pytz
 from dateutil.parser import parse
-from flask import Blueprint, abort, render_template, request
+from flask import Blueprint, abort, redirect, render_template, request, url_for
 from flask_babelex import gettext as _
 from flask_breadcrumbs import register_breadcrumb
 from flask_login import current_user, login_required
@@ -86,7 +86,8 @@ blueprint = Blueprint(
 @blueprint.app_template_filter('naturaltime')
 def naturaltime(val):
     """Get humanized version of time."""
-    val = parse(val)
+    val = val.replace(tzinfo=pytz.utc) \
+        if isinstance(val, datetime) else parse(val)
     now = datetime.utcnow().replace(tzinfo=pytz.utc)
 
     return humanize.naturaltime(now - val)
@@ -200,6 +201,31 @@ def hook():
         if github.create_hook(repo):
             db.session.commit()
             return '', 201
+        else:
+            abort(400)
+    else:
+        abort(400)
+
+
+@blueprint.route('/hook/<action>/<path:repo>')
+@login_required
+def hook_action(action, repo):
+    """Display selected repository."""
+    github = GitHubAPI(user_id=current_user.get_id())
+
+    if repo not in github.account.extra_data['repos']:
+        abort(404)
+
+    if action == 'disable':
+        if github.remove_hook(repo):
+            db.session.commit()
+            return redirect(url_for('.index'))
+        else:
+            abort(400)
+    elif action == 'enable':
+        if github.create_hook(repo):
+            db.session.commit()
+            return redirect(url_for('.index'))
         else:
             abort(400)
     else:

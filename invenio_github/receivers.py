@@ -39,8 +39,6 @@ class GitHubReceiver(Receiver):
 
     def run(self, event):
         """Process an event."""
-        import ipdb
-        ipdb.set_trace()
         release = GitHubRelease(event)
         # Ping event
         if 'hook_id' in event.payload and 'zen' in event.payload:

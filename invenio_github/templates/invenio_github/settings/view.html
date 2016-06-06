@@ -28,36 +28,74 @@
   _('Repository %(repo_name)s', repo_name=repo.name),
   icon="fa fa-github",
   with_body=False,
+  btn_href=url_for('invenio_github.hook_action',
+      action='disable' if repo.hook else 'enable',
+      repo=repo.name
+  ),
+  btn='disable' if repo.hook else 'enable',
 ) }}
 <div class="panel-body">
   {{ repo.enabled }}  {{ repo.ping }} {{ repo.hook }}
 </div>
-<table class="table table-striped">
-  <tbody>
-    {% if not repo.releases %}
-    <tr>
-      <td colspan="2">
-        <div align="center">
-          <em>
-            There are not archived releases.<br >
-            Go to <a href="http://github.com/{{ repo.name }}/releases">GitHub</a>
-            and create your first release.
-          </em>
+<ul class="list-group">
+  {% if not repo.releases %}
+  <li class="list-group-item" align="center">
+    <em>
+      There are not archived releases.<br >
+      Go to <a href="https://github.com/{{ repo.name }}/releases">GitHub</a>
+      and create your first release.
+    </em>
+  </li>
+  {% endif %}
+  {%- for release in repo.releases %}
+  <li class="list-group-item">
+    <a class="label label-info" href="/deposits/{{ release.record.json['_deposit']['id'] }}">
+      <i class="fa fa-archive"></i> {{ release.record.json['_deposit']['id'] }}
+    </a>
+    &nbsp;
+    <small>
+      <a class="text-muted" href="https://github.com//{{ repo.name }}/releases/tag/{{ release.name }}">
+        <i class="fa fa-tag"></i> {{ release.name }}
+      </a>
+    </small>
+    <span class="pull-right">
+      <small class="text-muted">
+        {{ release.created|naturaltime }}
+      </small>
+      <span class="btn btn-xs btn-default" type="button"
+        data-toggle="collapse" data-target="#{{ repo.id }}"
+        aria-expanded="false" aria-controls="collapseExample">
+        ...
+      </span>
+    </span>
+    <div class="clearfix"></div>
+    <div id="{{ repo.id }}" class="collapse">
+      <br/>
+      <!-- Nav tabs -->
+      <ul class="nav nav-tabs" role="tablist">
+        <li role="presentation" class="active">
+          <a href="#{{ repo.id}}-deposit" aria-controls="home" role="tab"
+            data-toggle="tab">{{ _('Deposit') }}</a>
+        </li>
+        <li role="presentation">
+          <a href="#{{ repo.id}}-event" aria-controls="home" role="tab"
+            data-toggle="tab">{{ _('Event') }}</a>
+        </li>
+      </ul>
+      <!-- Tab panes -->
+      <div class="tab-content">
+        <div role="tabpanel" class="tab-pane active" id="{{ repo.id }}-deposit">
+          <h5>{{ _('Metadata') }}</h5>
+          <pre>{{ release.record.json|tojson }}</pre>
         </div>
-      </td>
-    </tr>
-    {% endif %}
-    {%- for release in repo.releases %}
-    <tr>
-      <td>
-        {{ release }}
-      </td>
-      <td>
-        {{ release.created }}
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+        <div role="tabpanel" class="tab-pane" id="{{ repo.id }}-event">
+          <h5>{{ _('Payload') }}</h5>
+          <pre>{{ release.event.payload|tojson }}</pre>
+        </div>
+      </div>
+    <div>
+  </li>
+  {% endfor %}
+</ul>
 {{ helpers.panel_end(with_body=False) }}
 {%- endblock %}

@@ -300,7 +300,7 @@ class GitHubRelease(object):
             'repo_name': repo_name, 'tag_name': tag_name
         }
 
-        response = self.gh.api._session.head(zipball_url)
+        response = self.gh.api.session.head(zipball_url)
         assert response.status_code == 302, \
             'Could not retrieve archive from GitHub: {0}'.format(zipball_url)
 
@@ -328,7 +328,7 @@ class GitHubRelease(object):
             deposit['_deposit']['owners'] = [self.event.user_id]
 
             for key, url in self.files:
-                deposit.files[key] = self.gh.api._session.get(url).raw
+                deposit.files[key] = self.gh.api.session.get(url).raw
 
             deposit.publish()
 

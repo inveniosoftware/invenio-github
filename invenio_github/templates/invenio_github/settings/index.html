@@ -151,7 +151,15 @@ require(['jquery', 'js/github/view'], function($, view) {
              ></i>
           </a>
           {% endif %}
+          <a href="{{ url_for('invenio_github.hook_action',
+            action='disable' if description.instance and description.instance.hook else 'enable',
+            repo=repo
+            ) }}">
+            {{ 'disable' if description.instance and description.instance.hook else 'enable' }}
+          </a>
+          {#
           <input type="checkbox" {{ 'checked' if description.instance and description.instance.hook }} data-size="mini" data-animate="true" data-repo-name="{{repo}}">
+          #}
           <i class="hook-status fa"></i>
           <br/>
           <small class="text-muted doi-time"> {{description.modified|naturaltime if description.get('modified') else ''}}</small>
