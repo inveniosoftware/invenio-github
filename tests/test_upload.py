@@ -28,8 +28,6 @@ from functools import partial
 from invenio_db import db
 from six import BytesIO
 
-from invenio_github.upload import upload
-
 
 def make_file_fixture(filename, content):
     """Generate a file fixture suitable for use with the Flask test client."""
@@ -38,6 +36,8 @@ def make_file_fixture(filename, content):
 
 
 def FIXME_test_upload(app, db, tester_id, deposit_token, request_factory):
+    from invenio_github.upload import upload
+
     metadata = dict(
         upload_type="software",
         title="Test title",
