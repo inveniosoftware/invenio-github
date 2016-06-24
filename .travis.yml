@@ -33,6 +33,9 @@ language: python
 cache:
   - pip
 
+services:
+  - redis
+
 env:
   # - REQUIREMENTS=lowest
   # - REQUIREMENTS=release
