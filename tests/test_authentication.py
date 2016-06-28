@@ -124,13 +124,13 @@ def test_no_public_email(app, db):
                 'invenio_oauthclient.signup',
                 remote_app='github',
             ),
-            data={'email': 'noemailuser@invenio-software.org'}
+            data={'email': 'noemailuser@inveniosoftware.org'}
         )
         assert resp.location.endswith('/mytest/')
 
         from invenio_accounts.models import User
         assert User.query.filter_by(
-            email='noemailuser@invenio-software.org'
+            email='noemailuser@inveniosoftware.org'
         ).count() == 1
 
     httpretty.disable()

@@ -33,7 +33,7 @@ def register_github_api():
     register_oauth_flow()
     register_endpoint(
         '/user',
-        USER('auser', email='auser@invenio-software.org')
+        USER('auser', email='auser@inveniosoftware.org')
     )
     register_endpoint(
         '/user/orgs',
@@ -80,7 +80,7 @@ def register_github_api():
     )
     register_endpoint(
         '/users/auser',
-        USER('auser', email='auser@invenio-software.org')
+        USER('auser', email='auser@inveniosoftware.org')
     )
     register_endpoint(
         '/users/buser',
@@ -88,7 +88,7 @@ def register_github_api():
     )
     register_endpoint(
         '/users/cuser',
-        USER('cuser', email='cuser@invenio-software.org')
+        USER('cuser', email='cuser@inveniosoftware.org')
     )
     register_endpoint(
         '/user/repos',
