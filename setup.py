@@ -67,11 +67,16 @@ install_requires = [
     'Flask-Breadcrumbs>=0.3.0',
     'github3.py>=1.0.0a4',
     'humanize>=0.5.1',
+    'invenio-assets>=1.0.0a4',
+    'invenio-celery>=1.0.0a4',
     'invenio-db>=1.0.0a9',
-    'invenio-formatter>=1.0.0a1',
+    'invenio-deposit>=1.0.0a1',
+    'invenio-formatter[badges]>=1.0.0a1',
     'invenio-oauthclient>=1.0.0a4',
     'invenio-oauth2server>=1.0.0a2',
+    'invenio-records>=1.0.0a16',
     'invenio-webhooks>=1.0.0a1',
+    'six>=1.10.0',
 ]
 
 packages = find_packages()
@@ -105,6 +110,9 @@ setup(
             'invenio_github_badge = invenio_github.views.badge:blueprint',
             'invenio_github_github = invenio_github.views.github:blueprint',
         ],
+        'invenio_celery.tasks': [
+            'invenio_github = invenio_github.tasks',
+        ],
         'invenio_db.models': [
             'invenio_github = invenio_github.models',
         ],
@@ -113,6 +121,10 @@ setup(
         ],
         'invenio_webhooks.receivers': [
             'github = invenio_github.receivers:GitHubReceiver',
+        ],
+        'invenio_assets.bundles': [
+            'invenio_github_js = invenio_github.bundles:js',
+            'invenio_github_css = invenio_github.bundles:css',
         ],
     },
     extras_require=extras_require,

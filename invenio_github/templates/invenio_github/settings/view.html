@@ -17,85 +17,107 @@
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 #}
 
-{# FIXME Import from future formatter. #}
-{%- from "invenio_github/settings/_macros.html" import render_field with context%}
 {%- import "invenio_github/settings/helpers.html" as helpers with context %}
 
 {%- extends config.GITHUB_SETTINGS_TEMPLATE %}
 
 {%- block settings_content %}
-{{ helpers.panel_start(
-  _('Repository %(repo_name)s', repo_name=repo.name),
-  icon="fa fa-github",
-  with_body=False,
-  btn_href=url_for('invenio_github.hook_action',
-      action='disable' if repo.hook else 'enable',
-      repo=repo.name
-  ),
-  btn='disable' if repo.hook else 'enable',
-) }}
 <div class="panel-body">
-  {{ repo.enabled }}  {{ repo.ping }} {{ repo.hook }}
+  <h1><i class="fa fa-github"></i>&nbsp;{{ repo.name }}</h1>
+  <h2>{{ _('Releases') }}</h2>
+  {# <small>{{ repo.enabled }}  {{ repo.ping }} {{ repo.hook }}</small> #}
 </div>
 <ul class="list-group">
-  {% if not repo.releases %}
+  {% if not releases %}
   <li class="list-group-item" align="center">
     <em>
-      There are not archived releases.<br >
+      There are no archived releases.<br>
       Go to <a href="https://github.com/{{ repo.name }}/releases">GitHub</a>
       and create your first release.
     </em>
   </li>
   {% endif %}
-  {%- for release in repo.releases %}
+  {%- for release in releases %}
+  {% set title = release.event.payload['release']['name'] if release.event else release.tag %}
   <li class="list-group-item">
-    <a class="label label-info" href="/deposits/{{ release.record.json['_deposit']['id'] }}">
-      <i class="fa fa-archive"></i> {{ release.record.json['_deposit']['id'] }}
-    </a>
+    <div>
+    <p>{{ title }}
+    &nbsp;
+    {# DOI Badge (specific for the release) #}
+    {% if release.doi %}
+      <a href="http://doi.org/{{release.doi}}"><img src="{{ url_for('invenio_formatter_badges.badge', title='doi', value=release.doi, ext='svg') }}" alt="{{ release.doi }}"></a>
+    {% endif %}
+    </p>
+    </div>
     &nbsp;
     <small>
-      <a class="text-muted" href="https://github.com//{{ repo.name }}/releases/tag/{{ release.name }}">
-        <i class="fa fa-tag"></i> {{ release.name }}
+      <a class="text-primary" href="https://github.com/{{ repo.name }}/releases/tag/{{ release.tag }}">
+        <i class="fa fa-tag"></i> {{ release.tag }}
       </a>
     </small>
+    &nbsp;
+    <small class="text-{{ release.status.color }}">
+      <i class="fa {{ release.status.icon }}"></i> {{ release.status.title }}
+    </small>
+    &nbsp;
+    {# Edit Button #}
+    {% if release.record %}
+      {# use url_for('invenio_deposit_ui.depid') here... #}
+      <a class="label label-info" href="/deposit/{{ release.record.json['_deposit']['id'] }}"><i class="fa fa-edit"></i> {{_('Edit Deposit')}}
+      </a>
+      &nbsp;
+    {% endif %}
     <span class="pull-right">
       <small class="text-muted">
         {{ release.created|naturaltime }}
       </small>
       <span class="btn btn-xs btn-default" type="button"
-        data-toggle="collapse" data-target="#{{ repo.id }}"
+        data-toggle="collapse" data-target="#{{ release.id }}"
         aria-expanded="false" aria-controls="collapseExample">
         ...
       </span>
     </span>
     <div class="clearfix"></div>
-    <div id="{{ repo.id }}" class="collapse">
+    <div id="{{ release.id }}" class="collapse">
       <br/>
       <!-- Nav tabs -->
       <ul class="nav nav-tabs" role="tablist">
         <li role="presentation" class="active">
-          <a href="#{{ repo.id}}-deposit" aria-controls="home" role="tab"
+          <a href="#{{ release.id}}-deposit" aria-controls="home" role="tab"
             data-toggle="tab">{{ _('Deposit') }}</a>
         </li>
         <li role="presentation">
-          <a href="#{{ repo.id}}-event" aria-controls="home" role="tab"
+          <a href="#{{ release.id}}-event" aria-controls="home" role="tab"
             data-toggle="tab">{{ _('Event') }}</a>
+        </li>
+        <li role="presentation">
+          <a href="#{{ release.id}}-errors" aria-controls="home" role="tab"
+            data-toggle="tab">{{ _('Errors') }}</a>
         </li>
       </ul>
       <!-- Tab panes -->
       <div class="tab-content">
-        <div role="tabpanel" class="tab-pane active" id="{{ repo.id }}-deposit">
+        <div role="tabpanel" class="tab-pane active" id="{{ release.id }}-deposit">
           <h5>{{ _('Metadata') }}</h5>
-          <pre>{{ release.record.json|tojson }}</pre>
+          {% if release.record %}
+              <pre>{{ release.record.json|tojson|prettyjson }}</pre>
+          {% endif %}
         </div>
-        <div role="tabpanel" class="tab-pane" id="{{ repo.id }}-event">
+        <div role="tabpanel" class="tab-pane" id="{{ release.id }}-event">
           <h5>{{ _('Payload') }}</h5>
-          <pre>{{ release.event.payload|tojson }}</pre>
+          {% if release.event %}
+            <pre>{{ release.event.payload|tojson|prettyjson }}</pre>
+          {% endif %}
+        </div>
+        <div role="tabpanel" class="tab-pane" id="{{ release.id }}-errors">
+          {% if release.errors %}
+            <h5>{{ _('Errors') }}</h5>
+            <pre>{{ release.errors|tojson|prettyjson }}</pre>
+          {% endif %}
         </div>
       </div>
-    <div>
+    </div>
   </li>
   {% endfor %}
 </ul>
-{{ helpers.panel_end(with_body=False) }}
 {%- endblock %}

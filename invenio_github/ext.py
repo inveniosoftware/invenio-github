@@ -26,9 +26,13 @@
 
 from __future__ import absolute_import, print_function
 
+from flask import current_app
+from six import string_types
 from sqlalchemy import event
+from werkzeug.utils import cached_property, import_string
 
 from . import config
+from .api import GitHubRelease
 
 
 class InvenioGitHub(object):
@@ -38,6 +42,15 @@ class InvenioGitHub(object):
         """Extension initialization."""
         if app:
             self.init_app(app)
+
+    @cached_property
+    def release_api_class(self):
+        """Github Release API class."""
+        cls = current_app.config['GITHUB_RELEASE_CLASS']
+        if isinstance(cls, string_types):
+            cls = import_string(cls)
+        assert issubclass(cls, GitHubRelease)
+        return cls
 
     def init_app(self, app):
         """Flask application initialization."""

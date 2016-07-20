@@ -50,13 +50,13 @@ def parse_timestamp(x):
 def get_extra_metadata(gh, owner, repo_name, ref):
     """Get the metadata file."""
     try:
-        content = gh.repository(owner, repo_name).contents(
-            current_app.config['GITHUB_METADATA_FILE'], ref=ref
+        content = gh.repository(owner, repo_name).file_contents(
+            path=current_app.config['GITHUB_METADATA_FILE'], ref=ref
         )
         if not content:
             # File does not exists in the given ref
             return None
-        return json.loads(content.decoded)
+        return json.loads(content.decoded.decode('utf-8'))
     except Exception:
         current_app.logger.exception('Failed to decode {0}.'.format(
             current_app.config['GITHUB_METADATA_FILE']
@@ -71,16 +71,17 @@ def get_owner(gh, owner):
         u = gh.user(owner)
         name = u.name or u.login
         company = u.company or ''
-        return [dict(name=name, affliation=company)]
+        return [dict(name=name, affiliation=company)]
     except Exception:
         current_app.logger.exception('Failed to get GitHub owner')
         return None
 
 
-def get_contributors(gh, owner, repo_name):
+def get_contributors(gh, repo_id):
     """Get list of contributors to a repository."""
     try:
-        contrib_url = gh.repository(owner, repo_name).contributors_url
+        # FIXME: Use `github3.Repository.contributors` to get this information
+        contrib_url = gh.repository_with_id(repo_id).contributors_url
 
         r = requests.get(contrib_url)
         if r.status_code == 200:
@@ -93,8 +94,7 @@ def get_contributors(gh, owner, repo_name):
                     return dict(
                         name=(data['name'] if 'name' in data and data['name']
                               else data['login']),
-                        affiliation=(data['company'] if 'company' in data
-                                     else ''),
+                        affiliation=data.get('company') or '',
                     )
 
             # Sort according to number of contributions
@@ -107,41 +107,3 @@ def get_contributors(gh, owner, repo_name):
     except Exception:
         current_app.logger.exception('Failed to get GitHub contributors.')
         return None
-
-
-def is_valid_token(remote, access_token):
-    """Check validity of a GitHub access token.
-
-    GitHub requires the use of Basic Auth to query token validity.
-    200 - valid token
-    404 - invalid token
-    """
-    r = requests.get(
-        '%(base)s/applications/%(client_id)s/tokens/%(access_token)s' % {
-            'client_id': remote.consumer_key,
-            'access_token': access_token,
-            'base': current_app.config['GITHUB_BASE_URL']
-        },
-        auth=(remote.consumer_key, remote.consumer_secret)
-    )
-
-    return r.status_code == 200
-
-
-def revoke_token(remote, access_token):
-    """Revoke an access token."""
-    r = requests.delete(
-        '%(base)s/applications/%(client_id)s/tokens/%(access_token)s' % {
-            'client_id': remote.consumer_key,
-            'access_token': access_token,
-            'base': current_app.config['GITHUB_BASE_URL']
-        },
-        auth=(remote.consumer_key, remote.consumer_secret)
-    )
-
-    return r.status_code == 200
-
-
-def is_valid_sender(extra_data, payload):
-    """Check if the sender is valid."""
-    return payload['repository']['full_name'] in extra_data['repos']

@@ -17,8 +17,6 @@
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 #}
 
-{# FIXME Import from future formatter. #}
-{%- from "invenio_github/settings/_macros.html" import render_field with context%}
 {%- import "invenio_github/settings/helpers.html" as helpers with context %}
 
 
@@ -43,7 +41,7 @@
   <h2><strong>2</strong> <small>Create a release</small></h2>
   <hr>
   Go to GitHub and <a href="https://help.github.com/articles/creating-releases">create a release</a>.
-  {{ config.THEME_NAME|default('System') }} will automatically download a
+  {{ config.THEME_SITENAME|default('System') }} will automatically download a
   .zip-ball of all new releases and register a DOIs for them.
   </div>
   <div class="col-md-4">

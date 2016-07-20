@@ -24,61 +24,13 @@
 
 from __future__ import absolute_import
 
-import os
-import shutil
-import tempfile
-
-import httpretty
-
-from invenio_github.badge import create_badge, shieldsio_encode
-
-SVG = (
-    """<svg xmlns="http://www.w3.org/2000/svg" width="135" """
-    """height="20"><linearGradient id="b" x2="0" y2="100%">"""
-    """<stop offset="0" stop-color="#bbb" stop-opacity=".1"/>"""
-    """<stop offset="1" stop-opacity=".1"/></linearGradient>"""
-    """<mask id="a">"""
-    """<rect width="135" height="20" rx="3" fill="#fff"/></mask>"""
-    """<g mask="url(#a)"><path fill="#555" d="M0 0h33v20H0z"/>"""
-    """<path fill="#007ec6" d="M33 0h102v20H33z"/>"""
-    """<path fill="url(#b)" d="M0 0h135v20H0z"/></g>"""
-    """<g fill="#fff" text-anchor="middle" """
-    """font-family="DejaVu Sans,Verdana,Geneva,sans-serif" """
-    """font-size="11"><text x="17.5" y="15" fill="#010101" """
-    """fill-opacity=".3">DOI</text><text x="17.5" y="14">DOI</text>"""
-    """<text x="83" y="15" fill="#010101" fill-opacity=".3">"""
-    """10.1234/foo.bar</text><text x="83" y="14">10.1234/foo.bar"""
-    """</text></g></svg>"""
-)
+from flask import url_for
 
 
-def test_shieldsio_encode(app):
-    """Test encoding of text for shields.io."""
-    assert shieldsio_encode("10.1234/foo-bar_") == "10.1234%2Ffoo--bar__"
-
-
-def test_create_badge(app):
+def test_badge_views(app, release_model):
     """Test create_badge method."""
-    badge_url = "%sDOI-10.1234%%2Ffoo.bar-blue.svg?style=flat" % \
-        app.config["GITHUB_SHIELDSIO_BASE_URL"]
-
-    httpretty.enable()
-    httpretty.register_uri(
-        httpretty.GET,
-        badge_url,
-        body=SVG,
-        content_type="image/svg+xml",
-    )
-
-    output = os.path.join(app.instance_path, "test.svg")
-
-    create_badge(
-        "DOI",
-        "10.1234/foo.bar",
-        "blue",
-        output,
-        style="flat",
-    )
-
-    assert os.path.exists(output)
-    httpretty.disable()
+    with app.test_client() as client:
+        badge_url = url_for('invenio_github_badge.index',
+                            github_id=release_model.release_id)
+        badge_resp = client.get(badge_url)
+        assert release_model.doi in badge_resp.location

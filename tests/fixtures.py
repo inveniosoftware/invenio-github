@@ -41,11 +41,11 @@ def register_github_api():
     )
     register_endpoint(
         '/users/auser/repos',
-        [REPO('auser', 'repo-1'), REPO('auser', 'repo-2')]
+        [REPO('auser', 'repo-1', 1), REPO('auser', 'repo-2', 2)]
     )
     register_endpoint(
         '/users/inveniosoftware/repos',
-        [REPO('inveniosoftware', 'myorgrepo'), ]
+        [REPO('inveniosoftware', 'myorgrepo', 3), ]
     )
     register_endpoint(
         '/repos/auser/repo-1/contents/.zenodo.json',
@@ -56,7 +56,7 @@ def register_github_api():
     )
     register_endpoint(
         '/repos/auser/repo-1',
-        REPO('auser', 'repo-1'),
+        REPO('auser', 'repo-1', 1),
     )
     register_endpoint(
         '/repos/auser/repo-1/contributors',
@@ -92,7 +92,7 @@ def register_github_api():
     )
     register_endpoint(
         '/user/repos',
-        [REPO('auser', 'repo-1'), REPO('auser', 'repo-2')]
+        [REPO('auser', 'repo-1', 1), REPO('auser', 'repo-2', 2)]
     )
     httpretty.register_uri(
         httpretty.HEAD,
@@ -237,7 +237,7 @@ def USER(login, email=None, bio=True):
     return user
 
 
-def REPO(owner, repo):
+def REPO(owner, repo, repo_id):
     r = '%s/%s' % (owner, repo)
     o = owner
 
@@ -280,7 +280,7 @@ def REPO(owner, repo):
         'homepage': None,
         'hooks_url': 'https://api.github.com/repos/%s/hooks' % r,
         'html_url': 'https://github.com/%s' % r,
-        'id': 6438791,
+        'id': repo_id,
         'issue_comment_url': 'https://api.github.com/repos/%s/issues/'
                              'comments/{number}' % r,
         'issue_events_url': 'https://api.github.com/repos/%s/issues/'
@@ -346,32 +346,25 @@ def REPO(owner, repo):
     }
 
 
-def ZIPBALL(stream=True):
+def ZIPBALL():
     from zipfile import ZipFile
-    from StringIO import StringIO
+    from six import BytesIO
 
-    memfile = StringIO()
+    memfile = BytesIO()
     zipfile = ZipFile(memfile, 'w')
     zipfile.writestr('test.txt', 'hello world')
     zipfile.close()
     memfile.seek(0)
-
-    if stream:
-        def stream_file(f):
-            for b in f.read(2):
-                yield b
-        return stream_file(memfile)
     return memfile
 
 
-def PAYLOAD(sender, repo, tag='v1.0'):
+def PAYLOAD(sender, repo, repo_id, tag='v1.0'):
     c = dict(
         repo=repo,
         user=sender,
         url='%s/%s' % (sender, repo),
         id='4321',
         tag=tag
-
     )
 
     return {
@@ -428,7 +421,7 @@ def PAYLOAD(sender, repo, tag='v1.0'):
                            'zipball/%(tag)s' % c
         },
         'repository': {
-            'id': 17202897,
+            'id': repo_id,
             'name': repo,
             'full_name': '%(url)s' % c,
             'owner': {

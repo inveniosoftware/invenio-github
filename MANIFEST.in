@@ -37,6 +37,7 @@ recursive-include docs *.py
 recursive-include docs *.rst
 recursive-include docs Makefile
 recursive-include examples *.py
+recursive-include invenio_github *.css
 recursive-include invenio_github *.html
 recursive-include invenio_github *.js
 recursive-include invenio_github *.png

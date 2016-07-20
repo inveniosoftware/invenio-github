@@ -25,14 +25,9 @@
 
 from __future__ import absolute_import
 
-import os
-import urllib
+from flask import Blueprint, abort, redirect, url_for
 
-from flask import Blueprint, abort, current_app, make_response, redirect, \
-    request, url_for
-
-from ..api import GitHubAPI
-from ..badge import create_badge
+from ..models import Repository
 
 blueprint = Blueprint(
     'invenio_github_badge',
@@ -43,87 +38,48 @@ blueprint = Blueprint(
 )
 
 
-def badge(doi, style=None):
-    """Helper method to generate DOI badge."""
-    doi_encoded = urllib.quote(doi, '')
-
-    if style not in current_app.config['GITHUB_BADGE_STYLES']:
-        style = current_app.config['GITHUB_BADGE_DEFAULT_STYLE']
-
-    # Check if badge already exists
-    badge_path = os.path.join(
-        current_app.config['COLLECT_STATIC_ROOT'],
-        'badges',
-        '%s-%s.svg' % (doi_encoded, style)
-    )
-
-    if not os.path.exists(os.path.dirname(badge_path)):
-        os.makedirs(os.path.dirname(badge_path))
-
-    if not os.path.isfile(badge_path):
-        try:
-            create_badge('DOI', doi, 'blue', badge_path, style=style)
-        except Exception:
-            msg = '{0} is down.'.format(
-                current_app.config['GITHUB_SHIELDSIO_BASE_URL']
-            )
-            current_app.logger.warning(msg, exc_info=True)
-            return make_response(msg, 503)
-
-    resp = make_response(open(badge_path, 'r').read())
-    resp.content_type = 'image/svg+xml'
-    return resp
+def get_badge_url(doi):
+    """Return the svg badge for a DOI."""
+    return url_for('invenio_formatter_badges.badge', title='doi', value=doi,
+                   ext='svg')
 
 
 #
 # Views
 #
-@blueprint.route('/<int:user_id>/<path:repository>.svg', methods=['GET'])
-def index(user_id, repository):
+@blueprint.route('/<int:github_id>.svg')
+def index(github_id):
     """Generate a badge for a specific GitHub repository."""
-    account = GitHubAPI(user_id=user_id)
-
-    if repository not in account.extra_data['repos']:
-        return abort(404)
-
-    # Get the latest deposition
-    try:
-        dep = account.extra_data['repos'][repository]['depositions'][-1]
-    except IndexError:
-        return abort(404)
-
-    # Extract DOI
-    if 'doi' not in dep:
-        return abort(404)
-
-    doi = dep['doi']
-
-    style = request.args.get('style', None)
-
-    return badge(doi, style)
+    repo = Repository.query.filter_by(github_id=github_id).first()
+    if repo and repo.latest_release and repo.latest_release.doi:
+        return redirect(get_badge_url(repo.latest_release.doi))
+    return abort(404)
 
 
-@blueprint.route('/<int:user_id>/<path:repository>.png', methods=['GET'])
-def index_old(user_id, repository):
-    """Legacy support for old badge icons."""
-    style = request.args.get('style', None)
-    full_url = url_for('.index', user_id=user_id,
-                       repository=repository, style=style)
-    return redirect(full_url)
+@blueprint.route('/<int:user_id>/<path:repo_name>.svg')
+def index_old(user_id, repo_name):
+    """Generate a badge for a specific GitHub repository."""
+    repo = Repository.query.filter_by(name=repo_name).first()
+    if repo and repo.latest_release and repo.latest_release.doi:
+        return redirect(get_badge_url(repo.latest_release.doi))
+    return abort(404)
 
 
-@blueprint.route('/latestdoi/<int:user_id>/<path:repository>', methods=['GET'])
-def latest_doi(user_id, repository):
+@blueprint.route('/latestdoi/<int:github_id>')
+def latest_doi(github_id):
     """Redirect to the newest record version."""
-    account = GitHubAPI(user_id=user_id).account
-    if account is None:
-        return abort(404)
+    repo = Repository.query.filter_by(github_id=github_id).first()
+    if repo and repo.latest_release and repo.latest_release.doi:
+        return redirect('http://doi.org/{doi}'.format(
+            doi=repo.latest_release.doi))
+    return abort(404)
 
-    # Get the latest deposition and extract doi
-    try:
-        dep = account.extra_data['repos'][repository]['depositions'][-1]
-        doi = dep['doi']
-    except (IndexError, KeyError):
-        return abort(404)
 
-    return redirect('http://dx.doi.org/{0}'.format(doi))
+@blueprint.route('/latestdoi/<int:user_id>/<path:repo_name>')
+def latest_doi_old(user_id, repo_name):
+    """Redirect to the newest record version."""
+    repo = Repository.query.filter_by(name=repo_name).first()
+    if repo and repo.latest_release and repo.latest_release.doi:
+        return redirect('http://doi.org/{doi}'.format(
+            doi=repo.latest_release.doi))
+    return abort(404)

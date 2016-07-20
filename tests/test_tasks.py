@@ -22,97 +22,74 @@
 
 from __future__ import absolute_import
 
-import json
-from functools import partial
+from invenio_files_rest.models import Bucket
+from invenio_webhooks.models import Event
+from mock import patch
 
-import httpretty
-import six
-from invenio_db import db
+from invenio_github.api import GitHubRelease
+from invenio_github.models import Release, ReleaseStatus, Repository
 
 from . import fixtures
 
 
-def FIXME_test_handle_payload(app, db, tester_id, remote_token):
+def test_handle_payload(app, db, location, tester_id, remote_token,
+                        github_api):
+
     from invenio_webhooks.models import Event
 
-    httpretty.enable()
+    # httpretty.enable()
     extra_data = remote_token.remote_account.extra_data
-    assert 'auser/repo-1' in extra_data['repos']
-    assert 'auser/repo-2' in extra_data['repos']
 
-    assert len(extra_data['repos']['auser/repo-1']['depositions']) == 0
-    assert len(extra_data['repos']['auser/repo-2']['depositions']) == 0
+    assert '1' in extra_data['repos']
+    assert 'repo-1' in extra_data['repos']['1']['full_name']
+    assert '2' in extra_data['repos']
+    assert 'repo-2' in extra_data['repos']['2']['full_name']
 
-    event = Event(
-        receiver_id='github',
-        user_id=tester_id,
-        payload=fixtures.PAYLOAD('auser', 'repo-1')
-    )
-    db.session.add(event)
-    db.session.commit()
+    # Create the repository that will make the release
 
-    event.process()
-
-    db.session.expire(remote_token.remote_account)
-    extra_data = self.remote_token.remote_account.extra_data
-    assert len(extra_data['repos']['auser/repo-1']['depositions']) == 1
-    assert len(extra_data['repos']['auser/repo-2']['depositions']) == 0
-
-    dep = extra_data['repos']['auser/repo-1']['depositions'][0]
-
-    assert dep['doi'].endswith(six.text_type(dep['record_id']))
-    assert dep['errors'] is None
-    assert dep['github_ref'] == "v1.0"
-
-
-def test_extract_files(app, db, remote_token, tester_id, request_factory):
-    from invenio_webhooks.models import Event
-    from invenio_github.api import GitHubRelease
-
-    httpretty.enable()
-    event = Event(
-        receiver_id='github',
-        user_id=tester_id,
-        payload=fixtures.PAYLOAD('auser', 'repo-1', tag='v1.0'),
-    )
-
-    files = list(GitHubRelease(event).files)
-    assert len(files) == 1
-    httpretty.disable()
-
-    filename, _ = files[0]
-    assert filename == "auser/repo-1-v1.0.zip"
-
-
-def test_extract_metadata(app, db, tester_id, request_factory):
-    from invenio_webhooks.models import Event
-    from invenio_github.api import GitHubRelease
-
-    # Mock up responses
-    httpretty.enable()
-    fixtures.register_endpoint(
-        "/repos/auser/repo-2",
-        fixtures.REPO('auser', 'repo-2'),
-    )
-    fixtures.register_endpoint(
-        "/repos/auser/repo-2/contents/.zenodo.json",
-        fixtures.CONTENT(
-            'auser', 'repo-2', '.zenodo.json', 'v1.0',
-            json.dumps(dict(
-                upload_type='dataset',
-                license='mit-license',
-                creators=[
-                    dict(name='Smith, Joe', affiliation='CERN'),
-                    dict(name='Smith, Joe', affiliation='CERN')
-                ]
-            ))
+    with db.session.begin_nested():
+        Repository.enable(tester_id, github_id=1, name='repo-1')
+        event = Event(
+            receiver_id='github',
+            user_id=tester_id,
+            payload=fixtures.PAYLOAD('auser', 'repo-1', 1)
         )
-    )
+        db.session.add(event)
+
+    with patch('invenio_deposit.api.Deposit.indexer'):
+        event.process()
+
+        repo_1 = Repository.query.filter_by(name='repo-1', github_id=1).first()
+        assert repo_1.releases.count() == 1
+
+        release = repo_1.releases.first()
+        assert release.status == ReleaseStatus.PUBLISHED
+        assert release.errors is None
+        assert release.tag == 'v1.0'
+        assert release.record is not None
+        assert release.record.json.get('control_number') == '1'
+        record_files = release.record.json.get('_files')
+        assert len(record_files) == 1
+        assert record_files[0]['size'] > 0
+
+        bucket = Bucket.get(record_files[0]['bucket'])
+        assert bucket is not None
+        assert len(bucket.objects) == 1
+        assert bucket.objects[0].key == 'auser/repo-1-v1.0.zip'
+
+
+def test_extract_metadata(app, db, tester_id, remote_token, github_api):
+
+    Repository.enable(tester_id, github_id=2, name='repo-2')
     event = Event(
         receiver_id='github',
         user_id=tester_id,
-        payload=fixtures.PAYLOAD('auser', 'repo-2', tag='v1.0'),
+        payload=fixtures.PAYLOAD('auser', 'repo-2', 2, tag='v1.0'),
     )
-    metadata = GitHubRelease(event).metadata
+    release = Release.create(event)
+    gh = GitHubRelease(release)
+    metadata = gh.metadata
 
     assert metadata['upload_type'] == 'dataset'
+    assert metadata['license'] == 'mit-license'
+    assert len(metadata['creators']) == 2

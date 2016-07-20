@@ -22,44 +22,12 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
+"""Proxy for current previewer."""
 
-notifications:
-  email: false
+from __future__ import absolute_import, print_function
 
-sudo: false
+from flask import current_app
+from werkzeug.local import LocalProxy
 
-language: python
-
-cache:
-  - pip
-
-services:
-  - redis
-
-env:
-  - REQUIREMENTS=lowest
-  - REQUIREMENTS=release
-  - REQUIREMENTS=devel
-
-python:
-  - "2.7"
-  - "3.3"
-  - "3.4"
-  - "3.5"
-
-before_install:
-  - "travis_retry pip install --upgrade pip setuptools py"
-  - "travis_retry pip install twine wheel coveralls requirements-builder"
-  - "requirements-builder --level=min setup.py > .travis-lowest-requirements.txt"
-  - "requirements-builder --level=pypi setup.py > .travis-release-requirements.txt"
-  - "requirements-builder --level=dev --req requirements-devel.txt setup.py > .travis-devel-requirements.txt"
-
-install:
-  - "travis_retry pip install -r .travis-${REQUIREMENTS}-requirements.txt"
-  - "travis_retry pip install -e .[all]"
-
-script:
-  - "./run-tests.sh"
-
-after_success:
-  - coveralls
+current_github = LocalProxy(
+    lambda: current_app.extensions['invenio-github'])

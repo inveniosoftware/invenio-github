@@ -17,23 +17,26 @@
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 #}
 
-{# FIXME Import from future formatter. #}
-{%- from "invenio_github/settings/_macros.html" import render_field with context%}
 {%- import "invenio_github/settings/helpers.html" as helpers with context %}
+{%- from "invenio_github/helpers.html" import doi_badge with context %}
 
 {%- if not request.is_xhr %}
 {%- extends config.GITHUB_SETTINGS_TEMPLATE %}
 
-{# bundles "github.js", "github.css" #}
+{%- block css %}
+{{ super() }}
+{% assets "invenio_github_css" %}<link href="{{ ASSET_URL }}" rel="stylesheet">{% endassets %}
+{%- endblock css %}
 
 {%- block javascript %}
 {{ super() }}
+{% assets "invenio_github_js" %}<script src="{{ ASSET_URL }}"></script>{% endassets %}
 <script type="text/javascript">
 require(['jquery', 'js/github/view'], function($, view) {
   $(document).ready(function(){
     view({
       hook_url: "{{url_for('invenio_github.hook')}}",
-      sync_url: "{{url_for('invenio_github.index', sync=True)}}",
+      sync_url: "{{url_for('invenio_github.index')}}",
       sync_button: "button[name='sync-repos']",
       github_view: "#github-view"
     });
@@ -57,7 +60,6 @@ require(['jquery', 'js/github/view'], function($, view) {
 ) }}
 <div class="panel-body">
   <h1 align="center"><i class="fa fa-github"></i> Get started</h1>
-
   <div class="row">
     <div class="col-md-4">
       <h2><strong>1</strong> <small>Flip the switch</small></h2>
@@ -88,20 +90,19 @@ require(['jquery', 'js/github/view'], function($, view) {
     </div>
     <div class="col-md-4" align="center">
       <br>
-      <a href="http://dx.doi.org/10.5281/zenodo.8475"><img src="{{config.CFG_SITE_SECURE_URL}}/badge/doi/10.5281/zenodo.8475.svg" alt="10.5281/zenodo.8475"></a><br><small class="text-muted">(example)</small>
+      <a href="http://doi.org/10.5281/zenodo.8475"><img src="{{ url_for('invenio_formatter_badges.badge', title='doi', value='10.5281/zenodo.8475', ext='svg') }}" alt="10.5281/zenodo.8475"></a><br><small class="text-muted">(example)</small>
     </div>
   </div>
-  <p></p>
-  <p class="hide text-muted text-center"><small>More question? Check out the <a href="{{url_for('invenio_github.faq')}}">FAQ</a>.</small></p>
+  <p class="hide text-muted text-center"><small>More questions? Check out the <a href="{{url_for('invenio_github.faq')}}">FAQ</a>.</small></p>
 </div>
-<table class="table table-striped">
+<table id="github-repositories" class="table table-striped">
   <tbody>
     {% if not repos %}
     <tr>
       <td colspan="2">
         <div align="center">
           <em>
-            You have no repositories on GitHub.<br >
+            You have no repositories on GitHub.<br>
             Go to <a href="http://github.com/new">GitHub</a>
             and create your first or click Sync-button to synchronize
             latest changes from GitHub.
@@ -110,59 +111,46 @@ require(['jquery', 'js/github/view'], function($, view) {
       </td>
     </tr>
     {% endif %}
-    {%- for repo, description in repos|dictsort %}
+    {%- for repo_id, repo in repos %}
     <tr>
       <td>
         <div class="repo-container">
-          {% set latest_dep = description.depositions[-1] if description.depositions else '' %}
 
-          {% if latest_dep %}
-          {{ doi_badge(latest_dep.doi, user_id=current_user.id, repository=repo) }}
+          {# Set DOI badge for latest release #}
+          {% set doi_url = None %}
+          {% if repo.latest %}
+            {% set doi = repo.latest.doi %}
+            {% set doi_url = url_for('invenio_github_badge.latest_doi', github_id=repo_id, _external=True, _scheme='https') %}
+            {{ doi_badge(doi, github_id=repo_id) }}
           {% endif %}
+
+          {# Basic repository info #}
           <h4 class="repo">
-            <a href="https://github.com/{{repo}}" title="{{ _('Go to GitHub.') }}">
+            <a href="https://github.com/{{repo.full_name}}" title="{{ _('Go to GitHub.') }}">
               <i class="fa fa-github text-muted"></i>
             </a>
-            <a href="{{ url_for('.repository', name=repo) }}">{{ repo }}</a>
-            {% if description.instance and description.instance.hook %}
+            <a href="{{ url_for('.repository', name=repo.full_name) }}">{{ repo.full_name }}</a>
+            {% if repo.instance and repo.instance.hook %}
               <i class="fa fa-check text-success"></i>
             {% endif %}
-        </h4>
+          </h4>
+          <small class="text-muted repo-description"> {{ repo.description }}</small>
 
-          <small class="text-muted repo-description"> {{ description.description }}</small>
-          {% if latest_dep %}
-          {% set doi_url = url_for('invenio_github_badge.latest_doi', user_id=current_user.id, repository=repo, _external=True, _scheme='https') %}
-          <p><small class="text-muted">Latest release ({{latest_dep.github_ref}}): <i class="fa fa-eye"></i> <a href="{{doi_url}}" class="">{{config.CFG_SITE_NAME}}</a>, <i class="fa fa-github"></i> <a href="https://github.com/{{repo}}/tree/{{latest_dep.github_ref}}" class="">GitHub</a></small></p>
+          {# Latest release info and links #}
+          {% if repo.latest %}
+            <p><small class="text-muted">Latest release ({{repo.latest.tag}}): <i class="fa fa-eye"></i> <a href="{{ doi_url }}" class="">{{ config.SERVER_NAME }}</a>, <i class="fa fa-github"></i> <a href="https://github.com/{{repo.full_name}}/tree/{{repo.latest.tag}}" class="">GitHub</a></small></p>
           {% endif %}
+
         </div>
       </td>
-      <td>
-        <div class="doi-toggle">
-          {% if description.errors %}
-          <a href="deposit/{{description.deposition_id}}/">
-            <i
-             class="error fa fa-exclamation-circle"
-             data-toggle="tooltip"
-             {% if description.errors[0].code %}
-             title="Missing metadata."
-             {% else %}
-             title="{{ description.errors | map(attribute='message') | join(',' ) }}"
-             {% endif %}
-             ></i>
-          </a>
+      <td class="hook-toggle">
+        <div>
+          <i class="hook-status fa" data-repo-id="{{repo_id}}"></i>
+          {% set inaccessible = (repo.instance and repo.instance.user_id and (repo.instance.user_id != current_user.id)) %}
+          <input type="checkbox" {{'disabled' if inaccessible}} {{ 'checked' if repo.instance and repo.instance.hook }} data-size="mini" data-animate="true" data-repo-id="{{repo_id}}">
+          {% if inaccessible %}
+            <small class="text-muted">{{_('(This repository is managed by a different user of the organization)')}}</small>
           {% endif %}
-          <a href="{{ url_for('invenio_github.hook_action',
-            action='disable' if description.instance and description.instance.hook else 'enable',
-            repo=repo
-            ) }}">
-            {{ 'disable' if description.instance and description.instance.hook else 'enable' }}
-          </a>
-          {#
-          <input type="checkbox" {{ 'checked' if description.instance and description.instance.hook }} data-size="mini" data-animate="true" data-repo-name="{{repo}}">
-          #}
-          <i class="hook-status fa"></i>
-          <br/>
-          <small class="text-muted doi-time"> {{description.modified|naturaltime if description.get('modified') else ''}}</small>
         </div>
       </td>
     </tr>
@@ -170,6 +158,8 @@ require(['jquery', 'js/github/view'], function($, view) {
   </tbody>
 </table>
 {{ helpers.panel_end(with_body=False) }}
+
+{# If the user has not connected his GitHub account... #}
 {%- else %}
 {{ helpers.panel_start(
   _('GitHub'),

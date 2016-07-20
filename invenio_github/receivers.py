@@ -24,33 +24,46 @@
 
 from __future__ import absolute_import
 
-from datetime import datetime
-
 from invenio_db import db
 from invenio_webhooks.models import Receiver
 
-from .api import GitHubRelease
+from .models import Release, Repository
+from .tasks import process_release
 
 
 class GitHubReceiver(Receiver):
-    """Handle incomming notification from GitHub on a new release."""
+    """Handle incoming notification from GitHub on a new release."""
 
     verify_sender = False
 
     def run(self, event):
-        """Process an event."""
-        release = GitHubRelease(event)
-        # Ping event
+        """Process an event.
+
+        Note: We should only do quick and easy things here, since we send the
+        rest of the processing to a Celery task. Thus, we should only do stuff
+        that doesn't depend on accessing the GitHub API in any way.
+        """
+        repo_id = event.payload['repository']['id']
+
+        # Ping event - update the ping timestamp of the repository
         if 'hook_id' in event.payload and 'zen' in event.payload:
-            release.repository_model.ping = datetime.now()
-            db.session.commit()
+            Repository.update_ping(repo_id=repo_id)
             return
 
-        # Validate payload sender
-        if self.verify_sender and not release.verify_sender():
-            raise Exception('Invalid sender for payload %s for user %s' % (
-                event.payload, event.user_id
-            ))
+        # Release event
+        if 'release' in event.payload:
+            repo = Repository.get(user_id=event.user_id, github_id=repo_id)
+            if repo:
+                release = Release.create(event)
+            else:
+                raise Exception('Repository does not exist...')
+            repo.releases.append(release)
+            db.session.commit()
 
-        release.publish()
-        db.session.commit()
+            # FIXME: If we want to skip the processing, we should do it here
+            # (eg. We're in the middle of a migration).
+            # if current_app.config['GITHUB_PROCESS_RELEASES']:
+            process_release.delay(
+                release.release_id,
+                verify_sender=self.verify_sender
+            )

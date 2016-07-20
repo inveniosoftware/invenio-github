@@ -16,44 +16,25 @@
 # along with Invenio; if not, write to the Free Software Foundation, Inc.,
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 #}
-
-{%- macro doi_badge(doi, user_id='', repository='', modal_name='') %}
+{%- macro doi_badge(doi, github_id, modal_name='') %}
 {%- block doi_badge scoped %}
-      {% set modal_name = modal_name if modal_name else doi %}
-      {% if not user_id or not repository %}
-        {% set doi_url = "http://dx.doi.org/" + doi %}
-        {% set image_url = url_for('invenio_github_badge.doi_badge', doi=doi, _external=True, _scheme='https') %}
-      {% else  %}
-        {% set doi_url = url_for('invenio_github_badge.latest_doi', user_id=user_id, repository=repository, _external=True, _scheme='https') %}
-        {% set image_url = url_for('invenio_github_badge.index', user_id=user_id, repository=repository, _external=True, _scheme='https') %}
-      {% endif %}
-      <span class="get-badge" data-toggle="tooltip" data-placement="bottom" title="Get the DOI badge!">
-        <img data-toggle="modal" data-target="[data-modal='{{ modal_name | replace('/', '-') }}']" src="{{image_url}}" alt="{{doi}}"/>
-      </span>
-      <div class="modal fade badge-modal" data-modal='{{ modal_name | replace("/", "-") }}'>
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <div class="modal-body">
-              <h4>{{config.CFG_SITE_NAME}} DOI Badge</h4>
-
-              <h4><small>Markdown</small><h4>
-              <pre>[![DOI]({{image_url}})]({{doi_url}})</pre>
-
-              <h4><small>reStructedText</small><h4>
-              <pre>.. image:: {{image_url}}
-   :target: {{doi_url}}</pre>
-
-              <h4><small>HTML</small><h4>
-              <pre>&lt;a href="{{doi_url}}"&gt;&lt;img src="{{image_url}}" alt="{{doi}}"&gt;&lt;/a&gt;</pre>
-
-              <h4><small>Image URL</small><h4>
-              <pre>{{image_url}}</pre>
-
-              <h4><small>DOI URL</small><h4>
-              <pre>{{doi_url}}</pre>
-            </div>
-          </div>
+  {% set doi_url = url_for('invenio_github_badge.latest_doi', github_id=github_id, _external=True, _scheme='https') %}
+  {% set image_url = url_for('invenio_github_badge.index', github_id=github_id, _external=True, _scheme='https') %}
+  {% set modal_name = modal_name or (doi | replace('/', '-')) %}
+  <span class="get-badge" data-toggle="tooltip" data-placement="bottom" title="Get the DOI badge!">
+    <img data-toggle="modal" data-target="[data-modal='{{ modal_name }}']" src="{{ image_url }}" alt="{{ doi }}"/>
+  </span>
+  <div class="modal fade badge-modal" data-modal='{{ modal_name }}'>
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-body">
+          {# FIXME: <h4>{{config.CFG_SITE_NAME}} DOI Badge</h4> #}
+          <h4>{{ config.THEME_SITENAME }} DOI Badge</h4>
+          {% from "invenio_formatter/macros/badges.html" import badges_formats_list %}
+          {{ badges_formats_list(image_url, doi_url)}}
         </div>
       </div>
+    </div>
+  </div>
 {%- endblock %}
 {%- endmacro %}

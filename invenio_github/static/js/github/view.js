@@ -20,75 +20,86 @@
  * or submit itself to any jurisdiction.
  */
 define(function(require, exports, module) {
-    'use strict';
+  'use strict';
 
-    var $ = require('jquery');
-    require('bootstrap-switch');
+  var $ = require('jquery');
+  require('node_modules/bootstrap-switch/dist/js/bootstrap-switch');
 
-    return function(config) {
+  return function(config) {
+    init_switches(config);
+    init_syncbutton(config);
+
+    $('i.error').tooltip({
+      trigger: 'hover',
+      animation: true,
+      placement: 'top',
+    });
+
+    $('[data-toggle="tooltip"]').tooltip();
+  };
+
+  function init_syncbutton(config){
+    var syncButton = $(config.sync_button);
+
+    syncButton.on('click', function() {
+      syncButton.prop('disabled', true);
+      $.ajax({
+        url: config.sync_url,
+        type: 'POST'
+      })
+      .done(function(data) {
+        $(config.github_view).html(data);
         init_switches(config);
-        init_syncbutton(config);
+      })
+      .always(function() {
+        syncButton.prop('disabled', false);
+      });
+    });
+  }
 
+  function init_switches(config){
+    // Initialize bootstrap switches
+    var test_switch = $('input[name="test-flip"]').bootstrapSwitch();
+    var doiSwitches = $('input[data-repo-id]').bootstrapSwitch();
 
-        $("i.error").tooltip({
-            trigger: "hover",
-            animation: true,
-            placement: "top",
+    doiSwitches.on('switchChange.bootstrapSwitch', function(e, state) {
+      // Disable the switch
+      var $switch = $(e.target);
+      $switch.bootstrapSwitch('disabled', true);
+      var repoId = e.target.dataset.repoId;
+      var method = state ? 'POST' : 'DELETE';
+
+      $.ajax({
+        url: config.hook_url,
+        type: method,
+        data: JSON.stringify({id: repoId}),
+        contentType: 'application/json; charset=utf-8',
+        dataType: 'json'
+      })
+      .done(function(data, textStatus, jqXHR) {
+        var status = 'fa-exclamation text-warning';
+        if(jqXHR.status == 204 || jqXHR.status==201){
+          status =  'fa-check text-success';
+        }
+
+        // Select the correct hook status
+        var el = $('[data-repo-id="' + repoId + '"].hook-status');
+        el.addClass(status);
+        el.animate({
+          opacity: 0
+        }, 2000, function() {
+          el.removeClass(status);
+          el.css('opacity', 1);
         });
-
-        $('[data-toggle="tooltip"]').tooltip();
-    };
-
-    function init_syncbutton(config){
-        var syncButton = $(config.sync_button);
-
-        syncButton.on("click", function() {
-            $.ajax({
-                url: config.sync_url,
-                type: "POST",
-                success: function(data, textStatus, jqXHR) {
-                    $(config.github_view).html(data);
-                    init_switches();
-                }
-            });
-        });
-    }
-
-    function init_switches(config){
-        // Initialize bootstrap switches
-        var test_switch = $("input[name='test-flip']").bootstrapSwitch();
-        var doiSwitches = $("input[data-repo-name]").bootstrapSwitch();
-        doiSwitches.on("switchChange.bootstrapSwitch", function(e, state) {
-            var repoName = e.target.dataset.repoName;
-            var method = state ? "POST" : "DELETE";
-
-            console.log(method, " to ", config.hook_url);
-
-            $.ajax({
-                url: config.hook_url,
-                type: method,
-                data: JSON.stringify({repo: repoName}),
-                contentType: "application/json; charset=utf-8",
-                dataType: "json",
-
-                success: function(data, textStatus, jqXHR) {
-                    var status = "fa-exclamation";
-                    if(jqXHR.status == 204 || jqXHR.status==201){
-                        status =  "fa-check";
-                    }
-
-                    // Select the correct toggle
-                    var el = $("[data-repo='" + repoName + "'] .hook-status");
-                    el.addClass(status);
-                    el.animate({
-                        opacity: 0
-                    }, 2000, function() {
-                        el.removeClass(status);
-                        el.css('opacity', 1);
-                    });
-                }
-            });
-
-        });
-    }
-})
+      })
+      .fail(function() {
+        // Revert back to normal
+        $switch.bootstrapSwitch('state', !state);
+      })
+      .always(function() {
+        // Enable the switch
+        $switch.bootstrapSwitch('disabled', false);
+      });
+    });
+  }
+});

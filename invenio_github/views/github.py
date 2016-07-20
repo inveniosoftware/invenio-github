@@ -54,7 +54,8 @@ quite guite to test Invenio-GitHub integration.
 
 from __future__ import absolute_import
 
-from datetime import datetime, timedelta
+import json
+from datetime import datetime
 
 import humanize
 import pytz
@@ -67,7 +68,6 @@ from flask_menu import register_menu
 from invenio_db import db
 
 from ..api import GitHubAPI
-from ..helpers import check_token
 from ..models import Repository
 from ..utils import parse_timestamp, utcnow
 
@@ -93,11 +93,16 @@ def naturaltime(val):
     return humanize.naturaltime(now - val)
 
 
+@blueprint.app_template_filter('prettyjson')
+def prettyjson(val):
+    """Get pretty-printed json."""
+    return json.dumps(json.loads(val), indent=4)
+
+
 #
 # Views
 #
-@blueprint.route('/', defaults=dict(sync=False))
-@blueprint.route('/sync', methods=['POST'], defaults=dict(sync=True))
+@blueprint.route('/', methods=['GET', 'POST'])
 @login_required
 @register_menu(
     blueprint, 'settings.github',
@@ -106,42 +111,50 @@ def naturaltime(val):
     active_when=lambda: request.endpoint.startswith('invenio_github.')
 )
 @register_breadcrumb(blueprint, 'breadcrumbs.settings.github', _('GitHub'))
-def index(sync=False):
-    """Display list of repositories."""
+def index():
+    """Display list of the user's repositories.
+
+    Note: This view is special, since the repositories that it lists are not
+    actually just part of what GitHub shows. It includes the following 'groups'
+    of repositories:
+
+     * Active repositories that the user has 'admin' rights on GitHub. These
+     may, or may not have published releases/hooks.
+     * Repositories that the user has published Releases with but currently
+     may not have 'admin' permissions for.
+    """
     github = GitHubAPI(user_id=current_user.get_id())
     token = github.session_token
     ctx = dict(connected=False)
 
-    if token is not None and check_token(token):
+    if token and github.check_token(token.access_token):
         # The user is authenticated and the token we have is still valid.
-        extra_data = token.remote_account.extra_data
-        if extra_data.get('login') is None:
+        if github.account.extra_data.get('login') is None:
             github.init_account()
             db.session.commit()
-            extra_data = token.remote_account.extra_data
 
-        # Check if sync is needed - should probably not be done here
-        now = utcnow()
-        yesterday = now - timedelta(days=1)
-        last_sync = parse_timestamp(extra_data['last_sync'])
+        # Check if sync is needed
+        github.check_sync(force=request.method == 'POST')
+        db.session.commit()
 
-        if sync or last_sync < yesterday:
-            github.sync()
-            db.session.commit()
-            extra_data = token.remote_account.extra_data
-            last_sync = parse_timestamp(extra_data['last_sync'])
+        # Generate the repositories view object
+        repos = github.account.extra_data['repos']
+        if repos:
+            # 'Enhance' our repos dict, from our database model
+            db_repos = Repository.query.filter(
+                Repository.github_id.in_([int(k) for k in repos.keys()]),
+            ).all()
+            for repo in db_repos:
+                repos[str(repo.github_id)]['instance'] = repo
+                repos[str(repo.github_id)]['latest'] = repo.latest_release
 
-        if extra_data['repos']:
-            for repo in Repository.query.filter(Repository.name.in_(
-                    extra_data['repos'].keys())).all():
-                extra_data['repos'][repo.name]['instance'] = repo
+        last_sync = humanize.naturaltime(
+            utcnow() - parse_timestamp(github.account.extra_data['last_sync']))
 
         ctx.update({
             'connected': True,
-            'repos': extra_data['repos'],
-            'name': extra_data['login'],
-            'user_id': token.remote_account.user_id,
-            'last_sync': humanize.naturaltime(now - last_sync),
+            'repos': sorted(repos.items(), key=lambda x: x[1]['full_name']),
+            'last_sync': last_sync,
         })
 
     return render_template('invenio_github/settings/index.html', **ctx)
@@ -149,20 +162,30 @@ def index(sync=False):
 
 @blueprint.route('/repository/<path:name>')
 @login_required
-@register_breadcrumb(blueprint, 'breadcrumbs.settings.github.repo', _('Repo'))
+@register_breadcrumb(blueprint, 'breadcrumbs.settings.github.repo',
+                     _('Repository'))
 def repository(name):
     """Display selected repository."""
-    github = GitHubAPI(user_id=current_user.get_id())
+    user_id = current_user.get_id()
+    github = GitHubAPI(user_id=user_id)
     token = github.session_token
-    ctx = dict(connected=False)
 
-    if token is not None and check_token(token):
-        extra_data = github.account.extra_data
-        if name not in extra_data['repos']:
+    if token and github.check_token(token.access_token):
+        repos = github.account.extra_data.get('repos', [])
+        repo = next((repo for repo_id, repo in repos.items()
+                     if repo.get('full_name') == name), {})
+        if not repo:
             abort(403)
 
-        repo = Repository.query.filter_by(name=name).first()
-        return render_template('invenio_github/settings/view.html', repo=repo)
+        # FIXME: Use just filter and check GitHub API for permissions instead
+        repo_instance = Repository.get(user_id=user_id, github_id=repo['id'])
+        return render_template(
+            'invenio_github/settings/view.html',
+            repo=repo_instance or Repository(name=repo['full_name'],
+                                             github_id=repo['id']),
+            releases=(repo_instance.releases.order_by('created desc').all()
+                      if repo_instance else []),
+        )
 
     abort(403)
 
@@ -185,45 +208,54 @@ def rejected():
 @login_required
 def hook():
     """Install or remove GitHub webhook."""
-    repo = request.json['repo']
-    github = GitHubAPI(user_id=current_user.get_id())
+    repo_id = request.json['id']
 
-    if repo not in github.account.extra_data['repos']:
+    github = GitHubAPI(user_id=current_user.get_id())
+    repos = github.account.extra_data['repos']
+
+    if repo_id not in repos:
         abort(404)
 
     if request.method == 'DELETE':
-        if github.remove_hook(repo):
-            db.session.commit()
-            return '', 204
-        else:
-            abort(400)
+        try:
+            if github.remove_hook(repo_id, repos[repo_id]['full_name']):
+                db.session.commit()
+                return '', 204
+            else:
+                abort(400)
+        except Exception:
+            abort(403)
     elif request.method == 'POST':
-        if github.create_hook(repo):
-            db.session.commit()
-            return '', 201
-        else:
-            abort(400)
+        try:
+            if github.create_hook(repo_id, repos[repo_id]['full_name']):
+                db.session.commit()
+                return '', 201
+            else:
+                abort(400)
+        except Exception:
+            abort(403)
     else:
         abort(400)
 
 
-@blueprint.route('/hook/<action>/<path:repo>')
+@blueprint.route('/hook/<action>/<repo_id>')
 @login_required
-def hook_action(action, repo):
+def hook_action(action, repo_id):
     """Display selected repository."""
     github = GitHubAPI(user_id=current_user.get_id())
+    repos = github.account.extra_data['repos']
 
-    if repo not in github.account.extra_data['repos']:
+    if repo_id not in repos:
         abort(404)
 
     if action == 'disable':
-        if github.remove_hook(repo):
+        if github.remove_hook(repo_id, repos[repo_id]['full_name']):
             db.session.commit()
             return redirect(url_for('.index'))
         else:
             abort(400)
     elif action == 'enable':
-        if github.create_hook(repo):
+        if github.create_hook(repo_id, repos[repo_id]['full_name']):
             db.session.commit()
             return redirect(url_for('.index'))
         else:

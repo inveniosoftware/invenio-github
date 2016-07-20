@@ -23,29 +23,34 @@
 
 """GitHub bundles for user interface."""
 
-from invenio.base.bundles import invenio as _i
-from invenio.base.bundles import jquery as _j
-from invenio_assets import Bundle, RequireJSFilter
+from flask_assets import Bundle
+from invenio_assets import NpmBundle
 
-#
-# Site-wide JS
-#
-js = Bundle(
-    "js/github/init.js",
-    output="github.js",
-    filters=RequireJSFilter(exclude=[_j, _i]),
-    weight=60,
-    bower={
-        "bootstrap-switch": "3.0.2",
-    }
+js = NpmBundle(
+    'node_modules/bootstrap-switch/dist/js/bootstrap-switch.js',
+    Bundle(
+        'js/github/init.js',
+        filters='requirejs',
+    ),
+    depends=('js/github/*.js'),
+    filters='jsmin',
+    npm={
+        'bootstrap-switch': "~3.0.2",
+    },
+    output='gen/github.%(version)s.js',
 )
+"""Default Javascript bundle."""
 
-styles = Bundle(
-    "vendors/bootstrap-switch/src/less/bootstrap3/build.less",
-    output="github.css",
-    filters="less,cleancss",
-    weight=60,
-    bower={
-        "bootstrap-switch": "3.0.2",
-    }
+css = NpmBundle(
+    'node_modules/bootstrap-switch/dist/css/bootstrap3/bootstrap-switch.css',
+    Bundle(
+        'css/github/github.css',
+    ),
+    filters='cleancss',
+    depends=('css/github/*.css'),
+    npm={
+        'bootstrap-switch': '~3.0.2',
+    },
+    output='gen/github.%(version)s.css',
 )
+"""Default CSS bundle."""

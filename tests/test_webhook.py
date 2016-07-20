@@ -26,39 +26,22 @@ from __future__ import absolute_import
 
 import json
 
-import httpretty
-from flask import url_for
-from invenio_db import db
 from invenio_webhooks.models import Event
-from mock import MagicMock, patch
+from mock import patch
 
 from invenio_github.models import Repository
 
 
-def test_webhook_post(app, db, tester_id, location, remote_token,
-                      request_factory):
+def test_webhook_post(app, db, tester_id, location, remote_token, github_api):
     """Test payload parsing on webhook."""
     from . import fixtures
-    httpretty.enable()
-    httpretty.register_uri(
-        httpretty.HEAD,
-        'https://api.github.com/repos/tester/arepo/zipball/v1.0',
-        status=302,
-    )
-    httpretty.register_uri(
-        httpretty.GET,
-        'https://api.github.com/repos/tester/arepo/zipball/v1.0',
-        body=fixtures.ZIPBALL(stream=True),
-        streaming=True,
-    )
-
-    with patch('invenio_deposit.api.Deposit.indexer') as fun:
+    with patch('invenio_deposit.api.Deposit.indexer'):
         # Enable repository webhook.
-        db.session.add(Repository(name='arepo', enabled=True))
+        Repository.enable(tester_id, github_id=3, name='arepo')
         db.session.commit()
 
         # JSON payload parsing.
-        payload = json.dumps(fixtures.PAYLOAD('tester', 'arepo'))
+        payload = json.dumps(fixtures.PAYLOAD('auser', 'arepo', 3, 'v1.0'))
         headers = [('Content-Type', 'application/json')]
         with app.test_request_context(headers=headers, data=payload):
             event = Event.create(receiver_id='github', user_id=tester_id)
@@ -68,5 +51,3 @@ def test_webhook_post(app, db, tester_id, location, remote_token,
 
         from invenio_records.models import RecordMetadata
         assert RecordMetadata.query.count() == 2
-
-    httpretty.disable()
