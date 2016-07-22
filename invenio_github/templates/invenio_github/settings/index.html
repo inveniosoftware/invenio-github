@@ -47,6 +47,7 @@ require(['jquery', 'js/github/view'], function($, view) {
 {%- endif %}
 
 {%- block settings_content %}
+<div class="github-panels">
 {%- if connected %}
 {{ helpers.panel_start(
   _('GitHub Repositories'),
@@ -168,8 +169,8 @@ require(['jquery', 'js/github/view'], function($, view) {
 <div class="row" align="center">
   <h1>{{ _('Software preservation made simple!') }}</h1>
   <p class="lead">
-  <a href="{{url_for('invenio_oauthclient.login', remote_app='github')}}"
-     name="connect-to-github" class="btn btn-default btn-lg">
+  <a href="{{url_for('invenio_oauthclient.login', remote_app='github', next=url_for('invenio_github.index'))}}"
+     id="connect-to-github" class="btn btn-default btn-lg">
     <i class="fa fa-github fa-lg"></i> {{ _('Connect') }}
   </a>
   </p>
@@ -179,4 +180,5 @@ require(['jquery', 'js/github/view'], function($, view) {
 </div>
 {{ helpers.panel_end() }}
 {%- endif %}
+</div>
 {%- endblock %}
