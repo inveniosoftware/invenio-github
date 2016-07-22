@@ -161,18 +161,35 @@ class Repository(db.Model, Timestamp):
     hook = db.Column(db.Integer)
     """Hook identifier."""
 
+    #
+    # Relationships
+    #
     user = db.relationship(User)
 
     @classmethod
-    def get(cls, user_id, github_id=None, name=None, create=False):
+    def get_or_create(cls, user_id, github_id=None, name=None, **kwargs):
+        """Get or create the repository."""
+        obj = cls.get(user_id, github_id=github_id, name=name)
+        if not obj:
+            obj = cls.create(user_id, github_id=github_id, name=name, **kwargs)
+        return obj
+
+    @classmethod
+    def create(cls, user_id, github_id=None, name=None, **kwargs):
+        """Create the repository."""
+        with db.session.begin_nested():
+            obj = cls(user_id=user_id, github_id=github_id, name=name,
+                      **kwargs)
+            db.session.add(obj)
+        return obj
+
+    @classmethod
+    def get(cls, user_id, github_id=None, name=None):
         """Return a repository."""
         repo = cls.query.filter((Repository.github_id == github_id) |
                                 (Repository.name == name)).first()
         if repo and repo.user_id and str(repo.user_id) != str(user_id):
             raise Exception('Access forbidden for this repository.')
-        if not repo and create:
-            repo = Repository(name=name, github_id=github_id,
-                              user_id=user_id)
         return repo
 
     @classmethod
@@ -187,7 +204,7 @@ class Repository(db.Model, Timestamp):
         :param repo_id: GitHub id of the repository.
         :param name: Fully qualified name of the repository.
         """
-        repo = cls.get(user_id, github_id=github_id, name=name, create=True)
+        repo = cls.get_or_create(user_id, github_id=github_id, name=name)
         repo.enabled = True
         repo.user_id = user_id
         db.session.add(repo)

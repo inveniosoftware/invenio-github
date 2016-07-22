@@ -173,15 +173,22 @@ class GitHubAPI(object):
                           if hook.config.get('url', '') == self.webhook_url),
                          None)
 
-        # Get repo from DB, or create if we have hooks to add
+        # If hook on GitHub exists, get or create corresponding db object and
+        # enable the hook. Otherwise, remove the old hook information.
         try:
-            db_repo = Repository.get(user_id=self.user_id,
-                                     github_id=gh_repo.id,
-                                     name=gh_repo.full_name,
-                                     create=bool(repo_hook))
-            if db_repo:
-                db_repo.enabled = bool(repo_hook)
+            if repo_hook:
+                db_repo = Repository.get_or_create(user_id=self.user_id,
+                                                   github_id=gh_repo.id,
+                                                   name=gh_repo.full_name)
+                db_repo.enabled = True
                 db_repo.hook = repo_hook
+            else:
+                db_repo = Repository.get(user_id=self.user_id,
+                                         github_id=gh_repo.id,
+                                         name=gh_repo.full_name)
+                if db_repo:
+                    db_repo.enabled = False
+                    db_repo.hook = None
         except Exception:
             pass
 
