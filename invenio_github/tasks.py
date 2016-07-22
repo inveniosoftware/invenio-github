@@ -27,36 +27,60 @@ from __future__ import absolute_import
 import json
 
 from celery import shared_task
+from celery.exceptions import MaxRetriesExceededError
 from flask import current_app
+from invenio_db import db
 
 
-@shared_task(ignore_result=True, max_retries=6, default_retry_delay=10 * 60,
-             rate_limit='100/m')
-def disconnect_github(user_id, access_token):
+# FIXME: If we don't call disconnect_github.retry() somewhere, we're not
+# actually retrying the task!
+@shared_task(max_retries=6, default_retry_delay=10 * 60, rate_limit='100/m')
+def disconnect_github(access_token, repo_hooks):
     """Uninstall webhooks."""
     # Note at this point the remote account and all associated data have
     # already been deleted. The celery task is passed the access_token to make
     # some last cleanup and afterwards delete itself remotely.
     import github3
     from .api import GitHubAPI
-    from .models import Repository
-    from invenio_db import db
 
-    gh = github3.login(token=access_token)
-    for repository in Repository.query.filter_by(user_id=user_id):
-        if repository.hook:
-            ghrepo = gh.repository_with_id(repository.github_id)
+    try:
+        gh = github3.login(token=access_token)
+        for repo_id, repo_hook in repo_hooks:
+            ghrepo = gh.repository_with_id(repo_id)
             if ghrepo:
-                hook = ghrepo.hook(repository.hook)
-                if not hook or (hook and hook.delete()):
-                    repository.enabled = False
-                    repository.hook = None
-                    return True
-        repository.user_id = None
+                hook = ghrepo.hook(repo_hook)
+                if hook and hook.delete():
+                    info_msg = 'Deleted hook {hook} from {repo}'.format(
+                        hook=hook.id, repo=ghrepo.full_name)
+                    current_app.logger.info(info_msg)
+    except MaxRetriesExceededError:
+        # FIXME: Log the 'access_token' here? Or is it available on Celery?
+        err_msg = ('Could not completely clean-up GitHub remote account for '
+                   'user {0}'.format(user=gh.me().name))
+        current_app.logger.error(err_msg)
+    except Exception as exc:
+        # Retry in case GitHub may be down...
+        raise disconnect_github.retry(exc=exc)
 
     # If we finished our clean-up successfully, we can revoke the token
     GitHubAPI.revoke_token(access_token)
-    db.session.commit()
+
+
+@shared_task(max_retries=6, default_retry_delay=10 * 60, rate_limit='100/m')
+def sync_hooks(user_id, repositories):
+    """Sync repository hooks for a user."""
+    from .api import GitHubAPI
+
+    try:
+        # Sync hooks
+        gh = GitHubAPI(user_id=user_id)
+        for repo_id in repositories:
+            with db.session.begin_nested():
+                gh.sync_repo_hook(repo_id)
+            # FIXME: Commit once per repository, or only at the end?
+            db.session.commit()
+    except Exception as exc:
+        raise sync_hooks.retry(exc=exc)
 
 
 @shared_task(ignore_result=True)

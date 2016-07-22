@@ -26,6 +26,7 @@ from __future__ import absolute_import
 
 from flask import current_app, redirect, url_for
 from flask_login import current_user
+from invenio_db import db
 from invenio_oauth2server.models import Token as ProviderToken
 from invenio_oauthclient.models import RemoteToken
 from invenio_oauthclient.utils import oauth_link_external_id, \
@@ -73,13 +74,17 @@ def disconnect(remote):
         ProviderToken.query.filter_by(id=webhook_token_id).delete()
 
         # Disable GitHub webhooks from our side
-        for repo in Repository.query.filter_by(user_id=user_id):
+        db_repos = Repository.query.filter_by(user_id=user_id).all()
+        # Keep repositories with hooks to pass to the celery task later on
+        repos_with_hooks = [(r.github_id, r.hook) for r in db_repos if r.hook]
+        for repo in db_repos:
             Repository.disable(user_id=user_id,
                                github_id=repo.github_id,
                                name=repo.name)
+        db.session.commit()
 
         # Send Celery task for webhooks removal and token revocation
-        disconnect_github.delay(user_id, token.access_token)
+        disconnect_github.delay(token.access_token, repos_with_hooks)
         # Delete the RemoteAccount (and all associated RemoteTokens along)
         token.remote_account.delete()
 

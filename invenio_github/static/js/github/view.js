@@ -50,6 +50,7 @@ define(function(require, exports, module) {
       .done(function(data) {
         $(config.github_view).html(data);
         init_switches(config);
+        init_syncbutton(config);
       })
       .always(function() {
         syncButton.prop('disabled', false);

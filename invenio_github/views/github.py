@@ -133,12 +133,15 @@ def index():
             github.init_account()
             db.session.commit()
 
-        # Check if sync is needed
-        github.check_sync(force=request.method == 'POST')
-        db.session.commit()
+        # Sync if needed
+        if github.check_sync(force=request.method == 'POST'):
+            # When we're in an XHR request, we want to synchronously sync hooks
+            github.sync(async_hooks=(not request.is_xhr))
+            db.session.commit()
 
         # Generate the repositories view object
-        repos = github.account.extra_data['repos']
+        extra_data = github.account.extra_data
+        repos = extra_data['repos']
         if repos:
             # 'Enhance' our repos dict, from our database model
             db_repos = Repository.query.filter(
@@ -149,7 +152,7 @@ def index():
                 repos[str(repo.github_id)]['latest'] = repo.latest_release
 
         last_sync = humanize.naturaltime(
-            utcnow() - parse_timestamp(github.account.extra_data['last_sync']))
+            (utcnow() - parse_timestamp(extra_data['last_sync'])))
 
         ctx.update({
             'connected': True,

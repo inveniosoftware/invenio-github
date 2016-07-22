@@ -380,12 +380,13 @@ def github_api(app, db, tester_id, remote_token):
     mock_api.session.get.return_value = MagicMock(raw=fixtures.ZIPBALL())
 
     with patch('invenio_github.api.GitHubAPI.api', new=mock_api):
-        # FIXME: Set repositories here
-        gh = GitHubAPI(user_id=tester_id)
-        with db.session.begin_nested():
-            gh.init_account()
-        db.session.expire(remote_token.remote_account)
-        yield mock_api
+        with patch('invenio_github.api.GitHubAPI._sync_hooks'):
+            # FIXME: Set repositories here
+            gh = GitHubAPI(user_id=tester_id)
+            with db.session.begin_nested():
+                gh.init_account()
+            db.session.expire(remote_token.remote_account)
+            yield mock_api
 
 
 # @pytest.yield_fixture()

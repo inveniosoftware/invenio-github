@@ -37,7 +37,6 @@ def test_handle_payload(app, db, location, tester_id, remote_token,
 
     from invenio_webhooks.models import Event
 
-    # httpretty.enable()
     extra_data = remote_token.remote_account.extra_data
 
     assert '1' in extra_data['repos']

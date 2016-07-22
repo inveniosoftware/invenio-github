@@ -39,6 +39,7 @@ from werkzeug.local import LocalProxy
 from werkzeug.utils import cached_property, import_string
 
 from .models import Repository
+from .tasks import sync_hooks
 from .utils import get_extra_metadata, iso_utcnow, parse_timestamp, utcnow
 
 
@@ -131,7 +132,7 @@ class GitHubAPI(object):
         # Fetch list of repositories
         self.sync()
 
-    def sync(self, sync_hooks=True):
+    def sync(self, async_hooks=True):
         """Synchronize user repositories.
 
         Note: Syncing happens from GitHub's direction only. This means that we
@@ -147,8 +148,8 @@ class GitHubAPI(object):
                 'full_name': gh_repo.full_name,
                 'description': gh_repo.description,
             }
-            if sync_hooks:
-                self._sync_hook(gh_repo)
+
+        self._sync_hooks(active_repos.keys(), async=async_hooks)
 
         # Remove ownership from repositories that the user has no longer
         # 'admin' permissions, or have been deleted.
@@ -166,9 +167,33 @@ class GitHubAPI(object):
         self.account.extra_data.changed()
         db.session.add(self.account)
 
-    def _sync_hook(self, gh_repo):
+    def _sync_hooks(self, repos, async=True):
+        """Check if a hooks sync task needs to be started."""
+        if not async:
+            for repo_id in repos:
+                with db.session.begin_nested():
+                    self.sync_repo_hook(repo_id)
+                db.session.commit()
+        else:
+            from celery.result import AsyncResult
+            task_id = self.account.extra_data.get('hook_sync_task')
+            cur_task = AsyncResult(task_id) if task_id else None
+
+            # If there is no ongoing task or if the previous task has finished
+            # (no matter the result) fire a new one. 'PENDING' does not mean
+            # that the task has not yet started, but is actually Celery's way
+            # of defining 'UNKNOWN' task status.
+            if not cur_task or cur_task.ready() or cur_task.state == 'PENDING':
+                # We have to commit, in order to have all necessary data
+                db.session.commit()
+                task_id = sync_hooks.delay(self.user_id, repos).id
+                self.account.extra_data['hook_sync_task'] = task_id
+                self.account.extra_data.changed()
+
+    def sync_repo_hook(self, repo_id):
         """Sync a GitHub repo's hook with the locally stored repo."""
         # Get hook that we may have set in the past
+        gh_repo = self.api.repository_with_id(repo_id)
         repo_hook = next((hook.id for hook in gh_repo.hooks()
                           if hook.config.get('url', '') == self.webhook_url),
                          None)
@@ -197,9 +222,7 @@ class GitHubAPI(object):
         now = utcnow()
         yesterday = now - timedelta(days=1)
         last_sync = parse_timestamp(self.account.extra_data['last_sync'])
-
-        if force or last_sync < yesterday:
-            self.sync()
+        return force or last_sync < yesterday
 
     def create_hook(self, repo_id, repo_name):
         """Create repository hook."""
