@@ -33,7 +33,6 @@ from invenio_oauth2server.models import Token as ProviderToken
 from invenio_oauthclient.handlers import token_getter
 from invenio_oauthclient.models import RemoteAccount, RemoteToken
 from invenio_oauthclient.proxies import current_oauthclient
-from invenio_webhooks.proxies import current_webhooks
 from six import string_types
 from werkzeug.local import LocalProxy
 from werkzeug.utils import cached_property, import_string
@@ -98,14 +97,10 @@ class GitHubAPI(object):
         ).first()
         if webhook_token:
             wh_url = current_app.config.get('GITHUB_WEBHOOK_RECEIVER_URL')
-            server = current_app.config.get('SERVER_NAME')
-            if wh_url and server:
-                return wh_url.format(server=server,
-                                     token=webhook_token.access_token)
-
-            return current_webhooks.receivers[
-                current_app.config['GITHUB_WEBHOOK_RECEIVER_ID']
-            ].get_hook_url(webhook_token.access_token)
+            if wh_url:
+                return wh_url.format(token=webhook_token.access_token)
+            else:
+                raise RuntimeError('You must set GITHUB_WEBHOOK_RECEIVER_URL.')
 
     def init_account(self):
         """Setup a new GitHub account."""
