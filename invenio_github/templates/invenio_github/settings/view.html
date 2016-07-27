@@ -60,9 +60,9 @@
     </small>
     &nbsp;
     {# Edit Button #}
-    {% if release.record %}
+    {% if release.deposit_id %}
       {# use url_for('invenio_deposit_ui.depid') here... #}
-      <a class="label label-info" href="/deposit/{{ release.record.json['_deposit']['id'] }}"><i class="fa fa-edit"></i> {{_('Edit Deposit')}}
+      <a class="label label-info" href="/deposit/{{ release.deposit_id }}"><i class="fa fa-edit"></i> {{_('Edit Deposit')}}
       </a>
       &nbsp;
     {% endif %}
@@ -99,7 +99,7 @@
         <div role="tabpanel" class="tab-pane active" id="{{ release.id }}-deposit">
           <h5>{{ _('Metadata') }}</h5>
           {% if release.record %}
-              <pre>{{ release.record.json|tojson|prettyjson }}</pre>
+              <pre>{{ release.record|tojson|prettyjson }}</pre>
           {% endif %}
         </div>
         <div role="tabpanel" class="tab-pane" id="{{ release.id }}-event">

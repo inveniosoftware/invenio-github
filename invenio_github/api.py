@@ -34,11 +34,9 @@ from invenio_oauthclient.handlers import token_getter
 from invenio_oauthclient.models import RemoteAccount, RemoteToken
 from invenio_oauthclient.proxies import current_oauthclient
 from six import string_types
-from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from werkzeug.local import LocalProxy
 from werkzeug.utils import cached_property, import_string
 
-from .errors import RepositoryAccessError
 from .models import Repository
 from .tasks import sync_hooks
 from .utils import get_extra_metadata, iso_utcnow, parse_timestamp, utcnow
@@ -429,4 +427,4 @@ class GitHubRelease(object):
                     url, stream=True).raw
 
             deposit.publish()
-            self.release_model.record = deposit.model
+            self.release_model.recordmetadata = deposit.model

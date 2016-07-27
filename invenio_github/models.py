@@ -33,6 +33,7 @@ from flask import current_app
 from flask_babelex import lazy_gettext as _
 from invenio_accounts.models import User
 from invenio_db import db
+from invenio_records.api import Record
 from invenio_records.models import RecordMetadata
 from invenio_webhooks.models import Event
 from sqlalchemy.dialects import postgresql
@@ -144,7 +145,6 @@ class Repository(db.Model, Timestamp):
         `github_id`, that only has a `name`.
     """
 
-    # TODO shall we use Text instead?
     name = db.Column(db.String(255), unique=True, index=True, nullable=False)
     """Fully qualified name of the repository including user/organization."""
 
@@ -311,7 +311,7 @@ class Release(db.Model, Timestamp):
         backref=db.backref('releases', lazy='dynamic')
     )
 
-    record = db.relationship(RecordMetadata)
+    recordmetadata = db.relationship(RecordMetadata)
     event = db.relationship(Event)
 
     @classmethod
@@ -352,10 +352,27 @@ class Release(db.Model, Timestamp):
             )
 
     @property
+    def record(self):
+        """Get Record object."""
+        if self.recordmetadata:
+            return Record(self.recordmetadata.json, model=self.recordmetadata)
+        else:
+            return None
+
+    @property
     def doi(self):
         """Get DOI of Release from record metadata."""
         if self.record:
-            return self.record.json.get('doi')
+            # TODO: User pidfetcher
+            return self.record.get('doi')
+
+    @property
+    def deposit_id(self):
+        """Get deposit identifier."""
+        if self.record and '_deposit' in self.record:
+            return self.record['_deposit']['id']
+        else:
+            return None
 
     def __repr__(self):
         """Get release representation."""

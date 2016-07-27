@@ -286,7 +286,7 @@ def release_model(app, db, repository_model, minimal_record):
         tag='v1.0',
         repository=repository_model,
         status=ReleaseStatus.PUBLISHED,
-        record=minimal_record.model
+        recordmetadata=minimal_record.model
     )
     db.session.add(release)
     db.session.commit()

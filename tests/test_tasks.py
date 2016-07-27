@@ -66,8 +66,8 @@ def test_handle_payload(app, db, location, tester_id, remote_token,
         assert release.errors is None
         assert release.tag == 'v1.0'
         assert release.record is not None
-        assert release.record.json.get('control_number') == '1'
-        record_files = release.record.json.get('_files')
+        assert release.record.get('control_number') == '1'
+        record_files = release.record.get('_files')
         assert len(record_files) == 1
         assert record_files[0]['size'] > 0
 
