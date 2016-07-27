@@ -28,7 +28,6 @@
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-body">
-          {# FIXME: <h4>{{config.CFG_SITE_NAME}} DOI Badge</h4> #}
           <h4>{{ config.THEME_SITENAME }} DOI Badge</h4>
           {% from "invenio_formatter/macros/badges.html" import badges_formats_list %}
           {{ badges_formats_list(image_url, doi_url)}}

@@ -34,9 +34,11 @@ from invenio_oauthclient.handlers import token_getter
 from invenio_oauthclient.models import RemoteAccount, RemoteToken
 from invenio_oauthclient.proxies import current_oauthclient
 from six import string_types
+from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from werkzeug.local import LocalProxy
 from werkzeug.utils import cached_property, import_string
 
+from .errors import RepositoryAccessError
 from .models import Repository
 from .tasks import sync_hooks
 from .utils import get_extra_metadata, iso_utcnow, parse_timestamp, utcnow
@@ -158,8 +160,7 @@ class GitHubAPI(object):
         Repository.query.filter(
             Repository.user_id == self.user_id,
             ~Repository.github_id.in_(github_repos.keys())
-        ).update(dict(user_id=None, enabled=False, hook=None),
-                 synchronize_session=False)
+        ).update(dict(user_id=None, hook=None), synchronize_session=False)
 
         # Update repos and last sync
         self.account.extra_data.update(dict(
@@ -194,30 +195,23 @@ class GitHubAPI(object):
 
     def sync_repo_hook(self, repo_id):
         """Sync a GitHub repo's hook with the locally stored repo."""
-        # Get hook that we may have set in the past
+        # Get the hook that we may have set in the past
         gh_repo = self.api.repository_with_id(repo_id)
-        repo_hook = next((hook.id for hook in gh_repo.hooks()
-                          if hook.config.get('url', '') == self.webhook_url),
-                         None)
+        hooks = (hook.id for hook in gh_repo.hooks()
+                 if hook.config.get('url', '') == self.webhook_url)
+        hook_id = next(hooks, None)
 
         # If hook on GitHub exists, get or create corresponding db object and
-        # enable the hook. Otherwise, remove the old hook information.
-        try:
-            if repo_hook:
-                db_repo = Repository.get_or_create(user_id=self.user_id,
-                                                   github_id=gh_repo.id,
-                                                   name=gh_repo.full_name)
-                db_repo.enabled = True
-                db_repo.hook = repo_hook
-            else:
-                db_repo = Repository.get(user_id=self.user_id,
-                                         github_id=gh_repo.id,
-                                         name=gh_repo.full_name)
-                if db_repo:
-                    db_repo.enabled = False
-                    db_repo.hook = None
-        except Exception:
-            pass
+        # enable the hook. Otherwise remove the old hook information.
+        if hook_id:
+            Repository.enable(user_id=self.user_id,
+                              github_id=gh_repo.id,
+                              name=gh_repo.full_name,
+                              hook=hook_id)
+        else:
+            Repository.disable(user_id=self.user_id,
+                               github_id=gh_repo.id,
+                               name=gh_repo.full_name)
 
     def check_sync(self, force=False):
         """Check and sync if over a day has passed since the last sync."""
@@ -228,9 +222,6 @@ class GitHubAPI(object):
 
     def create_hook(self, repo_id, repo_name):
         """Create repository hook."""
-        repository = Repository.enable(user_id=self.user_id,
-                                       github_id=repo_id,
-                                       name=repo_name)
         config = dict(
             url=self.webhook_url,
             content_type='json',
@@ -247,39 +238,38 @@ class GitHubAPI(object):
                     config,
                     events=['release'],
                 )
-                if hook:
-                    repository.hook = hook.id
-                    return True
             except github3.GitHubError as e:
                 # Check if hook is already installed
-                for m in e.errors:
-                    if m['code'] == 'custom' and m['resource'] == 'Hook':
-                        hooks = [h for h in ghrepo.hooks()
-                                 if h.config.get('url', '') == config['url']]
-                        for h in hooks:
-                            repository.hook = hook.id
-                            h.edit(
-                                config=config,
-                                events=['release'],
-                                active=True
-                            )
-                            return True
+                hook_errors = (m for m in e.errors
+                               if m['code'] == 'custom' and
+                               m['resource'] == 'Hook')
+                if next(hook_errors, None):
+                    hooks = (h for h in ghrepo.hooks()
+                             if h.config.get('url', '') == config['url'])
+                    hook = next(hooks, None)
+                    if hook:
+                        hook.edit(config=config, events=['release'])
+            finally:
+                if hook:
+                    Repository.enable(user_id=self.user_id,
+                                      github_id=repo_id,
+                                      name=repo_name,
+                                      hook=hook.id)
+                    return True
         return False
 
-    def remove_hook(self, repo_id, repo_name):
+    def remove_hook(self, repo_id, name):
         """Remove repository hook."""
-        repository = Repository.get(user_id=self.user_id,
-                                    github_id=repo_id,
-                                    name=repo_name)
-        if repository and repository.hook:
-            ghrepo = self.api.repository_with_id(repo_id)
-            if ghrepo:
-                hook = ghrepo.hook(repository.hook)
-                if not hook or (hook and hook.delete()):
-                    Repository.disable(user_id=self.user_id,
-                                       github_id=repo_id,
-                                       name=repo_name)
-                    return True
+        ghrepo = self.api.repository_with_id(repo_id)
+        if ghrepo:
+            hooks = (h for h in ghrepo.hooks()
+                     if h.config.get('url', '') == self.webhook_url)
+            hook = next(hooks, None)
+            if not hook or hook.delete():
+                Repository.disable(user_id=self.user_id,
+                                   github_id=repo_id,
+                                   name=name)
+                return True
         return False
 
     @classmethod
@@ -339,7 +329,6 @@ class GitHubRelease(object):
         return Repository.query.filter_by(
             user_id=self.event.user_id,
             github_id=self.repository['id'],
-            enabled=True,
         ).one()
 
     @cached_property
@@ -407,9 +396,7 @@ class GitHubRelease(object):
         repo_name = self.repository['full_name']
 
         zipball_url = self.release['zipball_url']
-        filename = '%(repo_name)s-%(tag_name)s.zip' % {
-            'repo_name': repo_name, 'tag_name': tag_name
-        }
+        filename = '{name}-{tag}.zip'.format(name=repo_name, tag=tag_name)
 
         response = self.gh.api.session.head(zipball_url)
         assert response.status_code == 302, \

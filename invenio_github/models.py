@@ -27,23 +27,21 @@
 from __future__ import absolute_import
 
 import uuid
-from datetime import datetime
 
 from enum import Enum
+from flask import current_app
+from flask_babelex import lazy_gettext as _
 from invenio_accounts.models import User
 from invenio_db import db
 from invenio_records.models import RecordMetadata
 from invenio_webhooks.models import Event
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy_utils.models import Timestamp
 from sqlalchemy_utils.types import ChoiceType, JSONType, UUIDType
 
-
-def _(text):
-    """Identity function for `gettext`."""
-    # FIXME: Replace with `speaklater.make_lazy_gettext`
-    return text
-
+from .errors import ReleaseAlreadyReceivedError, RepositoryAccessError, \
+    RepositoryDisabledError
 
 RELEASE_STATUS_TITLES = {
     'RECEIVED': _('Received'),
@@ -131,17 +129,19 @@ class Repository(db.Model, Timestamp):
     )
     """Unique GitHub identifier for a repository.
 
-    Past implementations of GitHub for Invenio, used the repository name
-    (eg. 'inveniosoftware/invenio-github') in order to track repositories. This
-    however leads to problems, since repository names can change and thus
-    render the stored repository name useless. In order to tackle this issue,
-    the `github_id` should be used to track repositories, which is a unique
-    identifier that GitHub uses for each repository and doesn't change on
-    renames/transfers.
+    .. note::
 
-    In order to be able to keep deleted repositories with releases that have
-    been published, it is possible to keep an entry without a `github_id`,
-    that only has a `name`.
+        Past implementations of GitHub for Invenio, used the repository name
+        (eg. 'inveniosoftware/invenio-github') in order to track repositories.
+        This however leads to problems, since repository names can change and
+        thus render the stored repository name useless. In order to tackle this
+        issue, the `github_id` should be used to track repositories, which is a
+        unique identifier that GitHub uses for each repository and doesn't
+        change on renames/transfers.
+
+        In order to be able to keep deleted repositories with releases that
+        have been published, it is possible to keep an entry without a
+        `github_id`, that only has a `name`.
     """
 
     # TODO shall we use Text instead?
@@ -150,10 +150,6 @@ class Repository(db.Model, Timestamp):
 
     user_id = db.Column(db.Integer, db.ForeignKey(User.id), nullable=True)
     """Reference user that can manage this repository."""
-
-    # FIXME: Remove `enabled` and add as property that checks the `hook` field?
-    enabled = db.Column(db.Boolean, default=False)
-    """Mark if a webhook is enabled for this repository."""
 
     ping = db.Column(db.DateTime, nullable=True)
     """Last ping of the repository."""
@@ -185,29 +181,46 @@ class Repository(db.Model, Timestamp):
 
     @classmethod
     def get(cls, user_id, github_id=None, name=None):
-        """Return a repository."""
+        """Return a repository.
+
+        :param integer user_id: User identifier.
+        :param integer github_id: GitHub repository identifier.
+        :param str name: GitHub repository full name.
+        :returns: The repository object.
+        :raises: :py:exc:`~sqlalchemy.orm.exc.NoResultFound`: if the repository
+                 doesn't exist.
+        :raises: :py:exc:`~sqlalchemy.orm.exc.MultipleResultsFound`: if
+                 multiple repositories with the specified GitHub id and/or name
+                 exist.
+        :raises: :py:exc:`RepositoryAccessError`: if the user is not the owner
+                 of the repository.
+        """
         repo = cls.query.filter((Repository.github_id == github_id) |
-                                (Repository.name == name)).first()
+                                (Repository.name == name)).one()
+
         if repo and repo.user_id and str(repo.user_id) != str(user_id):
-            raise Exception('Access forbidden for this repository.')
+            raise RepositoryAccessError(
+                'User {user} cannot access repository {repo}({repo_id}).'
+                .format(user=user_id, repo=name, repo_id=github_id)
+            )
         return repo
 
     @classmethod
-    def enable(cls, user_id, github_id, name):
+    def enable(cls, user_id, github_id, name, hook):
         """Enable webhooks for a repository.
 
-        If the repository does not exist it will create one. Raises 403
-        exception if it tries to enable hook for repository created by
-        other user.
+        If the repository does not exist it will create one.
 
         :param user_id: User identifier.
-        :param repo_id: GitHub id of the repository.
+        :param repo_id: GitHub repository identifier.
         :param name: Fully qualified name of the repository.
+        :param hook: GitHub hook identifier.
         """
-        repo = cls.get_or_create(user_id, github_id=github_id, name=name)
-        repo.enabled = True
-        repo.user_id = user_id
-        db.session.add(repo)
+        try:
+            repo = cls.get(user_id, github_id=github_id, name=name)
+        except NoResultFound:
+            repo = cls.create(user_id=user_id, github_id=github_id, name=name)
+        repo.hook = hook
         return repo
 
     @classmethod
@@ -220,30 +233,31 @@ class Repository(db.Model, Timestamp):
         :param repo_id: GitHub id of the repository.
         :param name: Fully qualified name of the repository.
         """
-        repo = cls.get(user_id, github_id=github_id, name=name)
-        if repo:
-            repo.enabled = False
-            repo.user_id = None
+        try:
+            repo = cls.get(user_id, github_id=github_id, name=name)
             repo.hook = None
-            db.session.add(repo)
+        except NoResultFound:
+            return None
         return repo
 
-    @classmethod
-    def update_ping(cls, repo_id):
-        """Update ping to current time."""
-        cls.query.filter_by(
-            github_id=repo_id,
-            enabled=True,
-        ).update({
-            Repository.ping: datetime.utcnow()
-        })
+    @property
+    def enabled(self):
+        """Return if the repository has webhooks enabled."""
+        return bool(self.hook)
 
     @property
     def latest_release(self):
         """Chronologically latest published release of the repository."""
-        return self.releases.filter_by(
-            status=ReleaseStatus.PUBLISHED
-        ).order_by(db.desc(Repository.created)).first()
+        return (
+            self.releases
+            .filter_by(status=ReleaseStatus.PUBLISHED)
+            .order_by(db.desc(Release.created))
+            .first()
+        )
+
+    def __repr__(self):
+        """Get repository representation."""
+        return '<Repository {self.name}:{self.github_id}>'.format(self=self)
 
 
 class Release(db.Model, Timestamp):
@@ -296,48 +310,54 @@ class Release(db.Model, Timestamp):
         Repository,
         backref=db.backref('releases', lazy='dynamic')
     )
+
     record = db.relationship(RecordMetadata)
     event = db.relationship(Event)
 
     @classmethod
     def create(cls, event):
         """Create a new Release model."""
-        release_id = event.payload['release']['id']
-
         # Check if the release has already been received
+        release_id = event.payload['release']['id']
         existing_release = Release.query.filter_by(
             release_id=release_id,
         ).first()
         if existing_release:
-            msg = ('Release [{tag}:{release_id}] has already been received '
-                   'with status {status}.')
-            raise Exception(msg.format(tag=existing_release.tag,
-                                       release_id=release_id,
-                                       status=existing_release.status.title))
+            raise ReleaseAlreadyReceivedError(
+                '{release} has already been received.'
+                .format(release=existing_release)
+            )
 
-        # Check if the release corresponds to a repository in our database
+        # Create the Release
         repo_id = event.payload['repository']['id']
-        repository = Repository.get(user_id=event.user_id, github_id=repo_id)
-        if repository:
-            # Create the Release
+        repo = Repository.get(user_id=event.user_id, github_id=repo_id)
+        if repo.enabled:
             with db.session.begin_nested():
                 release = cls(
                     release_id=release_id,
                     tag=event.payload['release']['tag_name'],
-                    repository=repository,
+                    repository=repo,
                     event=event,
                     status=ReleaseStatus.RECEIVED,
                 )
                 db.session.add(release)
             return release
         else:
-            msg = 'Repository [{repo_name}:{repo_id}] is not enabled.'
-            raise Exception(
-                msg.format(repo_name=event.payload['repository']['full_name'],
-                           repo_id=repo_id))
+            current_app.logger.warning(
+                'Release creation attempt on disabled {repo}.'
+                .format(repo=repo)
+            )
+            raise RepositoryDisabledError(
+                '{repo} is not enabled for webhooks.'.format(repo=repo)
+            )
 
     @property
     def doi(self):
         """Get DOI of Release from record metadata."""
         if self.record:
             return self.record.json.get('doi')
+
+    def __repr__(self):
+        """Get release representation."""
+        return ('<Release {self.tag}:{self.release_id} ({self.status.title})>'
+                .format(self=self))

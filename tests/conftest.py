@@ -381,39 +381,8 @@ def github_api(app, db, tester_id, remote_token):
 
     with patch('invenio_github.api.GitHubAPI.api', new=mock_api):
         with patch('invenio_github.api.GitHubAPI._sync_hooks'):
-            # FIXME: Set repositories here
             gh = GitHubAPI(user_id=tester_id)
             with db.session.begin_nested():
                 gh.init_account()
             db.session.expire(remote_token.remote_account)
             yield mock_api
-
-
-# @pytest.yield_fixture()
-# def request_factory(app, db, tester_id, remote_token):
-#     """Prepare GitHub requests."""
-#     from . import fixtures
-#     from mock import patch, MagicMock
-
-#     # Init GitHub account and mock up GitHub API
-#     # httpretty.enable()
-#     fixtures.register_github_api()
-#     gh = GitHubAPI(user_id=tester_id)
-#     with patch('invenio_github.api.GitHubAPI.api') as mock_api:
-#         mock_api.return_value = MagicMock()
-#         user = MagicMock()
-#         user.id = 123
-#         user.login = 'auser'
-#         user.name = 'John Doe'
-#         mock_api.me.side_effect = lambda: user
-
-#         # FIXME: Set repositories here
-#         mock_api.repositories = []
-#         gh.init_account()
-#     # httpretty.disable()
-
-#     db.session.commit()
-
-#     with app.test_request_context():
-#         client = app.test_client()
-#         yield partial(tclient_request_factory, client)

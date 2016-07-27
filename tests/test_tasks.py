@@ -47,7 +47,7 @@ def test_handle_payload(app, db, location, tester_id, remote_token,
     # Create the repository that will make the release
 
     with db.session.begin_nested():
-        Repository.enable(tester_id, github_id=1, name='repo-1')
+        Repository.enable(tester_id, github_id=1, name='repo-1', hook=1234)
         event = Event(
             receiver_id='github',
             user_id=tester_id,
@@ -79,7 +79,7 @@ def test_handle_payload(app, db, location, tester_id, remote_token,
 
 def test_extract_metadata(app, db, tester_id, remote_token, github_api):
 
-    Repository.enable(tester_id, github_id=2, name='repo-2')
+    Repository.enable(tester_id, github_id=2, name='repo-2', hook=1234)
     event = Event(
         receiver_id='github',
         user_id=tester_id,

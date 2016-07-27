@@ -32,8 +32,6 @@ from flask import current_app
 from invenio_db import db
 
 
-# FIXME: If we don't call disconnect_github.retry() somewhere, we're not
-# actually retrying the task!
 @shared_task(max_retries=6, default_retry_delay=10 * 60, rate_limit='100/m')
 def disconnect_github(access_token, repo_hooks):
     """Uninstall webhooks."""
@@ -53,17 +51,17 @@ def disconnect_github(access_token, repo_hooks):
                     info_msg = 'Deleted hook {hook} from {repo}'.format(
                         hook=hook.id, repo=ghrepo.full_name)
                     current_app.logger.info(info_msg)
-    except MaxRetriesExceededError:
-        # FIXME: Log the 'access_token' here? Or is it available on Celery?
-        err_msg = ('Could not completely clean-up GitHub remote account for '
-                   'user {0}'.format(user=gh.me().name))
-        current_app.logger.error(err_msg)
+        # If we finished our clean-up successfully, we can revoke the token
+        GitHubAPI.revoke_token(access_token)
     except Exception as exc:
-        # Retry in case GitHub may be down...
-        raise disconnect_github.retry(exc=exc)
-
-    # If we finished our clean-up successfully, we can revoke the token
-    GitHubAPI.revoke_token(access_token)
+        try:
+            # Retry in case GitHub may be down...
+            disconnect_github.retry(exc=exc)
+        except MaxRetriesExceededError:
+            current_app.logger.error(
+                'Could not completely clean-up GitHub remote account for '
+                'user {user}'.format(user=gh.me().name)
+            )
 
 
 @shared_task(max_retries=6, default_retry_delay=10 * 60, rate_limit='100/m')
@@ -77,22 +75,29 @@ def sync_hooks(user_id, repositories):
         for repo_id in repositories:
             with db.session.begin_nested():
                 gh.sync_repo_hook(repo_id)
-            # FIXME: Commit once per repository, or only at the end?
+            # We commit per repository, because while the task is running the
+            # user might enable/disable a hook.
             db.session.commit()
     except Exception as exc:
-        raise sync_hooks.retry(exc=exc)
+        try:
+            sync_hooks.retry(exc=exc)
+        except MaxRetriesExceededError:
+            current_app.logger.error(
+                'Could not sync GitHub hooks for user {user}'
+                .format(user=gh.me().name)
+            )
 
 
 @shared_task(ignore_result=True)
 def process_release(release_id, verify_sender=False):
     """Process a received Release."""
-    from .models import Release, ReleaseStatus
-    from .proxies import current_github
-    # from github3.exceptions import GitHubError
     from invenio_db import db
     from invenio_rest.errors import RESTException
 
-    # Get the Release model from the database
+    from .errors import InvalidSenderError
+    from .models import Release, ReleaseStatus
+    from .proxies import current_github
+
     release_model = Release.query.filter(
         Release.release_id == release_id,
         Release.status.in_([ReleaseStatus.RECEIVED, ReleaseStatus.FAILED]),
@@ -102,25 +107,26 @@ def process_release(release_id, verify_sender=False):
 
     release = current_github.release_api_class(release_model)
     if verify_sender and not release.verify_sender():
-        raise Exception('Invalid sender for payload %s for user %s' % (
-            release.event.payload, release.event.user_id
-        ))
+        raise InvalidSenderError(
+            'Invalid sender for event {event} for user {user}'
+            .format(event=release.event.id, user=release.event.user_id)
+        )
 
     try:
         release.publish()
         release.release_model.status = ReleaseStatus.PUBLISHED
     except RESTException as rest_ex:
-        current_app.logger.exception("Error while processing GitHub Release")
+        current_app.logger.exception('Error while processing GitHub Release')
         release.release_model.errors = json.loads(rest_ex.get_body())
         release.release_model.status = ReleaseStatus.FAILED
-    # FIXME: We may want to handle GitHub errors differently in the future
+    # TODO: We may want to handle GitHub errors differently in the future
     # except GitHubError as github_ex:
-    #     current_app.logger.exception("Error while processing GitHub Release")
+    #     current_app.logger.exception('Error while processing GitHub Release')
     #     release.release_model.errors = {'error': str(e)}
     #     release.release_model.status = ReleaseStatus.FAILED
     except Exception:
-        current_app.logger.exception("Error while processing GitHub Release")
-        release.release_model.errors = {'errors': "Unknown error occured."}
+        current_app.logger.exception('Error while processing GitHub Release')
+        release.release_model.errors = {'errors': 'Unknown error occured.'}
         release.release_model.status = ReleaseStatus.FAILED
     finally:
         db.session.commit()

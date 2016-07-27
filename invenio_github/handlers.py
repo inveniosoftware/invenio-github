@@ -92,7 +92,7 @@ def disconnect(remote):
 
         # Send Celery task for webhooks removal and token revocation
         disconnect_github.delay(token.access_token, repos_with_hooks)
-        # Delete the RemoteAccount (and all associated RemoteTokens along)
+        # Delete the RemoteAccount (along with the associated RemoteToken)
         token.remote_account.delete()
 
     return redirect(url_for('invenio_oauthclient_settings.index'))

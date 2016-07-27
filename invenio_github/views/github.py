@@ -82,17 +82,7 @@ def prettyjson(val):
 )
 @register_breadcrumb(blueprint, 'breadcrumbs.settings.github', _('GitHub'))
 def index():
-    """Display list of the user's repositories.
-
-    Note: This view is special, since the repositories that it lists are not
-    actually just part of what GitHub shows. It includes the following 'groups'
-    of repositories:
-
-     * Active repositories that the user has 'admin' rights on GitHub. These
-     may, or may not have published releases/hooks.
-     * Repositories that the user has published Releases with but currently
-     may not have 'admin' permissions for.
-    """
+    """Display list of the user's repositories."""
     github = GitHubAPI(user_id=current_user.get_id())
     token = github.session_token
     ctx = dict(connected=False)

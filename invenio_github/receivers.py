@@ -24,9 +24,12 @@
 
 from __future__ import absolute_import
 
+from datetime import datetime
+
 from invenio_db import db
 from invenio_webhooks.models import Receiver
 
+from .errors import ReleaseAlreadyReceivedError, RepositoryDisabledError
 from .models import Release, Repository
 from .tasks import process_release
 
@@ -39,31 +42,36 @@ class GitHubReceiver(Receiver):
     def run(self, event):
         """Process an event.
 
-        We should only do quick and easy things here, since we send the
-        rest of the processing to a Celery task. Thus, we should only do stuff
-        that doesn't depend on accessing the GitHub API in any way.
+        .. note::
+
+            We should only do basic server side operation here, since we send
+            the rest of the processing to a Celery task which will be mainly
+            accessing the GitHub API.
         """
         repo_id = event.payload['repository']['id']
 
         # Ping event - update the ping timestamp of the repository
         if 'hook_id' in event.payload and 'zen' in event.payload:
-            Repository.update_ping(repo_id=repo_id)
+            repository = Repository.query.filter_by(
+                github_id=repo_id
+            ).one()
+            repository.ping = datetime.utcnow()
+            db.session.commit()
             return
 
         # Release event
         if 'release' in event.payload:
-            repo = Repository.get(user_id=event.user_id, github_id=repo_id)
-            if repo:
+            try:
                 release = Release.create(event)
-            else:
-                raise Exception('Repository does not exist...')
-            repo.releases.append(release)
-            db.session.commit()
+                db.session.commit()
 
-            # FIXME: If we want to skip the processing, we should do it here
-            # (eg. We're in the middle of a migration).
-            # if current_app.config['GITHUB_PROCESS_RELEASES']:
-            process_release.delay(
-                release.release_id,
-                verify_sender=self.verify_sender
-            )
+                # FIXME: If we want to skip the processing, we should do it
+                # here (eg. We're in the middle of a migration).
+                # if current_app.config['GITHUB_PROCESS_RELEASES']:
+                process_release.delay(
+                    release.release_id,
+                    verify_sender=self.verify_sender
+                )
+            except (ReleaseAlreadyReceivedError, RepositoryDisabledError) as e:
+                event.response_code = 409
+                event.response = dict(message=str(e), status=409)
