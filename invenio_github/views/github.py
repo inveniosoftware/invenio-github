@@ -20,37 +20,7 @@
 # granted to it by virtue of its status as an Intergovernmental Organization
 # or submit itself to any jurisdiction.
 
-"""GitHub blueprint for Invenio platform.
-
-Setting-up a public instance can take some time, hence here you can find
-quite guite to test Invenio-GitHub integration.
-
-1. Go to GitHub and create a new application.
-   * Set Authorization callback URL to
-     http://localhost:5000/oauth/authorized/github/
-   * Add the keys to configuration:
-
-     .. code-block: python
-
-        GITHUB_APP_CREDENTIALS = dict(
-            consumer_key='changeme',
-            consumer_secret='changeme',
-        )
-
-2. Configure debug webhook receivers for GitHub:
-
-.. code-block:: python
-
-    WEBHOOKS_DEBUG_RECEIVER_URLS = {
-        'github': 'http://github.<name>.ultrahook.com?access_token=%(token)s',
-    }
-
-3. Start Ultrahook
-
-.. code-block:: console
-
-    $ ultrahook github 5000/api/hooks/receivers/github/events/
-"""
+"""GitHub blueprint for Invenio platform."""
 
 from __future__ import absolute_import
 

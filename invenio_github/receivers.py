@@ -39,7 +39,7 @@ class GitHubReceiver(Receiver):
     def run(self, event):
         """Process an event.
 
-        Note: We should only do quick and easy things here, since we send the
+        We should only do quick and easy things here, since we send the
         rest of the processing to a Celery task. Thus, we should only do stuff
         that doesn't depend on accessing the GitHub API in any way.
         """

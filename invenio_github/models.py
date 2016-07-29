@@ -60,8 +60,8 @@ RELEASE_STATUS_ICON = {
 }
 
 RELEASE_STATUS_COLOR = {
-    'RECEIVED': 'info',
-    'PROCESSING': 'warning',
+    'RECEIVED': 'default',
+    'PROCESSING': 'default',
     'PUBLISHED': 'success',
     'FAILED': 'danger',
 }
@@ -131,7 +131,7 @@ class Repository(db.Model, Timestamp):
     )
     """Unique GitHub identifier for a repository.
 
-    Note: Past implementations of GitHub for Invenio, used the repository name
+    Past implementations of GitHub for Invenio, used the repository name
     (eg. 'inveniosoftware/invenio-github') in order to track repositories. This
     however leads to problems, since repository names can change and thus
     render the stored repository name useless. In order to tackle this issue,
@@ -231,18 +231,19 @@ class Repository(db.Model, Timestamp):
     @classmethod
     def update_ping(cls, repo_id):
         """Update ping to current time."""
-        repository = cls.query.filter_by(
+        cls.query.filter_by(
             github_id=repo_id,
             enabled=True,
-        ).one()
-        repository.ping = datetime.utcnow()
-        db.session.commit()
+        ).update({
+            Repository.ping: datetime.utcnow()
+        })
 
     @property
     def latest_release(self):
         """Chronologically latest published release of the repository."""
         return self.releases.filter_by(
-            status=ReleaseStatus.PUBLISHED).order_by('created desc').first()
+            status=ReleaseStatus.PUBLISHED
+        ).order_by(db.desc(Repository.created)).first()
 
 
 class Release(db.Model, Timestamp):

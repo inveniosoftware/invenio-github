@@ -34,21 +34,28 @@ from invenio_oauthclient.utils import oauth_link_external_id, \
 
 from .api import GitHubAPI
 from .models import Repository
-from .tasks import disconnect_github
+from .tasks import disconnect_github, sync_hooks
 
 
 def account_setup(remote, token=None, response=None,
                   account_setup=None):
     """Setup user account."""
     gh = GitHubAPI(user_id=token.remote_account.user_id)
-    gh.init_account()
+    with db.session.begin_nested():
+        gh.init_account()
 
-    # Create user <-> external id link.
-    oauth_link_external_id(
-        token.remote_account.user, dict(
-            id=str(gh.api.me().id),
-            method="github")
-    )
+        # Create user <-> external id link.
+        oauth_link_external_id(
+            token.remote_account.user,
+            dict(id=str(gh.account.extra_data['id']), method="github")
+        )
+
+
+def account_post_init(remote, token=None):
+    """Perform post initialization."""
+    gh = GitHubAPI(user_id=token.remote_account.user_id)
+    repos = [r.id for r in gh.api.repositories() if r.permissions['admin']]
+    sync_hooks.delay(token.remote_account.user_id, repos)
 
 
 def disconnect(remote):

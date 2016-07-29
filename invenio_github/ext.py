@@ -61,13 +61,14 @@ class InvenioGitHub(object):
         def connect_signals():
             """Connect OAuthClient signals."""
             from invenio_oauthclient.models import RemoteAccount
-            from invenio_oauthclient.signals import account_setup_received
+            from invenio_oauthclient.signals import account_setup_committed
 
             from .api import GitHubAPI
-            from .handlers import account_setup
+            from .handlers import account_post_init
 
-            account_setup_received.connect(
-                account_setup, sender=GitHubAPI.remote
+            account_setup_committed.connect(
+                account_post_init,
+                sender=GitHubAPI.remote._get_current_object()
             )
 
             @event.listens_for(RemoteAccount, 'before_delete')

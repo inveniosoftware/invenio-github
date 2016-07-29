@@ -124,15 +124,22 @@ class GitHubAPI(object):
             last_sync=iso_utcnow(),
         )
         db.session.add(self.account)
-        # Fetch list of repositories
-        self.sync()
+
+        # Sync data from GitHub, but don't check repository hooks yet.
+        self.sync(hooks=False)
 
     def sync(self, async_hooks=True):
         """Synchronize user repositories.
 
-        Note: Syncing happens from GitHub's direction only. This means that we
-        consider the information on GitHub as valid, and we overwrite our own
-        state based on this information.
+        :param bool hooks: True for syncing hooks.
+        :param bool async_hooks: True for sending of an asynchronous task to
+                                 sync hooks.
+
+        .. note::
+
+          Syncing happens from GitHub's direction only. This means that we
+          consider the information on GitHub as valid, and we overwrite our
+          own state based on this information.
         """
         active_repos = {}
         github_repos = {repo.id: repo for repo in self.api.repositories()

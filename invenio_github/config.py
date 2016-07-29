@@ -22,6 +22,10 @@
 
 """Configuration for GitHub module."""
 
+from copy import deepcopy
+
+from invenio_oauthclient.contrib.github import REMOTE_APP
+
 GITHUB_WEBHOOK_RECEIVER_ID = 'github'
 """Local name of webhook receiver."""
 
@@ -60,3 +64,16 @@ GITHUB_METADATA_FILE = '.zenodo.json'
 
 GITHUB_DEPOSIT_CLASS = 'invenio_deposit.api:Deposit'
 """Deposit class that implements a `publish` method."""
+
+GITHUB_PID_FETCHER = 'recid'
+"""PID Fetcher for Release records."""
+
+# Copy the default GitHub OAuth application configuration, and update
+# handlers and scope.
+GITHUB_REMOTE_APP = deepcopy(REMOTE_APP)
+"""OAuth Client configuration."""
+GITHUB_REMOTE_APP['disconnect_handler'] = 'invenio_github.handlers:disconnect'
+GITHUB_REMOTE_APP['signup_handler']['setup'] = \
+    'invenio_github.handlers:account_setup'
+GITHUB_REMOTE_APP['params']['request_token_params']['scope'] = \
+    'user,admin:repo_hook,read:org'
