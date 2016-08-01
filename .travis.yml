@@ -62,4 +62,15 @@ script:
   - "./run-tests.sh"
 
 after_success:
-  - coveralls
+    - coveralls
+
+deploy:
+  provider: pypi
+  user: lnielsen
+  password:
+    secure: Uli7GLwY5Z75oEP6RnYdBDR0DFJ90+Rtk0Ogf0d2nSopxiTRMAi51l9dsN/mHvsuv5345BQGy01ru6XlH1NPKSm3fbVNVok1gDlr3HMvLPP4/J2FU2giPE9GrYE/GH0DSP7qrAFECcyrBPlPFnDOYpJO3sIdBqqrdrBA4uTtqVUGeSmaVT51GIwySh8/8EeyAL/1bgIyW/H1iH7tf0ORBkioOWwfvJI9C8nKBIBHG9RgLdIndsfz3lzwEuhjI1OnS82hiT6I93DIUNbGKGinz+PzDufEMJHPe9ZlCWFloEwydt3P0tvTjjTL1giT7PdKadu0EmNO9N+FN+lPQ+FEI1INzDYRpPEh0z/x8pl9UcAVgzaT1bdDnjjdcXjML6UM8dwTdUvHF/hGm63i7O3frs1ZlGOIO0og0cdCCSoY82TLH6+hVUr0Usu1wlZQ2OT/ZGdG2PTj/gHllSbnt7XzVCq94NWMynYMYncNWH1gLfeFuB0Exrx/+pgcJ4UVs2N4udlWov+mxG75bw+JYpPi1bsdfCSJbvGx0AxYdpMMjKYu9v9vcn7hKFvjQUa7BnCTnQRzRI4TKqWHW3GuziWp6AS65x0Gj6OXeJKSK1qH+xxvhIUEQTPnEl3yrxGXA3Ft9zl2iO2t1E56Mkd/mGM/9xiCcypk2xfBGoohTZFO934=
+  distributions: "compile_catalog sdist bdist_wheel"
+  on:
+    tags: true
+    python: "2.7"
+    condition: $REQUIREMENTS = release
