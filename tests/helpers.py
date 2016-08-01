@@ -25,6 +25,7 @@
 import json
 
 from flask import current_app, url_for
+from invenio_pidstore.fetchers import FetchedPID
 
 
 def tclient_request_factory(client, method, endpoint, urlargs, data,
@@ -63,3 +64,12 @@ def tclient_request_factory(client, method, endpoint, urlargs, data,
     # Patch response
     resp.json = lambda: json.loads(resp.data)
     return resp
+
+
+def doi_fetcher(record_uuid, record_data):
+    """DOI fetcher."""
+    return FetchedPID(
+        provider=None,
+        pid_type='doi',
+        pid_value=str(record_data['doi']),
+    )

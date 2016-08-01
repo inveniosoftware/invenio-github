@@ -31,6 +31,7 @@ from invenio_oauth2server.models import Token as ProviderToken
 from invenio_oauthclient.models import RemoteToken
 from invenio_oauthclient.utils import oauth_link_external_id, \
     oauth_unlink_external_id
+from sqlalchemy.orm.exc import NoResultFound
 
 from .api import GitHubAPI
 from .models import Repository
@@ -85,9 +86,13 @@ def disconnect(remote):
         # Keep repositories with hooks to pass to the celery task later on
         repos_with_hooks = [(r.github_id, r.hook) for r in db_repos if r.hook]
         for repo in db_repos:
-            Repository.disable(user_id=user_id,
-                               github_id=repo.github_id,
-                               name=repo.name)
+            try:
+                Repository.disable(user_id=user_id,
+                                   github_id=repo.github_id,
+                                   name=repo.name)
+            except NoResultFound:
+                # If the repository doesn't exist, no action is necessary
+                pass
         db.session.commit()
 
         # Send Celery task for webhooks removal and token revocation

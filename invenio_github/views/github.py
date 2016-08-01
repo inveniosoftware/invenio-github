@@ -36,9 +36,12 @@ from flask_breadcrumbs import register_breadcrumb
 from flask_login import current_user, login_required
 from flask_menu import register_menu
 from invenio_db import db
+from sqlalchemy.orm.exc import NoResultFound
 
-from ..api import GitHubAPI
-from ..models import Repository
+from ..api import GitHubAPI, GitHubRelease
+from ..errors import RepositoryAccessError
+from ..models import Release, Repository
+from ..proxies import current_github
 from ..utils import parse_timestamp, utcnow
 
 blueprint = Blueprint(
@@ -69,6 +72,12 @@ def prettyjson(val):
     return json.dumps(json.loads(val), indent=4)
 
 
+@blueprint.app_template_filter('release_pid')
+def release_pid(release):
+    """Get PID of Release record."""
+    return GitHubRelease(release).pid
+
+
 #
 # Views
 #
@@ -94,7 +103,7 @@ def index():
             db.session.commit()
 
         # Sync if needed
-        if github.check_sync(force=request.method == 'POST'):
+        if request.method == 'POST' or github.check_sync():
             # When we're in an XHR request, we want to synchronously sync hooks
             github.sync(async_hooks=(not request.is_xhr))
             db.session.commit()
@@ -140,14 +149,25 @@ def repository(name):
         if not repo:
             abort(403)
 
-        # FIXME: Use just filter and check GitHub API for permissions instead
-        repo_instance = Repository.get(user_id=user_id, github_id=repo['id'])
+        try:
+            repo_instance = Repository.get(user_id=user_id,
+                                           github_id=repo['id'])
+        except RepositoryAccessError:
+            abort(403)
+        except NoResultFound:
+            repo_instance = Repository(name=repo['full_name'],
+                                       github_id=repo['id'])
+
+        # FIXME: Wrap releases in current_github.release_api_class?
+        release_api = current_github.release_api_class
+        releases = [release_api(r) for r in
+                    (repo_instance.releases
+                     .order_by(db.desc(Release.created)).all()
+                     if repo_instance.id else [])]
         return render_template(
             'invenio_github/settings/view.html',
-            repo=repo_instance or Repository(name=repo['full_name'],
-                                             github_id=repo['id']),
-            releases=(repo_instance.releases.order_by('created desc').all()
-                      if repo_instance else []),
+            repo=repo_instance,
+            releases=releases,
         )
 
     abort(403)

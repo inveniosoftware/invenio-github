@@ -43,3 +43,7 @@ class InvalidSenderError(GitHubError):
 
 class ReleaseAlreadyReceivedError(GitHubError):
     """Invalid release sender error."""
+
+
+class CustomGitHubMetadataError(GitHubError):
+    """Invalid Custom GitHub Metadata file."""

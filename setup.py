@@ -36,12 +36,12 @@ tests_require = [
     'coverage>=4.0',
     'httpretty>=0.8.14',
     'isort>=4.2.2',
+    'mock>=2.0.0',
     'pydocstyle>=1.0.0',
     'pytest-cache>=1.0',
     'pytest-cov>=1.8.0',
     'pytest-pep8>=1.0.6',
     'pytest>=2.8.0',
-    'mock>=2.0.0',
 ]
 
 extras_require = {
@@ -73,8 +73,10 @@ install_requires = [
     'invenio-formatter[badges]>=1.0.0a2',
     'invenio-oauth2server>=1.0.0a8',
     'invenio-oauthclient>=1.0.0a8',
+    'invenio-pidstore>=1.0.0a9',
     'invenio-records>=1.0.0a16',
     'invenio-webhooks>=1.0.0a2',
+    'mistune>=0.7.2',
     'six>=1.10.0',
 ]
 

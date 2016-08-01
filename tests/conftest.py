@@ -45,6 +45,7 @@ from flask_mail import Mail
 from flask_menu import Menu
 from invenio_accounts import InvenioAccounts
 from invenio_accounts.views import blueprint as accounts_blueprint
+from invenio_assets import InvenioAssets
 from invenio_db import db as db_
 from invenio_db import InvenioDB
 from invenio_deposit import InvenioDepositREST
@@ -98,6 +99,7 @@ def app(request):
             consumer_key='changeme',
             consumer_secret='changeme',
         ),
+        GITHUB_PID_FETCHER='doi_fetcher',
         LOGIN_DISABLED=False,
         OAUTHLIB_INSECURE_TRANSPORT=True,
         OAUTH2_CACHE_TYPE='simple',
@@ -126,6 +128,7 @@ def app(request):
     Mail(app_)
     Menu(app_)
     Breadcrumbs(app_)
+    InvenioAssets(app_)
     InvenioDB(app_)
     InvenioAccounts(app_)
     app_.register_blueprint(accounts_blueprint)
@@ -135,7 +138,11 @@ def app(request):
     app_.register_blueprint(server_blueprint)
     app_.register_blueprint(settings_blueprint)
     InvenioFormatter(app_)
-    InvenioPIDStore(app_)
+
+    from .helpers import doi_fetcher
+    pidstore = InvenioPIDStore(app_)
+    pidstore.register_fetcher('doi_fetcher', doi_fetcher)
+
     InvenioJSONSchemas(app_)
     InvenioRecords(app_)
     InvenioSearch(app_)

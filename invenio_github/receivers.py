@@ -29,7 +29,8 @@ from datetime import datetime
 from invenio_db import db
 from invenio_webhooks.models import Receiver
 
-from .errors import ReleaseAlreadyReceivedError, RepositoryDisabledError
+from .errors import ReleaseAlreadyReceivedError, RepositoryAccessError, \
+    RepositoryDisabledError
 from .models import Release, Repository
 from .tasks import process_release
 
@@ -75,3 +76,6 @@ class GitHubReceiver(Receiver):
             except (ReleaseAlreadyReceivedError, RepositoryDisabledError) as e:
                 event.response_code = 409
                 event.response = dict(message=str(e), status=409)
+            except RepositoryAccessError as e:
+                event.response = 403
+                event.response = dict(message=str(e), status=403)

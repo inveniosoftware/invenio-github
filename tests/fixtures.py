@@ -48,7 +48,7 @@ def register_github_api():
         [REPO('inveniosoftware', 'myorgrepo', 3), ]
     )
     register_endpoint(
-        '/repos/auser/repo-1/contents/.zenodo.json',
+        '/repos/auser/repo-1/contents/.invenio.json',
         dict(
             message='Not Found',
         ),

@@ -37,81 +37,81 @@
   </li>
   {% endif %}
   {%- for release in releases %}
-  {% set title = release.event.payload['release']['name'] if release.event else release.tag %}
   <li class="list-group-item">
     <div>
-    <p>{{ title }}
+    <p>{{ release.title }}
     &nbsp;
-    {# DOI Badge (specific for the release) #}
-    {% if release.doi %}
-      <a href="http://doi.org/{{release.doi}}"><img src="{{ url_for('invenio_formatter_badges.badge', title='doi', value=release.doi, ext='svg') }}" alt="{{ release.doi }}"></a>
+    {# PID Badge (specific for the release) #}
+    {# TODO: Move generation of release-specific badges to the badges views #}
+    {% if release.pid %}
+      <a href="https://doi.org/{{release.pid.pid_value}}"><img src="{{ url_for('invenio_formatter_badges.badge', title=release.pid.pid_type, value=release.pid.pid_value, ext='svg') }}" alt="{{ release.pid.pid_value }}"></a>
     {% endif %}
     </p>
     </div>
     &nbsp;
     <small>
-      <a class="text-primary" href="https://github.com/{{ repo.name }}/releases/tag/{{ release.tag }}">
-        <i class="fa fa-tag"></i> {{ release.tag }}
+      <a class="text-primary" href="https://github.com/{{ repo.name }}/releases/tag/{{ release.model.tag }}">
+        <i class="fa fa-tag"></i> {{ release.model.tag }}
       </a>
     </small>
     &nbsp;
-    <small class="text-{{ release.status.color }}">
-      <i class="fa {{ release.status.icon }}"></i> {{ release.status.title }}
+    <small class="text-{{ release.model.status.color }}">
+      <i class="fa {{ release.model.status.icon }}"></i> {{ release.model.status.title }}
     </small>
     &nbsp;
     {# Edit Button #}
-    {% if release.deposit_id %}
+    {% if release.model.deposit_id %}
       {# use url_for('invenio_deposit_ui.depid') here... #}
-      <a class="label label-info" href="/deposit/{{ release.deposit_id }}"><i class="fa fa-edit"></i> {{_('Edit Deposit')}}
+      <a class="label label-info" href="/deposit/{{ release.model.deposit_id }}"><i class="fa fa-edit"></i> {{_('Edit Deposit')}}
       </a>
       &nbsp;
     {% endif %}
     <span class="pull-right">
       <small class="text-muted">
-        {{ release.created|naturaltime }}
+        {{ release.model.created|naturaltime }}
       </small>
       <span class="btn btn-xs btn-default" type="button"
-        data-toggle="collapse" data-target="#{{ release.id }}"
+        data-toggle="collapse" data-target="#{{ release.model.id }}"
         aria-expanded="false" aria-controls="collapseExample">
         ...
       </span>
     </span>
     <div class="clearfix"></div>
-    <div id="{{ release.id }}" class="collapse">
+    <div id="{{ release.model.id }}" class="collapse">
       <br/>
       <!-- Nav tabs -->
       <ul class="nav nav-tabs" role="tablist">
         <li role="presentation" class="active">
-          <a href="#{{ release.id}}-deposit" aria-controls="home" role="tab"
+          <a href="#{{ release.model.id }}-deposit" aria-controls="home" role="tab"
             data-toggle="tab">{{ _('Deposit') }}</a>
         </li>
         <li role="presentation">
-          <a href="#{{ release.id}}-event" aria-controls="home" role="tab"
+          <a href="#{{ release.model.id }}-event" aria-controls="home" role="tab"
             data-toggle="tab">{{ _('Event') }}</a>
         </li>
         <li role="presentation">
-          <a href="#{{ release.id}}-errors" aria-controls="home" role="tab"
+          <a href="#{{ release.model.id }}-errors" aria-controls="home" role="tab"
             data-toggle="tab">{{ _('Errors') }}</a>
         </li>
       </ul>
       <!-- Tab panes -->
       <div class="tab-content">
-        <div role="tabpanel" class="tab-pane active" id="{{ release.id }}-deposit">
+        <div role="tabpanel" class="tab-pane active" id="{{ release.model.id }}-deposit">
           <h5>{{ _('Metadata') }}</h5>
           {% if release.record %}
               <pre>{{ release.record|tojson|prettyjson }}</pre>
           {% endif %}
         </div>
-        <div role="tabpanel" class="tab-pane" id="{{ release.id }}-event">
+        <div role="tabpanel" class="tab-pane" id="{{ release.model.id }}-event">
           <h5>{{ _('Payload') }}</h5>
           {% if release.event %}
             <pre>{{ release.event.payload|tojson|prettyjson }}</pre>
           {% endif %}
         </div>
-        <div role="tabpanel" class="tab-pane" id="{{ release.id }}-errors">
-          {% if release.errors %}
+        <div role="tabpanel" class="tab-pane" id="{{ release.model.id }}-errors">
+          {% if release.model.errors %}
             <h5>{{ _('Errors') }}</h5>
-            <pre>{{ release.errors|tojson|prettyjson }}</pre>
+            <pre>{{ release.model.errors|tojson|prettyjson }}</pre>
           {% endif %}
         </div>
       </div>

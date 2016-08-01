@@ -31,6 +31,8 @@ from celery.exceptions import MaxRetriesExceededError
 from flask import current_app
 from invenio_db import db
 
+from .errors import CustomGitHubMetadataError
+
 
 @shared_task(max_retries=6, default_retry_delay=10 * 60, rate_limit='100/m')
 def disconnect_github(access_token, repo_hooks):
@@ -75,8 +77,8 @@ def sync_hooks(user_id, repositories):
         for repo_id in repositories:
             with db.session.begin_nested():
                 gh.sync_repo_hook(repo_id)
-            # We commit per repository, because while the task is running the
-            # user might enable/disable a hook.
+            # We commit per repository, because while the task is running
+            # the user might enable/disable a hook.
             db.session.commit()
     except Exception as exc:
         try:
@@ -114,19 +116,23 @@ def process_release(release_id, verify_sender=False):
 
     try:
         release.publish()
-        release.release_model.status = ReleaseStatus.PUBLISHED
+        release.model.status = ReleaseStatus.PUBLISHED
     except RESTException as rest_ex:
         current_app.logger.exception('Error while processing GitHub Release')
-        release.release_model.errors = json.loads(rest_ex.get_body())
-        release.release_model.status = ReleaseStatus.FAILED
+        release.model.errors = json.loads(rest_ex.get_body())
+        release.model.status = ReleaseStatus.FAILED
     # TODO: We may want to handle GitHub errors differently in the future
     # except GitHubError as github_ex:
     #     current_app.logger.exception('Error while processing GitHub Release')
-    #     release.release_model.errors = {'error': str(e)}
-    #     release.release_model.status = ReleaseStatus.FAILED
+    #     release.model.errors = {'error': str(e)}
+    #     release.model.status = ReleaseStatus.FAILED
+    except CustomGitHubMetadataError as e:
+        current_app.logger.exception('Error while processing GitHub Release')
+        release.model.errors = {'errors': str(e)}
+        release.model.status = ReleaseStatus.FAILED
     except Exception:
         current_app.logger.exception('Error while processing GitHub Release')
-        release.release_model.errors = {'errors': 'Unknown error occured.'}
-        release.release_model.status = ReleaseStatus.FAILED
+        release.model.errors = {'errors': 'Unknown error occured.'}
+        release.model.status = ReleaseStatus.FAILED
     finally:
         db.session.commit()

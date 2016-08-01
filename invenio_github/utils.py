@@ -28,6 +28,8 @@ import pytz
 import requests
 from flask import current_app
 
+from .errors import CustomGitHubMetadataError
+
 
 def utcnow():
     """UTC timestamp (with timezone)."""
@@ -55,14 +57,13 @@ def get_extra_metadata(gh, owner, repo_name, ref):
         )
         if not content:
             # File does not exists in the given ref
-            return None
+            return {}
         return json.loads(content.decoded.decode('utf-8'))
-    except Exception:
-        current_app.logger.exception('Failed to decode {0}.'.format(
-            current_app.config['GITHUB_METADATA_FILE']
-        ))
-        # Problems decoding the file
-        return None
+    except ValueError:
+        raise CustomGitHubMetadataError(
+            'Metadata file "{file}" is not valid JSON.'
+            .format(file=current_app.config['GITHUB_METADATA_FILE'])
+        )
 
 
 def get_owner(gh, owner):
@@ -73,7 +74,6 @@ def get_owner(gh, owner):
         company = u.company or ''
         return [dict(name=name, affiliation=company)]
     except Exception:
-        current_app.logger.exception('Failed to get GitHub owner')
         return None
 
 
@@ -105,5 +105,4 @@ def get_contributors(gh, repo_id):
 
             return contributors
     except Exception:
-        current_app.logger.exception('Failed to get GitHub contributors.')
         return None

@@ -33,7 +33,10 @@ from invenio_oauth2server.models import Token as ProviderToken
 from invenio_oauthclient.handlers import token_getter
 from invenio_oauthclient.models import RemoteAccount, RemoteToken
 from invenio_oauthclient.proxies import current_oauthclient
+from invenio_pidstore.proxies import current_pidstore
+from mistune import markdown
 from six import string_types
+from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.local import LocalProxy
 from werkzeug.utils import cached_property, import_string
 
@@ -128,7 +131,7 @@ class GitHubAPI(object):
         # Sync data from GitHub, but don't check repository hooks yet.
         self.sync(hooks=False)
 
-    def sync(self, async_hooks=True):
+    def sync(self, hooks=True, async_hooks=True):
         """Synchronize user repositories.
 
         :param bool hooks: True for syncing hooks.
@@ -137,9 +140,9 @@ class GitHubAPI(object):
 
         .. note::
 
-          Syncing happens from GitHub's direction only. This means that we
-          consider the information on GitHub as valid, and we overwrite our
-          own state based on this information.
+            Syncing happens from GitHub's direction only. This means that we
+            consider the information on GitHub as valid, and we overwrite our
+            own state based on this information.
         """
         active_repos = {}
         github_repos = {repo.id: repo for repo in self.api.repositories()
@@ -151,7 +154,8 @@ class GitHubAPI(object):
                 'description': gh_repo.description,
             }
 
-        self._sync_hooks(active_repos.keys(), async=async_hooks)
+        if hooks:
+            self._sync_hooks(active_repos.keys(), async=async_hooks)
 
         # Remove ownership from repositories that the user has no longer
         # 'admin' permissions, or have been deleted.
@@ -176,20 +180,9 @@ class GitHubAPI(object):
                     self.sync_repo_hook(repo_id)
                 db.session.commit()
         else:
-            from celery.result import AsyncResult
-            task_id = self.account.extra_data.get('hook_sync_task')
-            cur_task = AsyncResult(task_id) if task_id else None
-
-            # If there is no ongoing task or if the previous task has finished
-            # (no matter the result) fire a new one. 'PENDING' does not mean
-            # that the task has not yet started, but is actually Celery's way
-            # of defining 'UNKNOWN' task status.
-            if not cur_task or cur_task.ready() or cur_task.state == 'PENDING':
-                # We have to commit, in order to have all necessary data
-                db.session.commit()
-                task_id = sync_hooks.delay(self.user_id, repos).id
-                self.account.extra_data['hook_sync_task'] = task_id
-                self.account.extra_data.changed()
+            # FIXME: We have to commit, in order to have all necessary data?
+            db.session.commit()
+            sync_hooks.delay(self.user_id, repos)
 
     def sync_repo_hook(self, repo_id):
         """Sync a GitHub repo's hook with the locally stored repo."""
@@ -207,16 +200,20 @@ class GitHubAPI(object):
                               name=gh_repo.full_name,
                               hook=hook_id)
         else:
-            Repository.disable(user_id=self.user_id,
-                               github_id=gh_repo.id,
-                               name=gh_repo.full_name)
+            try:
+                Repository.disable(user_id=self.user_id,
+                                   github_id=gh_repo.id,
+                                   name=gh_repo.full_name)
+            except NoResultFound:
+                # The repository doesn't exist, no action is necessary
+                pass
 
-    def check_sync(self, force=False):
+    def check_sync(self):
         """Check and sync if over a day has passed since the last sync."""
         now = utcnow()
         yesterday = now - timedelta(days=1)
         last_sync = parse_timestamp(self.account.extra_data['last_sync'])
-        return force or last_sync < yesterday
+        return last_sync < yesterday
 
     def create_hook(self, repo_id, repo_name):
         """Create repository hook."""
@@ -293,9 +290,12 @@ class GitHubRelease(object):
 
     def __init__(self, release):
         """Constructor."""
-        self.release_model = release
-        self.event = release.event
-        self.gh = GitHubAPI(user_id=self.event.user_id)
+        self.model = release
+
+    @cached_property
+    def gh(self):
+        """Return GitHubAPI object."""
+        return GitHubAPI(user_id=self.event.user_id)
 
     @cached_property
     def deposit_class(self):
@@ -305,6 +305,11 @@ class GitHubRelease(object):
             cls = import_string(cls)
         assert isinstance(cls, type)
         return cls
+
+    @cached_property
+    def event(self):
+        """Get release event."""
+        return self.model.event
 
     @cached_property
     def payload(self):
@@ -322,7 +327,7 @@ class GitHubRelease(object):
         return self.payload['repository']
 
     @property
-    def repository_model(self):
+    def repo_model(self):
         """Return repository model from database."""
         return Repository.query.filter_by(
             user_id=self.event.user_id,
@@ -332,19 +337,18 @@ class GitHubRelease(object):
     @cached_property
     def title(self):
         """Extract title from a release."""
-        if self.release['name']:
-            return '{0}: {1}'.format(
-                self.repository['full_name'], self.release['name']
-            )
-        return '{0} {1}'.format(
-            self.repository['full_name'], self.release['tag_name']
-        )
+        if self.event:
+            if self.release['name']:
+                return '{0}: {1}'.format(
+                    self.repository['full_name'], self.release['name']
+                )
+        return '{0} {1}'.format(self.repo_model.name, self.model.tag)
 
     @cached_property
     def description(self):
         """Extract description from a release."""
         return (
-            self.gh.api.markdown(self.release['body']) or
+            markdown(self.release['body']) or
             self.repository['description'] or
             'No description provided.'
         )
@@ -385,7 +389,7 @@ class GitHubRelease(object):
             self.repository['owner']['login'],
             self.repository['name'],
             self.release['tag_name'],
-        ) or {}
+        )
 
     @cached_property
     def files(self):
@@ -409,6 +413,19 @@ class GitHubRelease(object):
         output.update(self.extra_metadata)
         return output
 
+    @cached_property
+    def record(self):
+        """Get Release record."""
+        return self.model.record
+
+    @cached_property
+    def pid(self):
+        """Get PID object for the Release record."""
+        if self.record:
+            fetcher = current_pidstore.fetchers[
+                current_app.config.get('GITHUB_PID_FETCHER')]
+            return fetcher(self.record.id, self.record)
+
     def verify_sender(self):
         """Check if the sender is valid."""
         return self.payload['repository']['full_name'] in \
@@ -427,4 +444,4 @@ class GitHubRelease(object):
                     url, stream=True).raw
 
             deposit.publish()
-            self.release_model.recordmetadata = deposit.model
+            self.model.recordmetadata = deposit.model

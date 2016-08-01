@@ -91,7 +91,7 @@ require(['jquery', 'js/github/view'], function($, view) {
     </div>
     <div class="col-md-4" align="center">
       <br>
-      <a href="http://doi.org/10.5281/zenodo.8475"><img src="{{ url_for('invenio_formatter_badges.badge', title='doi', value='10.5281/zenodo.8475', ext='svg') }}" alt="10.5281/zenodo.8475"></a><br><small class="text-muted">(example)</small>
+      <a href="https://doi.org/10.5281/zenodo.8475"><img src="{{ url_for('invenio_formatter_badges.badge', title='doi', value='10.5281/zenodo.8475', ext='svg') }}" alt="10.5281/zenodo.8475"></a><br><small class="text-muted">(example)</small>
     </div>
   </div>
   <p class="hide text-muted text-center"><small>More questions? Check out the <a href="{{url_for('invenio_github.faq')}}">FAQ</a>.</small></p>
@@ -104,7 +104,7 @@ require(['jquery', 'js/github/view'], function($, view) {
         <div align="center">
           <em>
             You have no repositories on GitHub.<br>
-            Go to <a href="http://github.com/new">GitHub</a>
+            Go to <a href="https://github.com/new">GitHub</a>
             and create your first or click Sync-button to synchronize
             latest changes from GitHub.
           </em>
@@ -116,13 +116,14 @@ require(['jquery', 'js/github/view'], function($, view) {
     <tr>
       <td>
         <div class="repo-container">
-
           {# Set DOI badge for latest release #}
           {% set doi_url = None %}
           {% if repo.latest %}
-            {% set doi = repo.latest.doi %}
-            {% set doi_url = url_for('invenio_github_badge.latest_doi', github_id=repo_id, _external=True, _scheme='https') %}
-            {{ doi_badge(doi, github_id=repo_id) }}
+            {% set pid = repo.latest|release_pid %}
+            {% if pid %}
+              {% set doi_url = url_for('invenio_github_badge.latest_doi', github_id=repo_id, _external=True, _scheme='https')%}
+              {{ doi_badge(pid.pid_value, github_id=repo_id) }}
+            {% endif %}
           {% endif %}
 
           {# Basic repository info #}
@@ -138,7 +139,7 @@ require(['jquery', 'js/github/view'], function($, view) {
           <small class="text-muted repo-description"> {{ repo.description }}</small>
 
           {# Latest release info and links #}
-          {% if repo.latest %}
+          {% if doi_url %}
             <p><small class="text-muted">Latest release ({{repo.latest.tag}}): <i class="fa fa-eye"></i> <a href="{{ doi_url }}" class="">{{ config.SERVER_NAME }}</a>, <i class="fa fa-github"></i> <a href="https://github.com/{{repo.full_name}}/tree/{{repo.latest.tag}}" class="">GitHub</a></small></p>
           {% endif %}
 

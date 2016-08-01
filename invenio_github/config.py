@@ -61,7 +61,7 @@ development and integration servers.
 GITHUB_RELEASE_CLASS = 'invenio_github.api:GitHubRelease'
 """GitHubRelease class to be used for release handling."""
 
-GITHUB_METADATA_FILE = '.zenodo.json'
+GITHUB_METADATA_FILE = '.invenio.json'
 """File with extra metadata stored in GitHub repository."""
 
 GITHUB_DEPOSIT_CLASS = 'invenio_deposit.api:Deposit'
