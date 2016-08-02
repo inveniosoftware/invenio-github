@@ -1,0 +1,90 @@
+# Translations template for invenio-github.
+# Copyright (C) 2016 CERN
+# This file is distributed under the same license as the invenio-github
+# project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2016.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: invenio-github 1.0.0a2.dev20160801\n"
+"Report-Msgid-Bugs-To: info@inveniosoftware.org\n"
+"POT-Creation-Date: 2016-08-02 08:53+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.3.4\n"
+
+#: invenio_github/models.py:48
+msgid "Received"
+msgstr ""
+
+#: invenio_github/models.py:49
+msgid "Processing"
+msgstr ""
+
+#: invenio_github/models.py:50
+msgid "Published"
+msgstr ""
+
+#: invenio_github/models.py:51
+msgid "Failed"
+msgstr ""
+
+#: invenio_github/templates/invenio_github/settings/faq.html:27
+msgid "GitHub - Frequently Asked Questions"
+msgstr ""
+
+#: invenio_github/templates/invenio_github/settings/faq.html:57
+#: invenio_github/views/github.py:92
+msgid "GitHub"
+msgstr ""
+
+#: invenio_github/templates/invenio_github/settings/faq.html:61
+msgid "Software preservation made simple!"
+msgstr ""
+
+#: invenio_github/templates/invenio_github/settings/faq.html:65
+msgid "Connect"
+msgstr ""
+
+#: invenio_github/templates/invenio_github/settings/view.html:27
+msgid "Releases"
+msgstr ""
+
+#: invenio_github/templates/invenio_github/settings/view.html:65
+msgid "Edit Deposit"
+msgstr ""
+
+#: invenio_github/templates/invenio_github/settings/view.html:86
+msgid "Deposit"
+msgstr ""
+
+#: invenio_github/templates/invenio_github/settings/view.html:90
+msgid "Event"
+msgstr ""
+
+#: invenio_github/templates/invenio_github/settings/view.html:94
+#: invenio_github/templates/invenio_github/settings/view.html:113
+msgid "Errors"
+msgstr ""
+
+#: invenio_github/templates/invenio_github/settings/view.html:100
+msgid "Metadata"
+msgstr ""
+
+#: invenio_github/templates/invenio_github/settings/view.html:106
+msgid "Payload"
+msgstr ""
+
+#: invenio_github/views/github.py:88
+msgid "<i class=\"fa fa-github fa-fw\"></i> GitHub"
+msgstr ""
+
+#: invenio_github/views/github.py:138
+msgid "Repository"
+msgstr ""
+
