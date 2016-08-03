@@ -93,9 +93,6 @@ $github-published-color-text: darken($github-published-color, 17%);
     .release.failed {
         @include status-border($github-failed-color);
     }
-    .release.undefined {
-        @include status-border($github-undefined-color);
-    }
 
     .received {
         @include status-styling($github-received-color-text);
@@ -108,8 +105,5 @@ $github-published-color-text: darken($github-published-color, 17%);
     }
     .failed {
         @include status-styling($github-failed-color-text);
-    }
-    .undefined {
-        @include status-styling($github-undefined-color-text);
     }
 }
