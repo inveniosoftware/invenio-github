@@ -29,7 +29,7 @@ from flask import Blueprint, abort, redirect, url_for
 from sqlalchemy.orm.exc import NoResultFound
 
 from ..api import GitHubRelease
-from ..models import Repository
+from ..models import ReleaseStatus, Repository
 
 blueprint = Blueprint(
     'invenio_github_badge',
@@ -43,7 +43,8 @@ blueprint = Blueprint(
 def get_badge_image_url(repo, ext='svg'):
     """Return the badge for a DOI."""
     if repo.latest_release:
-        release = GitHubRelease(repo.latest_release)
+        release = GitHubRelease(repo.latest_release(
+            status=ReleaseStatus.PUBLISHED))
         pid = release.pid
     return url_for('invenio_formatter_badges.badge',
                    title=pid.pid_type,
@@ -80,10 +81,10 @@ def latest_doi(github_id):
     """Redirect to the newest record version."""
     try:
         repo = Repository.query.filter_by(github_id=github_id).one()
-        if repo.latest_release:
-            release = GitHubRelease(repo.latest_release)
+        release = repo.latest_release(status=ReleaseStatus.PUBLISHED)
+        if release:
             return redirect('https://doi.org/{pid}'.format(
-                pid=release.pid.pid_value))
+                pid=GitHubRelease(release).pid.pid_value))
     except NoResultFound:
         pass
     abort(404)
@@ -94,10 +95,10 @@ def latest_doi_old(user_id, repo_name):
     """Redirect to the newest record version."""
     try:
         repo = Repository.query.filter_by(name=repo_name).one()
-        if repo.latest_release:
-            release = GitHubRelease(repo.latest_release)
+        release = repo.latest_release(status=ReleaseStatus.PUBLISHED)
+        if release:
             return redirect('https://doi.org/{pid}'.format(
-                pid=release.pid.pid_value))
+                pid=GitHubRelease(release).pid.pid_value))
     except NoResultFound:
         pass
     abort(404)

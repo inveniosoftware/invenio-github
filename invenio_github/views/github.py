@@ -30,7 +30,8 @@ from datetime import datetime
 import humanize
 import pytz
 from dateutil.parser import parse
-from flask import Blueprint, abort, redirect, render_template, request, url_for
+from flask import Blueprint, abort, current_app, redirect, render_template, \
+    request, url_for
 from flask_babelex import gettext as _
 from flask_breadcrumbs import register_breadcrumb
 from flask_login import current_user, login_required
@@ -96,7 +97,7 @@ def index():
     token = github.session_token
     ctx = dict(connected=False)
 
-    if token and github.check_token(token.access_token):
+    if token:
         # The user is authenticated and the token we have is still valid.
         if github.account.extra_data.get('login') is None:
             github.init_account()
@@ -118,7 +119,8 @@ def index():
             ).all()
             for repo in db_repos:
                 repos[str(repo.github_id)]['instance'] = repo
-                repos[str(repo.github_id)]['latest'] = repo.latest_release
+                repos[str(repo.github_id)]['latest'] = GitHubRelease(
+                    repo.latest_release())
 
         last_sync = humanize.naturaltime(
             (utcnow() - parse_timestamp(extra_data['last_sync'])))
@@ -129,7 +131,7 @@ def index():
             'last_sync': last_sync,
         })
 
-    return render_template('invenio_github/settings/index.html', **ctx)
+    return render_template(current_app.config['GITHUB_TEMPLATE_INDEX'], **ctx)
 
 
 @blueprint.route('/repository/<path:name>')
@@ -142,7 +144,7 @@ def repository(name):
     github = GitHubAPI(user_id=user_id)
     token = github.session_token
 
-    if token and github.check_token(token.access_token):
+    if token:
         repos = github.account.extra_data.get('repos', [])
         repo = next((repo for repo_id, repo in repos.items()
                      if repo.get('full_name') == name), {})
@@ -158,26 +160,20 @@ def repository(name):
             repo_instance = Repository(name=repo['full_name'],
                                        github_id=repo['id'])
 
-        # FIXME: Wrap releases in current_github.release_api_class?
-        release_api = current_github.release_api_class
-        releases = [release_api(r) for r in
-                    (repo_instance.releases
-                     .order_by(db.desc(Release.created)).all()
-                     if repo_instance.id else [])]
+        releases = [
+            current_github.release_api_class(r) for r in (
+                repo_instance.releases.order_by(db.desc(Release.created)).all()
+                if repo_instance.id else []
+            )
+        ]
         return render_template(
-            'invenio_github/settings/view.html',
+            current_app.config['GITHUB_TEMPLATE_VIEW'],
             repo=repo_instance,
             releases=releases,
+            serializer=current_github.record_serializer,
         )
 
     abort(403)
-
-
-@blueprint.route('/faq')
-@login_required
-def faq():
-    """Display FAQ."""
-    return render_template('invenio_github/settings/faq.html')
 
 
 @blueprint.route('/rejected')

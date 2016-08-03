@@ -67,8 +67,17 @@ GITHUB_METADATA_FILE = '.invenio.json'
 GITHUB_DEPOSIT_CLASS = 'invenio_deposit.api:Deposit'
 """Deposit class that implements a `publish` method."""
 
+GITHUB_RECORD_SERIALIZER = None
+"""Serializer to use to display record metadata."""
+
 GITHUB_PID_FETCHER = 'recid'
 """PID Fetcher for Release records."""
+
+GITHUB_TEMPLATE_INDEX = 'invenio_github/settings/index.html'
+"""Repositories list template."""
+
+GITHUB_TEMPLATE_VIEW = 'invenio_github/settings/view.html'
+"""Repository detail view template."""
 
 # Copy the default GitHub OAuth application configuration, and update
 # handlers and scope.

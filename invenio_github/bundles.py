@@ -35,7 +35,7 @@ js = NpmBundle(
     depends=('js/github/*.js'),
     filters='jsmin',
     npm={
-        'bootstrap-switch': "~3.0.2",
+        'bootstrap-switch': '~3.0.2',
     },
     output='gen/github.%(version)s.js',
 )
@@ -44,10 +44,11 @@ js = NpmBundle(
 css = NpmBundle(
     'node_modules/bootstrap-switch/dist/css/bootstrap3/bootstrap-switch.css',
     Bundle(
-        'css/github/github.css',
+        'scss/github/github.scss',
+        filters='scss',
     ),
     filters='cleancss',
-    depends=('css/github/*.css'),
+    depends=('scss/github/*.scss'),
     npm={
         'bootstrap-switch': '~3.0.2',
     },

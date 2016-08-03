@@ -155,7 +155,7 @@ class GitHubAPI(object):
             }
 
         if hooks:
-            self._sync_hooks(active_repos.keys(), async=async_hooks)
+            self._sync_hooks(list(active_repos.keys()), async=async_hooks)
 
         # Remove ownership from repositories that the user has no longer
         # 'admin' permissions, or have been deleted.

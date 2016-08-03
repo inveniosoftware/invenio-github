@@ -52,6 +52,14 @@ class InvenioGitHub(object):
         assert issubclass(cls, GitHubRelease)
         return cls
 
+    @cached_property
+    def record_serializer(self):
+        """Github Release API class."""
+        imp = current_app.config['GITHUB_RECORD_SERIALIZER']
+        if isinstance(imp, string_types):
+            return import_string(imp)
+        return imp
+
     def init_app(self, app):
         """Flask application initialization."""
         self.init_config(app)

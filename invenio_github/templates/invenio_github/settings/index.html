@@ -18,7 +18,6 @@
 #}
 
 {%- import "invenio_github/settings/helpers.html" as helpers with context %}
-{%- from "invenio_github/helpers.html" import doi_badge with context %}
 
 {%- if not request.is_xhr %}
 {%- extends config.GITHUB_SETTINGS_TEMPLATE %}
@@ -41,7 +40,7 @@ require(['jquery', 'js/github/view'], function($, view) {
       github_view: "#github-view"
     });
   });
-})
+});
 </script>
 {%- endblock %}
 {%- endif %}
@@ -72,8 +71,8 @@ require(['jquery', 'js/github/view'], function($, view) {
       <h2><strong>2</strong> <small>Create a release</small></h2>
       <hr>
       Go to GitHub and <a href="https://help.github.com/articles/creating-releases">create a release</a>.
-      {{config.THEME_NAME | default('System') }} will automatically download
-      a .zip-ball of all new releases and register a DOIs for them.
+      {{config.THEME_SITENAME | default('System') }} will automatically download
+      a .zip-ball of each new release and register a DOI.
     </div>
     <div class="col-md-4">
       <h2><strong>3</strong> <small>Get the badge</small></h2>
@@ -94,74 +93,52 @@ require(['jquery', 'js/github/view'], function($, view) {
       <a href="https://doi.org/10.5281/zenodo.8475"><img src="{{ url_for('invenio_formatter_badges.badge', title='doi', value='10.5281/zenodo.8475', ext='svg') }}" alt="10.5281/zenodo.8475"></a><br><small class="text-muted">(example)</small>
     </div>
   </div>
-  <p class="hide text-muted text-center"><small>More questions? Check out the <a href="{{url_for('invenio_github.faq')}}">FAQ</a>.</small></p>
 </div>
-<table id="github-repositories" class="table table-striped">
-  <tbody>
-    {% if not repos %}
-    <tr>
-      <td colspan="2">
-        <div align="center">
-          <em>
-            You have no repositories on GitHub.<br>
-            Go to <a href="https://github.com/new">GitHub</a>
-            and create your first or click Sync-button to synchronize
-            latest changes from GitHub.
-          </em>
-        </div>
-      </td>
-    </tr>
-    {% endif %}
-    {%- for repo_id, repo in repos %}
-    <tr>
-      <td>
-        <div class="repo-container">
-          {# Set DOI badge for latest release #}
-          {% set doi_url = None %}
-          {% if repo.latest %}
-            {% set pid = repo.latest|release_pid %}
-            {% if pid %}
-              {% set doi_url = url_for('invenio_github_badge.latest_doi', github_id=repo_id, _external=True, _scheme='https')%}
-              {{ doi_badge(pid.pid_value, github_id=repo_id) }}
-            {% endif %}
-          {% endif %}
 
-          {# Basic repository info #}
-          <h4 class="repo">
-            <a href="https://github.com/{{repo.full_name}}" title="{{ _('Go to GitHub.') }}">
-              <i class="fa fa-github text-muted"></i>
-            </a>
-            <a href="{{ url_for('.repository', name=repo.full_name) }}">{{ repo.full_name }}</a>
-            {% if repo.instance and repo.instance.hook %}
-              <i class="fa fa-check text-success"></i>
-            {% endif %}
-          </h4>
-          <small class="text-muted repo-description"> {{ repo.description }}</small>
+{{ helpers.panel_end(with_body=False) }}
+{%- if repos %}
+  {%- for repo_id, repo in repos if repo.instance and repo.instance.hook %}
+    {%- if loop.first %}
+      {{ helpers.panel_start(_('Enabled Repositories'), with_body=False) }}
+    {%- endif %}
+    {% include "invenio_github/settings/index_item.html" with context %}
+    {%- if loop.last %}
+      {{ helpers.panel_end(with_body=False) }}
+    {%- endif %}
+  {%- endfor %}
+{% endif %}
 
-          {# Latest release info and links #}
-          {% if doi_url %}
-            <p><small class="text-muted">Latest release ({{repo.latest.tag}}): <i class="fa fa-eye"></i> <a href="{{ doi_url }}" class="">{{ config.SERVER_NAME }}</a>, <i class="fa fa-github"></i> <a href="https://github.com/{{repo.full_name}}/tree/{{repo.latest.tag}}" class="">GitHub</a></small></p>
-          {% endif %}
 
-        </div>
-      </td>
-      <td class="hook-toggle">
-        <div>
-          <i class="hook-status fa" data-repo-id="{{repo_id}}"></i>
-          {% set inaccessible = (repo.instance and repo.instance.user_id and (repo.instance.user_id != current_user.id)) %}
-          <input type="checkbox" {{'disabled' if inaccessible}} {{ 'checked' if repo.instance and repo.instance.hook }} data-size="mini" data-animate="true" data-repo-id="{{repo_id}}">
-          {% if inaccessible %}
-            <small class="text-muted">{{_('(This repository is managed by a different user of the organization)')}}</small>
-          {% endif %}
-        </div>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+{{ helpers.panel_start(_('Repositories'), with_body=False) }}
+<div class="panel-body">
+  <p>
+    <small class="text-muted">
+    If your organization's repositories do not show up in the list, please
+    ensure you have enabled <a href="https://help.github.com/articles/approving-third-party-applications-for-your-organization/">third-party
+    access</a> to the {{config.THEME_SITENAME | default('Invenio')}} application.
+    Private repositories are not supported.
+    </small>
+  </p>
+</div>
+{%- if not repos %}
+<div class="panel-body">
+  <p>
+    You have no repositories on GitHub.<br>
+    Go to <a href="https://github.com/new">GitHub</a> and create your first or
+    click Sync-button to synchronize latest changes from GitHub.
+  </p>
+</div>
+{%- else %}
+  {%- for repo_id, repo in repos if not repo.instance or not repo.instance.hook %}
+    {%- if loop.first %}
+    <hr />
+    {%- endif %}
+    {% include "invenio_github/settings/index_item.html" with context %}
+  {%- endfor %}
+{% endif %}
 {{ helpers.panel_end(with_body=False) }}
 
-{# If the user has not connected his GitHub account... #}
+{#- If the user has not connected his GitHub account... #}
 {%- else %}
 {{ helpers.panel_start(
   _('GitHub'),

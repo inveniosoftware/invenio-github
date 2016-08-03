@@ -52,8 +52,8 @@ RELEASE_STATUS_TITLES = {
 }
 
 RELEASE_STATUS_ICON = {
-    'RECEIVED': 'fa-inbox',
-    'PROCESSING': 'fa-cog',
+    'RECEIVED': 'fa-spinner',
+    'PROCESSING': 'fa-spinner',
     'PUBLISHED': 'fa-check',
     'FAILED': 'fa-times',
 }
@@ -236,15 +236,11 @@ class Repository(db.Model, Timestamp):
         """Return if the repository has webhooks enabled."""
         return bool(self.hook)
 
-    @property
-    def latest_release(self):
+    def latest_release(self, status=None):
         """Chronologically latest published release of the repository."""
-        return (
-            self.releases
-            .filter_by(status=ReleaseStatus.PUBLISHED)
-            .order_by(db.desc(Release.created))
-            .first()
-        )
+        q = self.releases if status is None else self.releases.filter_by(
+            status=status)
+        return q.order_by(db.desc(Release.created)).first()
 
     def __repr__(self):
         """Get repository representation."""

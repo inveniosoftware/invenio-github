@@ -25,7 +25,7 @@
 """Invenio-GitHub errors."""
 
 
-class GitHubError(object):
+class GitHubError(Exception):
     """General GitHub error."""
 
 

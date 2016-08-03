@@ -70,3 +70,13 @@
 </div>
 {%- endblock %}
 {%- endmacro %}
+
+{%- macro repo_switch(repo, repo_id, size='mini') %}
+{%- block repo_switch scoped %}
+  <i class="hook-status fa" data-repo-id="{{repo_id}}"></i>
+  {%- set inaccessible = (repo and repo.user_id and (repo.user_id != current_user.id)) %}
+  <span{%- if inaccessible %} data-toggle="tooltip" data-placement="top" title="{{_('This repository is managed by another user of your GitHub organization.')}}"{%- endif %}>
+  <input type="checkbox"{{' disabled' if inaccessible}}{{ ' checked' if repo and repo.enabled }} data-size="{{size}}" data-animate="true" data-repo-id="{{repo_id}}">
+  </span>
+{%- endblock %}
+{%- endmacro %}

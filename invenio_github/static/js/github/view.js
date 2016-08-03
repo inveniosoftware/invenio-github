@@ -29,13 +29,13 @@ define(function(require, exports, module) {
     init_switches(config);
     init_syncbutton(config);
 
+    $('[data-toggle="tooltip"]').tooltip();
+
     $('i.error').tooltip({
       trigger: 'hover',
       animation: true,
       placement: 'top',
     });
-
-    $('[data-toggle="tooltip"]').tooltip();
   };
 
   function init_syncbutton(config){

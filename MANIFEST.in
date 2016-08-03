@@ -42,4 +42,5 @@ recursive-include invenio_github *.html
 recursive-include invenio_github *.js
 recursive-include invenio_github *.png
 recursive-include invenio_github *.po *.pot *.mo
+recursive-include invenio_github *.scss
 recursive-include invenio_github *.ttf

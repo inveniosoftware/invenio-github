@@ -18,105 +18,206 @@
 #}
 
 {%- import "invenio_github/settings/helpers.html" as helpers with context %}
+{%- from "invenio_github/helpers.html" import doi_badge with context -%}
 
 {%- extends config.GITHUB_SETTINGS_TEMPLATE %}
 
+{%- block javascript %}
+{{ super() }}
+{% assets "invenio_github_js" %}<script src="{{ ASSET_URL }}"></script>{% endassets %}
+<script type="text/javascript">
+require(['jquery', 'js/github/view'], function($, view) {
+  $(document).ready(function(){
+    view({
+      hook_url: "{{url_for('invenio_github.hook')}}",
+      sync_url: "{{url_for('invenio_github.index')}}",
+      sync_button: "button[name='sync-repos']",
+      github_view: "#github-view"
+    });
+  });
+});
+</script>
+{%- endblock %}
+
 {%- block settings_content %}
-<div class="panel-body">
+{%- set github_rel_url = 'https://github.com/{0}/releases/new'.format(repo.name) %}
+{%- set latest_success_pid = None %}
+{%- set latest_published = repo.latest_release(status='D') %}
+{%- if latest_published %}
+  {%- set latest_success_pid = latest_published|release_pid %}
+{%- endif %}
+<div class="github-panels">
+  <span class="pull-right switch">
+    {{helpers.repo_switch(repo, repo.github_id, size='normal')}}
+  </span>
   <h1><i class="fa fa-github"></i>&nbsp;{{ repo.name }}</h1>
-  <h2>{{ _('Releases') }}</h2>
-</div>
-<ul class="list-group">
-  {% if not releases %}
-  <li class="list-group-item" align="center">
-    <em>
-      There are no archived releases.<br>
-      Go to <a href="https://github.com/{{ repo.name }}/releases">GitHub</a>
-      and create your first release.
-    </em>
-  </li>
-  {% endif %}
-  {%- for release in releases %}
-  <li class="list-group-item">
-    <div>
-    <p>{{ release.title }}
-    &nbsp;
-    {# PID Badge (specific for the release) #}
-    {# TODO: Move generation of release-specific badges to the badges views #}
-    {% if release.pid %}
-      <a href="https://doi.org/{{release.pid.pid_value}}"><img src="{{ url_for('invenio_formatter_badges.badge', title=release.pid.pid_type, value=release.pid.pid_value, ext='svg') }}" alt="{{ release.pid.pid_value }}"></a>
-    {% endif %}
-    </p>
-    </div>
-    &nbsp;
-    <small>
-      <a class="text-primary" href="https://github.com/{{ repo.name }}/releases/tag/{{ release.model.tag }}">
-        <i class="fa fa-tag"></i> {{ release.model.tag }}
-      </a>
-    </small>
-    &nbsp;
-    <small class="text-{{ release.model.status.color }}">
-      <i class="fa {{ release.model.status.icon }}"></i> {{ release.model.status.title }}
-    </small>
-    &nbsp;
-    {# Edit Button #}
-    {% if release.model.deposit_id %}
-      {# use url_for('invenio_deposit_ui.depid') here... #}
-      <a class="label label-info" href="/deposit/{{ release.model.deposit_id }}"><i class="fa fa-edit"></i> {{_('Edit Deposit')}}
-      </a>
-      &nbsp;
-    {% endif %}
-    <span class="pull-right">
-      <small class="text-muted">
-        {{ release.model.created|naturaltime }}
-      </small>
-      <span class="btn btn-xs btn-default" type="button"
-        data-toggle="collapse" data-target="#{{ release.model.id }}"
-        aria-expanded="false" aria-controls="collapseExample">
-        ...
-      </span>
-    </span>
-    <div class="clearfix"></div>
-    <div id="{{ release.model.id }}" class="collapse">
-      <br/>
-      <!-- Nav tabs -->
-      <ul class="nav nav-tabs" role="tablist">
-        <li role="presentation" class="active">
-          <a href="#{{ release.model.id }}-deposit" aria-controls="home" role="tab"
-            data-toggle="tab">{{ _('Deposit') }}</a>
-        </li>
-        <li role="presentation">
-          <a href="#{{ release.model.id }}-event" aria-controls="home" role="tab"
-            data-toggle="tab">{{ _('Event') }}</a>
-        </li>
-        <li role="presentation">
-          <a href="#{{ release.model.id }}-errors" aria-controls="home" role="tab"
-            data-toggle="tab">{{ _('Errors') }}</a>
-        </li>
-      </ul>
-      <!-- Tab panes -->
-      <div class="tab-content">
-        <div role="tabpanel" class="tab-pane active" id="{{ release.model.id }}-deposit">
-          <h5>{{ _('Metadata') }}</h5>
-          {% if release.record %}
-              <pre>{{ release.record|tojson|prettyjson }}</pre>
-          {% endif %}
+  {%- if latest_success_pid %}
+  <p>{{ doi_badge(latest_success_pid.pid_value, github_id=repo.github_id) }}</p>
+  {%- endif %}
+  {{ helpers.panel_start(
+    _('GitHub / Releases'),
+    with_body=False,
+    btn='Create release ...',
+    btn_icon='fa fa-github',
+    btn_href=github_rel_url,
+  ) }}
+  {%- if not releases %}
+    {%- if repo.enabled %}
+      {%- block repo_getstarted scoped %}
+      <div class="jumbotron ng-binding" align="center">
+        <h1>{{_('Get started!')}}</h1>
+        <p>{{_('Go to GitHub and make your first release.')}}</p>
+        <h1>
+          <a class="btn btn-success btn-lg" href="{{github_rel_url}}">
+            <i class="fa fa-github"></i> {{ repo.name }}
+          </a>
+        </h1>
+      </div>
+      {%- endblock repo_getstarted %}
+    {%- else -%}
+      {%- block repo_enable scoped %}
+      <div class="jumbotron ng-binding" align="center">
+        <h1>{{_('Get started!')}}</h1>
+        <div class="row" align="left">
+          <div class="col-md-6">
+            <h2><strong>1</strong> <small>Flip the switch</small></h2>
+            <hr>
+            Toggle the switch below to turn on/off automatic preservation of your repository.
+          </div>
+          <div class="col-md-6">
+            <h2><strong>2</strong> <small>Create a release</small></h2>
+            <hr>
+            Go to GitHub and create a release. {{config.THEME_SITENAME | default('Invenio') }}
+            will automatically download a .zip-ball of each new release and register a DOI.
+          </div>
         </div>
-        <div role="tabpanel" class="tab-pane" id="{{ release.model.id }}-event">
-          <h5>{{ _('Payload') }}</h5>
-          {% if release.event %}
-            <pre>{{ release.event.payload|tojson|prettyjson }}</pre>
-          {% endif %}
-        </div>
-        <div role="tabpanel" class="tab-pane" id="{{ release.model.id }}-errors">
-          {% if release.model.errors %}
-            <h5>{{ _('Errors') }}</h5>
-            <pre>{{ release.model.errors|tojson|prettyjson }}</pre>
-          {% endif %}
+        <div class="row buttons">
+          <div class="col-md-6" align="center">
+            {{helpers.repo_switch(repo, repo.github_id, size='large')}}
+          </div>
+          <div class="col-md-6" align="center">
+              <a class="btn btn-success btn-lg" href="{{github_rel_url}}">
+                <i class="fa fa-github"></i> {{ repo.name }}
+              </a>
+          </div>
         </div>
       </div>
-    </div>
-  </li>
-  {% endfor %}
-</ul>
+      {%- endblock repo_enable %}
+    {%- endif -%}
+  {%- else %}
+    {%- block repo_releases scoped %}
+      {%- for release in releases %}
+      <div class="panel-body release {{release.model.status.title|lower}}">
+        {%- block release_header scoped %}
+        <div class="row">
+          <div class="col-md-9">
+              {%- block release_title scoped %}
+              <h5>
+                <i class="fa fa-tag fa-fw"></i>
+                <a href="#" data-toggle="collapse" data-target="#{{ release.model.id }}">
+                  {{ release.model.tag }} {{ release.title }}
+                </a>
+              </h5>
+              {%- if release.pid %}
+              <p>
+                <a href="https::/doi.org/{{release.pid.pid_value}}" class="text-muted">
+                  <i class="fa fa-fw fa-barcode"></i>
+                  DOI: {{release.pid.pid_value}}
+                </a>
+              </p>
+              {%- endif %}
+              <p>
+                <a href="{{release.event.payload.release.html_url}}" class="text-muted">
+                  <i class="fa fa-fw fa-github"></i>
+                  {{release.event.payload.release.name}}
+                </a>
+              </p>
+              {%- endblock release_title %}
+          </div>
+          <div class="col-md-3">
+            {%- block release_status scoped %}
+            <h5>
+              <i class="fa {{ release.model.status.icon }}"></i>
+              <a href="#" data-toggle="collapse" data-target="#{{ release.model.id }}">
+              {{_(release.model.status.title)}}
+              </a>
+            </h5>
+            <small class="text-muted">{{ release.model.created|naturaltime }}</small>
+            {%- endblock release_status %}
+          </div>
+        </div>
+      </div>
+      {%- endblock release_header %}
+      {%- block release_body scoped %}
+      <div id="{{ release.model.id }}" class="panel-body release {{release.model.status.title|lower}} collapse">
+        <ul class="nav nav-tabs" role="tablist">
+          {%- if release.event %}
+          <li class="active">
+            <a href="#{{ release.model.id }}-event" data-toggle="tab">{{ _('Payload') }}</a>
+          </li>
+          {%- endif %}
+          {%- if release.record %}
+          <li>
+            <a href="#{{ release.model.id }}-metadata" data-toggle="tab">{{ _('Metadata') }}</a>
+          </li>
+          {%- endif %}
+          {%- if release.model.errors %}
+          <li>
+            <a href="#{{ release.model.id }}-errors" data-toggle="tab">{{ _('Errors') }}</a>
+          </li>
+          {%- endif %}
+        </ul>
+        <div class="tab-content">
+          {%- if release.event %}
+          {%- block releasetab_payload scoped %}
+          <div role="tabpanel" class="tab-pane active" id="{{ release.model.id }}-event">
+            <small class="text-muted pull-right">{{_('Received')}} {{release.event.created|datetimeformat}}.</small>
+            <h4>GitHub Payload</h4>
+            <pre>{{ release.event.payload|tojson|prettyjson }}</pre>
+          </div>
+          {%- endblock releasetab_payload %}
+          {%- endif %}
+          {%- if release.record %}
+          {%- block releasetab_metadata scoped %}
+          <div role="tabpanel" class="tab-pane" id="{{ release.model.id }}-metadata">
+            <h4>{{_('JSON Export')}}</h4>
+            <p>
+            <small class="text-muted">
+              {{config.THEME_SITENAME | default('Invenio')}} automatically
+              extracts metadata about your repository from GitHub APIs. The
+              authors are e.g. determined from the repository's contributor
+              statistics. The automatic extraction is <strong>solely a best
+              guess</strong>. Add a
+              <code>{{config.GITHUB_METADATA_FILE}}</code> file the root of
+              your repository to explicit define the metadata. The format of
+              file is the same as for our REST API (use e.g. below JSON to
+              get started).
+            </small>
+            </p>
+            <pre>{{ serializer.serialize(release.pid, release.record)|prettyjson }}</pre>
+          </div>
+          {%- endblock releasetab_metadata %}
+          {%- endif %}
+          {%- if release.model.errors %}
+          {%- block releasetab_errors scoped %}
+          <div role="tabpanel" class="tab-pane" id="{{ release.model.id }}-errors">
+            <h4>{{ _('Errors') }}</h4>
+            <pre>{{ release.model.errors|tojson|prettyjson }}</pre>
+          </div>
+          {%- endblock releasetab_errors %}
+          {%- endif %}
+        </div>
+      </div>
+      {%- endblock release_body %}
+      {%- set is_last = loop.last %}
+      {%- block release_footer scoped %}
+      {%- if not is_last %}
+      <hr />
+      {%- endif %}
+      {%- endblock release_footer %}
+      {%- endfor %}
+    {%- endblock repo_releases %}
+  {%- endif %}
+  {{ helpers.panel_end() }}
+  </div>
 {%- endblock %}
