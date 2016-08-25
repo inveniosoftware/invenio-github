@@ -86,7 +86,7 @@ def release_pid(release):
 @login_required
 @register_menu(
     blueprint, 'settings.github',
-    _('<i class="fa fa-github fa-fw"></i> GitHub'),
+    '<i class="fa fa-github fa-fw"></i> GitHub',
     order=10,
     active_when=lambda: request.endpoint.startswith('invenio_github.')
 )

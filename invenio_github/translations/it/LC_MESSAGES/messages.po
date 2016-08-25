@@ -3,7 +3,7 @@
 # This file is distributed under the same license as the invenio-github
 # project.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2016.
-#
+# 
 #, fuzzy
 msgid ""
 msgstr ""
@@ -11,42 +11,46 @@ msgstr ""
 "Report-Msgid-Bugs-To: info@inveniosoftware.org\n"
 "POT-Creation-Date: 2016-08-30 13:46+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
+"Last-Translator: Alizee Pace <alizee.pace@gmail.com>, 2016\n"
+"Language-Team: Italian (https://www.transifex.com/inveniosoftware/teams/23537/it/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.3.4\n"
+"Language: it\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: invenio_github/models.py:48
 msgid "Received"
-msgstr ""
+msgstr "Ricevuto"
 
 #: invenio_github/models.py:49
 msgid "Processing"
-msgstr ""
+msgstr "In trattamento"
 
 #: invenio_github/models.py:50
 msgid "Published"
-msgstr ""
+msgstr "Pubblicato"
 
 #: invenio_github/models.py:51
 msgid "Failed"
-msgstr ""
+msgstr "Fallito"
 
 #: invenio_github/templates/invenio_github/settings/helpers.html:78
-msgid "This repository is managed by another user of your GitHub organization."
+msgid ""
+"This repository is managed by another user of your GitHub organization."
 msgstr ""
+"Questo repository è gestito da un'altro utente della tua organizzazione "
+"GitHub."
 
 #: invenio_github/templates/invenio_github/settings/index_item.html:26
 msgid "Go to GitHub."
-msgstr ""
+msgstr "Vai su GitHub."
 
 #: invenio_github/views/github.py:93
 msgid "GitHub"
-msgstr ""
+msgstr "GitHub"
 
 #: invenio_github/views/github.py:140
 msgid "Repository"
-msgstr ""
-
+msgstr "Repository"

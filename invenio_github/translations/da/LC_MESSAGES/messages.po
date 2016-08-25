@@ -1,23 +1,23 @@
-# English translations for invenio-github.
+# Translations template for invenio-github.
 # Copyright (C) 2016 CERN
 # This file is distributed under the same license as the invenio-github
 # project.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2016.
-#
+# 
+#, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: invenio-github 1.0.0a2.dev20160801\n"
+"Project-Id-Version: invenio-github 1.0.0a4.dev20160804\n"
 "Report-Msgid-Bugs-To: info@inveniosoftware.org\n"
 "POT-Creation-Date: 2016-08-30 13:46+0200\n"
-"PO-Revision-Date: 2016-08-02 08:53+0200\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language: en\n"
-"Language-Team: en <LL@li.org>\n"
-"Plural-Forms: nplurals=2; plural=(n != 1)\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Language-Team: Danish (https://www.transifex.com/inveniosoftware/teams/23537/da/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.3.4\n"
+"Language: da\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: invenio_github/models.py:48
 msgid "Received"
@@ -36,7 +36,8 @@ msgid "Failed"
 msgstr ""
 
 #: invenio_github/templates/invenio_github/settings/helpers.html:78
-msgid "This repository is managed by another user of your GitHub organization."
+msgid ""
+"This repository is managed by another user of your GitHub organization."
 msgstr ""
 
 #: invenio_github/templates/invenio_github/settings/index_item.html:26
@@ -50,37 +51,3 @@ msgstr ""
 #: invenio_github/views/github.py:140
 msgid "Repository"
 msgstr ""
-
-#~ msgid "GitHub - Frequently Asked Questions"
-#~ msgstr ""
-
-#~ msgid "Software preservation made simple!"
-#~ msgstr ""
-
-#~ msgid "Connect"
-#~ msgstr ""
-
-#~ msgid "Releases"
-#~ msgstr ""
-
-#~ msgid "Edit Deposit"
-#~ msgstr ""
-
-#~ msgid "Deposit"
-#~ msgstr ""
-
-#~ msgid "Event"
-#~ msgstr ""
-
-#~ msgid "Errors"
-#~ msgstr ""
-
-#~ msgid "Metadata"
-#~ msgstr ""
-
-#~ msgid "Payload"
-#~ msgstr ""
-
-#~ msgid "<i class=\"fa fa-github fa-fw\"></i> GitHub"
-#~ msgstr ""
-
