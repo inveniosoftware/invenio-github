@@ -238,6 +238,9 @@ class Repository(db.Model, Timestamp):
 
     def latest_release(self, status=None):
         """Chronologically latest published release of the repository."""
+        # Bail out fast if object not in DB session.
+        if self not in db.session:
+            return None
         q = self.releases if status is None else self.releases.filter_by(
             status=status)
         return q.order_by(db.desc(Release.created)).first()
