@@ -61,10 +61,10 @@ setup_requires = [
 ]
 
 install_requires = [
-    'Flask>=0.11.1',
     'Flask-BabelEx>=0.9.2',
     'Flask-Breadcrumbs>=0.3.0',
     'Flask-Menu>=0.5.0',
+    'Flask>=0.11.1',
     'github3.py>=1.0.0a4',
     'humanize>=0.5.1',
     'invenio-assets>=1.0.0a4',
@@ -79,6 +79,7 @@ install_requires = [
     'invenio-webhooks>=1.0.0a3',
     'mistune>=0.7.2',
     'six>=1.10.0',
+    'uritemplate.py>=0.2.0,<2.0',
 ]
 
 packages = find_packages()
