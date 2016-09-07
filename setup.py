@@ -125,6 +125,12 @@ setup(
         'invenio_webhooks.receivers': [
             'github = invenio_github.receivers:GitHubReceiver',
         ],
+        'invenio_admin.views': [
+            'invenio_github_repository = '
+            'invenio_github.admin:repository_adminview',
+            'invenio_github_requests = '
+            'invenio_github.admin:release_adminview',
+        ],
         'invenio_assets.bundles': [
             'invenio_github_js = invenio_github.bundles:js',
             'invenio_github_css = invenio_github.bundles:css',
