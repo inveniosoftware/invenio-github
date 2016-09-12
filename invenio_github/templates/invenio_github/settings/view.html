@@ -127,9 +127,9 @@ require(['jquery', 'js/github/view'], function($, view) {
               </p>
               {%- endif %}
               <p>
-                <a href="{{release.event.payload.release.html_url if release.event else 'https://github.com/{0}/releases/tag/{1}'.format(repo.name, release.tag)}}" class="text-muted">
+                <a href="{{release.event.payload.release.html_url if release.event else 'https://github.com/{0}/releases/tag/{1}'.format(repo.name, release.model.tag)}}" class="text-muted">
                   <i class="fa fa-fw fa-github"></i>
-                  {{release.event.payload.release.name if release.event else release.tag}}
+                  {{release.event.payload.release.name if release.event and release.event.payload.release.name else release.model.tag}}
                 </a>
               </p>
               {%- endblock release_title %}
