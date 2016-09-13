@@ -42,14 +42,14 @@ blueprint = Blueprint(
 
 def get_badge_image_url(repo, ext='svg'):
     """Return the badge for a DOI."""
-    if repo.latest_release:
-        release = GitHubRelease(repo.latest_release(
-            status=ReleaseStatus.PUBLISHED))
-        pid = release.pid
-    return url_for('invenio_formatter_badges.badge',
-                   title=pid.pid_type,
-                   value=pid.pid_value,
-                   ext=ext)
+    release = repo.latest_release(ReleaseStatus.PUBLISHED)
+    if release:
+        pid = GitHubRelease(release).pid
+        return url_for('invenio_formatter_badges.badge',
+                       title=pid.pid_type,
+                       value=pid.pid_value,
+                       ext=ext)
+    abort(404)
 
 
 #
