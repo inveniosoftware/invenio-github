@@ -172,7 +172,7 @@ class Repository(db.Model, Timestamp):
         return obj
 
     @classmethod
-    def get(cls, user_id, github_id=None, name=None):
+    def get(cls, user_id, github_id=None, name=None, check_owner=True):
         """Return a repository.
 
         :param integer user_id: User identifier.
@@ -190,7 +190,7 @@ class Repository(db.Model, Timestamp):
         repo = cls.query.filter((Repository.github_id == github_id) |
                                 (Repository.name == name)).one()
 
-        if repo and repo.user_id and str(repo.user_id) != str(user_id):
+        if check_owner and repo and repo.user_id and repo.user_id != user_id:
             raise RepositoryAccessError(
                 'User {user} cannot access repository {repo}({repo_id}).'
                 .format(user=user_id, repo=name, repo_id=github_id)

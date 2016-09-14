@@ -26,7 +26,6 @@
 from __future__ import absolute_import
 
 from flask import Blueprint, abort, redirect, url_for
-from sqlalchemy.orm.exc import NoResultFound
 
 from ..api import GitHubRelease
 from ..models import ReleaseStatus, Repository

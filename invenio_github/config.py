@@ -23,6 +23,7 @@
 """Configuration for GitHub module."""
 
 from copy import deepcopy
+from datetime import timedelta
 
 from invenio_oauthclient.contrib.github import REMOTE_APP
 
@@ -57,6 +58,9 @@ GITHUB_INSECURE_SSL = False
 Never set to True in a production environment, but can be useful for
 development and integration servers.
 """
+
+GITHUB_REFRESH_TIMEDELTA = timedelta(days=1)
+"""Time period after which a GitHub account sync should be initiated."""
 
 GITHUB_RELEASE_CLASS = 'invenio_github.api:GitHubRelease'
 """GitHubRelease class to be used for release handling."""

@@ -209,11 +209,14 @@ class GitHubAPI(object):
                 pass
 
     def check_sync(self):
-        """Check and sync if over a day has passed since the last sync."""
-        now = utcnow()
-        yesterday = now - timedelta(days=1)
+        """Check if sync is required based on last sync date."""
+        # If refresh interval is not specified, we should refresh every time.
+        expiration = utcnow()
+        refresh_td = current_app.config.get('GITHUB_REFRESH_TIMEDELTA')
+        if refresh_td:
+            expiration -= refresh_td
         last_sync = parse_timestamp(self.account.extra_data['last_sync'])
-        return last_sync < yesterday
+        return last_sync < expiration
 
     def create_hook(self, repo_id, repo_name):
         """Create repository hook."""

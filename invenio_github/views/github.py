@@ -152,8 +152,12 @@ def repository(name):
             abort(403)
 
         try:
+            # NOTE: Here we do not check for repository ownership, since it
+            # might have changed even though the user might have made releases
+            # in the past.
             repo_instance = Repository.get(user_id=user_id,
-                                           github_id=repo['id'])
+                                           github_id=repo['id'],
+                                           check_owner=False)
         except RepositoryAccessError:
             abort(403)
         except NoResultFound:
