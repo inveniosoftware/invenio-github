@@ -40,16 +40,24 @@ blueprint = Blueprint(
 )
 
 
-def get_badge_image_url(repo, ext='svg'):
-    """Return the badge for a DOI."""
+def get_pid_of_latest_release_or_404(**kwargs):
+    """Return PID of the latest release."""
+    repo = Repository.query.filter_by(**kwargs).first_or_404()
     release = repo.latest_release(ReleaseStatus.PUBLISHED)
     if release:
-        pid = GitHubRelease(release).pid
-        return url_for('invenio_formatter_badges.badge',
-                       title=pid.pid_type,
-                       value=pid.pid_value,
-                       ext=ext)
+        return GitHubRelease(release).pid
     abort(404)
+
+
+def get_badge_image_url(pid, ext='svg'):
+    """Return the badge for a DOI."""
+    return url_for('invenio_formatter_badges.badge',
+                   title=pid.pid_type, value=pid.pid_value, ext=ext)
+
+
+def get_doi_url(pid):
+    """Return the badge for a DOI."""
+    return 'https://doi.org/{pid.pid_value}'.format(pid=pid)
 
 
 #
@@ -58,47 +66,26 @@ def get_badge_image_url(repo, ext='svg'):
 @blueprint.route('/<int:github_id>.svg')
 def index(github_id):
     """Generate a badge for a specific GitHub repository."""
-    try:
-        repo = Repository.query.filter_by(github_id=github_id).one()
-        return redirect(get_badge_image_url(repo))
-    except NoResultFound:
-        pass
-    abort(404)
+    pid = get_pid_of_latest_release_or_404(github_id=github_id)
+    return redirect(get_badge_image_url(pid))
 
 
 @blueprint.route('/<int:user_id>/<path:repo_name>.svg')
 def index_old(user_id, repo_name):
     """Generate a badge for a specific GitHub repository."""
-    try:
-        repo = Repository.query.filter_by(name=repo_name).one()
-        return redirect(get_badge_image_url(repo))
-    except NoResultFound:
-        abort(404)
+    pid = get_pid_of_latest_release_or_404(name=repo_name)
+    return redirect(get_badge_image_url(pid))
 
 
 @blueprint.route('/latestdoi/<int:github_id>')
 def latest_doi(github_id):
     """Redirect to the newest record version."""
-    try:
-        repo = Repository.query.filter_by(github_id=github_id).one()
-        release = repo.latest_release(status=ReleaseStatus.PUBLISHED)
-        if release:
-            return redirect('https://doi.org/{pid}'.format(
-                pid=GitHubRelease(release).pid.pid_value))
-    except NoResultFound:
-        pass
-    abort(404)
+    pid = get_pid_of_latest_release_or_404(github_id=github_id)
+    return redirect(get_doi_url(pid))
 
 
 @blueprint.route('/latestdoi/<int:user_id>/<path:repo_name>')
 def latest_doi_old(user_id, repo_name):
     """Redirect to the newest record version."""
-    try:
-        repo = Repository.query.filter_by(name=repo_name).one()
-        release = repo.latest_release(status=ReleaseStatus.PUBLISHED)
-        if release:
-            return redirect('https://doi.org/{pid}'.format(
-                pid=GitHubRelease(release).pid.pid_value))
-    except NoResultFound:
-        pass
-    abort(404)
+    pid = get_pid_of_latest_release_or_404(name=repo_name)
+    return redirect(get_doi_url(pid))
