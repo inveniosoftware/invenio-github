@@ -27,8 +27,8 @@
 from __future__ import absolute_import
 
 import uuid
-
 from enum import Enum
+
 from flask import current_app
 from flask_babelex import lazy_gettext as _
 from invenio_accounts.models import User
@@ -189,7 +189,6 @@ class Repository(db.Model, Timestamp):
         """
         repo = cls.query.filter((Repository.github_id == github_id) |
                                 (Repository.name == name)).one()
-
         if check_owner and repo and repo.user_id and repo.user_id != user_id:
             raise RepositoryAccessError(
                 'User {user} cannot access repository {repo}({repo_id}).'

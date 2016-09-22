@@ -93,7 +93,7 @@ def release_pid(release):
 @register_breadcrumb(blueprint, 'breadcrumbs.settings.github', _('GitHub'))
 def index():
     """Display list of the user's repositories."""
-    github = GitHubAPI(user_id=current_user.get_id())
+    github = GitHubAPI(user_id=current_user.id)
     token = github.session_token
     ctx = dict(connected=False)
 
@@ -140,7 +140,7 @@ def index():
                      _('Repository'))
 def repository(name):
     """Display selected repository."""
-    user_id = current_user.get_id()
+    user_id = current_user.id
     github = GitHubAPI(user_id=user_id)
     token = github.session_token
 
@@ -193,7 +193,7 @@ def hook():
     """Install or remove GitHub webhook."""
     repo_id = request.json['id']
 
-    github = GitHubAPI(user_id=current_user.get_id())
+    github = GitHubAPI(user_id=current_user.id)
     repos = github.account.extra_data['repos']
 
     if repo_id not in repos:
@@ -225,7 +225,7 @@ def hook():
 @login_required
 def hook_action(action, repo_id):
     """Display selected repository."""
-    github = GitHubAPI(user_id=current_user.get_id())
+    github = GitHubAPI(user_id=current_user.id)
     repos = github.account.extra_data['repos']
 
     if repo_id not in repos:

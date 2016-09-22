@@ -30,8 +30,9 @@ from celery import shared_task
 from celery.exceptions import MaxRetriesExceededError
 from flask import current_app
 from invenio_db import db
+from sqlalchemy.orm.exc import NoResultFound
 
-from .errors import CustomGitHubMetadataError
+from .errors import CustomGitHubMetadataError, RepositoryAccessError
 
 
 @shared_task(max_retries=6, default_retry_delay=10 * 60, rate_limit='100/m')
@@ -75,11 +76,14 @@ def sync_hooks(user_id, repositories):
         # Sync hooks
         gh = GitHubAPI(user_id=user_id)
         for repo_id in repositories:
-            with db.session.begin_nested():
-                gh.sync_repo_hook(repo_id)
-            # We commit per repository, because while the task is running
-            # the user might enable/disable a hook.
-            db.session.commit()
+            try:
+                with db.session.begin_nested():
+                    gh.sync_repo_hook(repo_id)
+                # We commit per repository, because while the task is running
+                # the user might enable/disable a hook.
+                db.session.commit()
+            except (NoResultFound, RepositoryAccessError) as e:
+                current_app.logger.warning(e.message, exc_info=True)
     except Exception as exc:
         try:
             sync_hooks.retry(exc=exc)

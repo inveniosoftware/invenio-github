@@ -24,8 +24,6 @@
 
 """Invenio module that adds GitHub integration to the platform."""
 
-from datetime import timedelta
-
 import github3
 from flask import current_app
 from invenio_db import db
@@ -40,6 +38,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.local import LocalProxy
 from werkzeug.utils import cached_property, import_string
 
+from .errors import RepositoryAccessError
 from .models import Repository
 from .tasks import sync_hooks
 from .utils import get_extra_metadata, iso_utcnow, parse_timestamp, utcnow
@@ -176,9 +175,12 @@ class GitHubAPI(object):
         """Check if a hooks sync task needs to be started."""
         if not async:
             for repo_id in repos:
-                with db.session.begin_nested():
-                    self.sync_repo_hook(repo_id)
-                db.session.commit()
+                try:
+                    with db.session.begin_nested():
+                        self.sync_repo_hook(repo_id)
+                    db.session.commit()
+                except (NoResultFound, RepositoryAccessError) as e:
+                    current_app.logger.warning(e.message, exc_info=True)
         else:
             # FIXME: We have to commit, in order to have all necessary data?
             db.session.commit()
@@ -200,13 +202,9 @@ class GitHubAPI(object):
                               name=gh_repo.full_name,
                               hook=hook_id)
         else:
-            try:
-                Repository.disable(user_id=self.user_id,
-                                   github_id=gh_repo.id,
-                                   name=gh_repo.full_name)
-            except NoResultFound:
-                # The repository doesn't exist, no action is necessary
-                pass
+            Repository.disable(user_id=self.user_id,
+                               github_id=gh_repo.id,
+                               name=gh_repo.full_name)
 
     def check_sync(self):
         """Check if sync is required based on last sync date."""
