@@ -1,8 +1,8 @@
 =========================
- Invenio-GitHub v1.0.0a7
+ Invenio-GitHub v1.0.0a8
 =========================
 
-Invenio-GitHub v1.0.0a7 was released on September 18, 2016.
+Invenio-GitHub v1.0.0a8 was released on September 22, 2016.
 
 About
 -----
@@ -19,7 +19,7 @@ What's new
 Installation
 ------------
 
-   $ pip install invenio-github==v1.0.0a7
+   $ pip install invenio-github==v1.0.0a8
 
 Documentation
 -------------
