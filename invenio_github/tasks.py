@@ -62,7 +62,7 @@ def disconnect_github(access_token, repo_hooks):
             disconnect_github.retry(exc=exc)
         except MaxRetriesExceededError:
             current_app.logger.error(
-                'Could not completely clean-up GitHub remote account for '
+                u'Could not completely clean-up GitHub remote account for '
                 'user {user}'.format(user=gh.me().name)
             )
 
@@ -89,7 +89,7 @@ def sync_hooks(user_id, repositories):
             sync_hooks.retry(exc=exc)
         except MaxRetriesExceededError:
             current_app.logger.error(
-                'Could not sync GitHub hooks for user {user}'
+                u'Could not sync GitHub hooks for user {user}'
                 .format(user=gh.me().name)
             )
 
