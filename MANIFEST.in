@@ -31,6 +31,7 @@ include .editorconfig
 include .tx/config
 include LICENSE
 include babel.ini
+include docs/requirements.txt
 include pytest.ini
 recursive-include docs *.bat
 recursive-include docs *.py
