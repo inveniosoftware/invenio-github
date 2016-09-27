@@ -27,7 +27,6 @@ from __future__ import absolute_import
 import json
 
 from celery import shared_task
-from celery.exceptions import MaxRetriesExceededError
 from flask import current_app
 from invenio_db import db
 from sqlalchemy.orm.exc import NoResultFound
@@ -57,14 +56,8 @@ def disconnect_github(access_token, repo_hooks):
         # If we finished our clean-up successfully, we can revoke the token
         GitHubAPI.revoke_token(access_token)
     except Exception as exc:
-        try:
-            # Retry in case GitHub may be down...
-            disconnect_github.retry(exc=exc)
-        except MaxRetriesExceededError:
-            current_app.logger.error(
-                u'Could not completely clean-up GitHub remote account for '
-                'user {user}'.format(user=gh.me().name)
-            )
+        # Retry in case GitHub may be down...
+        disconnect_github.retry(exc=exc)
 
 
 @shared_task(max_retries=6, default_retry_delay=10 * 60, rate_limit='100/m')
@@ -85,13 +78,7 @@ def sync_hooks(user_id, repositories):
             except (NoResultFound, RepositoryAccessError) as e:
                 current_app.logger.warning(e.message, exc_info=True)
     except Exception as exc:
-        try:
-            sync_hooks.retry(exc=exc)
-        except MaxRetriesExceededError:
-            current_app.logger.error(
-                u'Could not sync GitHub hooks for user {user}'
-                .format(user=gh.me().name)
-            )
+        sync_hooks.retry(exc=exc)
 
 
 @shared_task(ignore_result=True)
@@ -122,21 +109,26 @@ def process_release(release_id, verify_sender=False):
         release.publish()
         release.model.status = ReleaseStatus.PUBLISHED
     except RESTException as rest_ex:
-        current_app.logger.exception('Error while processing GitHub Release')
         release.model.errors = json.loads(rest_ex.get_body())
         release.model.status = ReleaseStatus.FAILED
+        current_app.logger.exception(
+            'Error while processing {release}'.format(release=release.model))
     # TODO: We may want to handle GitHub errors differently in the future
     # except GitHubError as github_ex:
-    #     current_app.logger.exception('Error while processing GitHub Release')
     #     release.model.errors = {'error': str(e)}
     #     release.model.status = ReleaseStatus.FAILED
+    #     current_app.logger.exception(
+    #         'Error while processing {release}'
+    #         .format(release=release.model))
     except CustomGitHubMetadataError as e:
-        current_app.logger.exception('Error while processing GitHub Release')
         release.model.errors = {'errors': str(e)}
         release.model.status = ReleaseStatus.FAILED
+        current_app.logger.exception(
+            'Error while processing {release}'.format(release=release.model))
     except Exception:
-        current_app.logger.exception('Error while processing GitHub Release')
         release.model.errors = {'errors': 'Unknown error occured.'}
         release.model.status = ReleaseStatus.FAILED
+        current_app.logger.exception(
+            'Error while processing {release}'.format(release=release.model))
     finally:
         db.session.commit()
