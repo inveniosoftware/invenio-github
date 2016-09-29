@@ -64,7 +64,7 @@ install_requires = [
     'Flask-BabelEx>=0.9.2',
     'Flask-Breadcrumbs>=0.3.0',
     'Flask-Menu>=0.5.0',
-    'Flask-WTF<0.13',
+    'Flask-WTF>=0.12,<0.13',
     'Flask>=0.11.1',
     'github3.py>=1.0.0a4',
     'humanize>=0.5.1',
