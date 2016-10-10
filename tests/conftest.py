@@ -260,6 +260,7 @@ def remote_token(app, db, tester_id):
 
 @pytest.fixture()
 def minimal_record(app, db, tester_id):
+    """Minimal record metadata that is compliant with the JSON schema."""
     metadata = {
         'doi': 'test/1',
         'recid': 1,
@@ -279,6 +280,7 @@ def minimal_record(app, db, tester_id):
 
 @pytest.fixture()
 def repository_model(app, db, tester_id):
+    """Github repository fixture."""
     repository = Repository(
         github_id=1, name='testuser/testrepo', user_id=tester_id)
     db.session.add(repository)
@@ -288,6 +290,7 @@ def repository_model(app, db, tester_id):
 
 @pytest.fixture()
 def release_model(app, db, repository_model, minimal_record):
+    """Github release fixture."""
     release = Release(
         release_id=1,
         tag='v1.0',
@@ -340,6 +343,7 @@ def tclient_request_factory(client, method, endpoint, urlargs, data,
 
 @pytest.yield_fixture()
 def github_api(app, db, tester_id, remote_token):
+    """Github API mock."""
     import github3
     from . import fixtures
 

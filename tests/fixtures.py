@@ -179,6 +179,7 @@ def register_local_endpoint(endpoint, body, status=200, method=httpretty.GET):
 # Fixture generators
 #
 def USER(login, email=None, bio=True):
+    """Github user fixture generator."""
     l = login
 
     user = {
@@ -238,6 +239,7 @@ def USER(login, email=None, bio=True):
 
 
 def REPO(owner, repo, repo_id):
+    """Github repository fixture generator."""
     r = '%s/%s' % (owner, repo)
     o = owner
 
@@ -347,6 +349,7 @@ def REPO(owner, repo, repo_id):
 
 
 def ZIPBALL():
+    """Github repository ZIP fixture."""
     from zipfile import ZipFile
     from six import BytesIO
 
@@ -359,6 +362,7 @@ def ZIPBALL():
 
 
 def PAYLOAD(sender, repo, repo_id, tag='v1.0'):
+    """Github payload fixture generator."""
     c = dict(
         repo=repo,
         user=sender,
@@ -577,6 +581,7 @@ def PAYLOAD(sender, repo, repo_id, tag='v1.0'):
 
 
 def ORG(login):
+    """Github organization fixture generator."""
     return {
         'login': login,
         'id': 1234,
@@ -592,6 +597,7 @@ def ORG(login):
 
 
 def CONTENT(owner, repo, file_, ref, data):
+    """Github content fixture generator."""
     import os
     from base64 import b64encode
     c = dict(
