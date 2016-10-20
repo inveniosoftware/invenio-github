@@ -30,17 +30,15 @@ import json
 import os
 import shutil
 import tempfile
-from datetime import datetime, timedelta
-from functools import partial
+from datetime import datetime
 
-import httpretty
 import pytest
-from elasticsearch.exceptions import RequestError
-from flask import Flask, current_app, url_for
+from click.testing import CliRunner
+from flask import Flask, url_for
+from flask.cli import FlaskCLI, ScriptInfo
 from flask_babelex import Babel
 from flask_breadcrumbs import Breadcrumbs
 from flask_celeryext import FlaskCeleryExt
-from flask_cli import FlaskCLI
 from flask_mail import Mail
 from flask_menu import Menu
 from invenio_accounts import InvenioAccounts
@@ -52,7 +50,6 @@ from invenio_deposit import InvenioDepositREST
 from invenio_files_rest import InvenioFilesREST
 from invenio_files_rest.models import Location
 from invenio_formatter import InvenioFormatter
-from invenio_formatter.views import create_badge_blueprint
 from invenio_indexer import InvenioIndexer
 from invenio_jsonschemas import InvenioJSONSchemas
 from invenio_oauth2server import InvenioOAuth2Server
@@ -60,15 +57,15 @@ from invenio_oauth2server.models import Token
 from invenio_oauth2server.views import server_blueprint, settings_blueprint
 from invenio_oauthclient import InvenioOAuthClient
 from invenio_oauthclient.contrib.github import REMOTE_APP
+from invenio_oauthclient.models import RemoteAccount
 from invenio_oauthclient.views.client import blueprint as oauthclient_blueprint
 from invenio_pidstore import InvenioPIDStore
 from invenio_records import InvenioRecords
 from invenio_records.api import Record
 from invenio_records_rest import InvenioRecordsREST
 from invenio_records_rest.utils import PIDConverter
-from invenio_search import InvenioSearch, current_search, current_search_client
+from invenio_search import InvenioSearch
 from invenio_webhooks import InvenioWebhooks
-from invenio_webhooks.models import Receiver
 from invenio_webhooks.views import blueprint as webhooks_blueprint
 from mock import MagicMock, patch
 from six import b
@@ -76,8 +73,8 @@ from sqlalchemy_utils.functions import create_database, database_exists
 
 from invenio_github import InvenioGitHub
 from invenio_github.api import GitHubAPI
+from invenio_github.cli import github
 from invenio_github.models import Release, ReleaseStatus, Repository
-from invenio_github.receivers import GitHubReceiver
 from invenio_github.views.badge import blueprint as github_badge_blueprint
 from invenio_github.views.github import blueprint as github_blueprint
 
@@ -183,6 +180,82 @@ def tester_id(app, db):
     )
     db.session.commit()
     return tester.id
+
+
+@pytest.fixture
+def users_data():
+    """Data for users objects."""
+    return [
+        {'email': 'u1@foo.bar', 'password': '123456'},
+        {'email': 'u2@foo.bar', 'password': '123456'},
+    ]
+
+
+@pytest.fixture
+def users(app, db, users_data):
+    """Fixture that contains multiple users for CLI/API tests."""
+    datastore = app.extensions['security'].datastore
+    for ud in users_data:
+        user = datastore.create_user(**ud)
+        db.session.commit()
+        ud['id'] = user.id
+    return users_data
+
+
+@pytest.fixture
+def remoteaccounts_data(users):
+    """Data for RemoveAccount objects."""
+    return [
+        {
+            'user_id': users[0]['id'],
+            'extra_data': {
+                'repos': {
+                    '8000': {
+                        'full_name': 'foo/bar',
+                    },
+                    '8002': {
+                        'full_name': 'bacon/eggs',
+                    },
+                    '8003': {
+                        'full_name': 'other/repo',
+                    },
+                }
+            },
+        }
+    ]
+
+
+@pytest.fixture
+def remoteaccounts(app, db, remoteaccounts_data):
+    """Fixture for RemoteAccount objects."""
+    for rad in remoteaccounts_data:
+        ra = RemoteAccount.create(rad['user_id'], 'changeme',
+                                  rad['extra_data'])
+        db.session.add(ra)
+        db.session.commit()
+        rad['id'] = ra.id
+    return remoteaccounts_data
+
+
+@pytest.fixture
+def repositories_data(users):
+    """Data for repositories."""
+    return [
+        {'name': 'foo/bar', 'github_id': 8000, 'user_id': users[0]['id']},
+        {'name': 'baz/spam', 'github_id': 8001},
+        {'name': 'bacon/eggs', 'github_id': 8002, 'user_id': users[0]['id']},
+    ]
+
+
+@pytest.fixture
+def repositories(app, db, repositories_data):
+    """Fixture for GitHub Repository objects."""
+    for rd in repositories_data:
+        repository = Repository(**rd)
+        db.session.add(repository)
+        db.session.commit()
+        rd['id'] = repository.id
+    return repositories_data
 
 
 @pytest.yield_fixture()
@@ -397,3 +470,19 @@ def github_api(app, db, tester_id, remote_token):
                 gh.init_account()
             db.session.expire(remote_token.remote_account)
             yield mock_api
+
+
+@pytest.yield_fixture
+def cli_run(app):
+    """Fixture for CLI runner function.
+
+    Returns a function accepting a single parameter (CLI command as string).
+    """
+    runner = CliRunner()
+    script_info = ScriptInfo(create_app=lambda info: app)
+
+    def run(command):
+        """Run the command from the CLI."""
+        command_args = command.split()
+        return runner.invoke(github, command_args, obj=script_info)
+    yield run
