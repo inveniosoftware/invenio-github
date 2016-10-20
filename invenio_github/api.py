@@ -154,7 +154,8 @@ class GitHubAPI(object):
             }
 
         if hooks:
-            self._sync_hooks(list(active_repos.keys()), async=async_hooks)
+            self._sync_hooks(list(active_repos.keys()),
+                             asynchronous=async_hooks)
 
         # Remove ownership from repositories that the user has no longer
         # 'admin' permissions, or have been deleted.
@@ -171,9 +172,9 @@ class GitHubAPI(object):
         self.account.extra_data.changed()
         db.session.add(self.account)
 
-    def _sync_hooks(self, repos, async=True):
+    def _sync_hooks(self, repos, asynchronous=True):
         """Check if a hooks sync task needs to be started."""
-        if not async:
+        if not asynchronous:
             for repo_id in repos:
                 try:
                     with db.session.begin_nested():
