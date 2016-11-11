@@ -246,7 +246,8 @@ class Repository(db.Model, Timestamp):
 
     def __repr__(self):
         """Get repository representation."""
-        return '<Repository {self.name}:{self.github_id}>'.format(self=self)
+        return '<Repository {self.name}:{self.github_id}:{self.hook}' \
+            ':{self.user_id}>'.format(self=self)
 
 
 class Release(db.Model, Timestamp):

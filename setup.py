@@ -77,7 +77,8 @@ install_requires = [
     'invenio-oauth2server>=1.0.0a10',
     'invenio-oauthclient>=1.0.0a8',
     'invenio-pidstore>=1.0.0a9',
-    'invenio-records>=1.0.0a16',
+    'invenio-records>=1.0.0a17',
+    'invenio-search>=1.0.0a8',
     'invenio-webhooks>=1.0.0a3',
     'mistune>=0.7.2',
     'six>=1.10.0',
@@ -108,6 +109,9 @@ setup(
     include_package_data=True,
     platforms='any',
     entry_points={
+        'flask.commands': [
+            'github = invenio_github.cli:github',
+        ],
         'invenio_base.apps': [
             'invenio_github = invenio_github:InvenioGitHub',
         ],
