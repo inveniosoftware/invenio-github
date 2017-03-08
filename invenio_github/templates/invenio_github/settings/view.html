@@ -139,7 +139,7 @@ require(['jquery', 'js/github/view'], function($, view) {
             <h5>
               <i class="fa {{ release.model.status.icon }}"></i>
               <a href="#" data-toggle="collapse" data-target="#{{ release.model.id }}">
-              {{_(release.model.status.title)}}
+              {{release.model.status.title}}
               </a>
             </h5>
             <small class="text-muted">{{ release.model.created|naturaltime }}</small>
