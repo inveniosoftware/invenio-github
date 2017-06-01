@@ -89,30 +89,22 @@ Last but not least we start our test server:
 
 from __future__ import absolute_import, print_function
 
-import json
 import os
-import shutil
-import tempfile
-from functools import partial
 
-from flask import Flask, current_app, url_for
+from flask import Flask
 from flask_babelex import Babel
 from flask_celeryext import FlaskCeleryExt
-from flask_cli import FlaskCLI
 from flask_mail import Mail
 from invenio_access import InvenioAccess
 from invenio_accounts import InvenioAccounts
 from invenio_accounts.views import blueprint as accounts_blueprint
 from invenio_assets import InvenioAssets
-from invenio_db import db as db_
 from invenio_db import InvenioDB
 from invenio_deposit import InvenioDepositREST
 from invenio_files_rest import InvenioFilesREST
-from invenio_files_rest.models import Location
 from invenio_indexer import InvenioIndexer
 from invenio_jsonschemas import InvenioJSONSchemas
 from invenio_oauth2server import InvenioOAuth2Server
-from invenio_oauth2server.models import Token
 from invenio_oauth2server.views import server_blueprint, settings_blueprint
 from invenio_oauthclient import InvenioOAuthClient
 from invenio_oauthclient.contrib.github import REMOTE_APP
@@ -127,13 +119,9 @@ from invenio_search import InvenioSearch
 from invenio_search_ui import InvenioSearchUI
 from invenio_theme import InvenioTheme
 from invenio_webhooks import InvenioWebhooks
-from invenio_webhooks.models import Receiver
 from invenio_webhooks.views import blueprint as webhooks_blueprint
-from sqlalchemy_utils.functions import create_database, database_exists
 
 from invenio_github import InvenioGitHub
-from invenio_github.api import GitHubAPI
-from invenio_github.receivers import GitHubReceiver
 from invenio_github.views import github
 
 app = Flask('exampleapp')
@@ -177,7 +165,6 @@ if ULTRAHOOK_NAME:
 
 app.url_map.converters['pid'] = PIDConverter
 
-FlaskCLI(app)
 celeryext = FlaskCeleryExt(app)
 Babel(app)
 Mail(app)
