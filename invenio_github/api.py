@@ -446,4 +446,5 @@ class GitHubRelease(object):
                     url, stream=True).raw
 
             deposit.publish()
-            self.model.recordmetadata = deposit.model
+            recid, record = deposit.fetch_published()
+            self.model.recordmetadata = record.model

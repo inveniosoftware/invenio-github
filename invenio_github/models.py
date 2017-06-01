@@ -27,8 +27,8 @@
 from __future__ import absolute_import
 
 import uuid
-
 from enum import Enum
+
 from flask import current_app
 from flask_babelex import lazy_gettext as _
 from invenio_accounts.models import User
