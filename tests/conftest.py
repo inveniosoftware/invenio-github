@@ -30,17 +30,13 @@ import json
 import os
 import shutil
 import tempfile
-from datetime import datetime, timedelta
-from functools import partial
+from datetime import datetime
 
-import httpretty
 import pytest
-from elasticsearch.exceptions import RequestError
-from flask import Flask, current_app, url_for
+from flask import Flask, url_for
 from flask_babelex import Babel
 from flask_breadcrumbs import Breadcrumbs
 from flask_celeryext import FlaskCeleryExt
-from flask_cli import FlaskCLI
 from flask_mail import Mail
 from flask_menu import Menu
 from invenio_accounts import InvenioAccounts
@@ -52,7 +48,6 @@ from invenio_deposit import InvenioDepositREST
 from invenio_files_rest import InvenioFilesREST
 from invenio_files_rest.models import Location
 from invenio_formatter import InvenioFormatter
-from invenio_formatter.views import create_badge_blueprint
 from invenio_indexer import InvenioIndexer
 from invenio_jsonschemas import InvenioJSONSchemas
 from invenio_oauth2server import InvenioOAuth2Server
@@ -66,9 +61,8 @@ from invenio_records import InvenioRecords
 from invenio_records.api import Record
 from invenio_records_rest import InvenioRecordsREST
 from invenio_records_rest.utils import PIDConverter
-from invenio_search import InvenioSearch, current_search, current_search_client
+from invenio_search import InvenioSearch
 from invenio_webhooks import InvenioWebhooks
-from invenio_webhooks.models import Receiver
 from invenio_webhooks.views import blueprint as webhooks_blueprint
 from mock import MagicMock, patch
 from six import b
@@ -77,7 +71,6 @@ from sqlalchemy_utils.functions import create_database, database_exists
 from invenio_github import InvenioGitHub
 from invenio_github.api import GitHubAPI
 from invenio_github.models import Release, ReleaseStatus, Repository
-from invenio_github.receivers import GitHubReceiver
 from invenio_github.views.badge import blueprint as github_badge_blueprint
 from invenio_github.views.github import blueprint as github_blueprint
 
@@ -122,7 +115,6 @@ def app(request):
         'scope'] = 'user:email,admin:repo_hook,read:org'
     app_.url_map.converters['pid'] = PIDConverter
 
-    FlaskCLI(app_)
     celeryext = FlaskCeleryExt(app_)
     Babel(app_)
     Mail(app_)
