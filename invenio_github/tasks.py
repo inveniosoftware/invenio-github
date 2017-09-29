@@ -27,7 +27,7 @@ from __future__ import absolute_import
 import json
 
 from celery import shared_task
-from flask import current_app
+from flask import current_app, g
 from invenio_db import db
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -105,6 +105,13 @@ def process_release(release_id, verify_sender=False):
             .format(event=release.event.id, user=release.event.user_id)
         )
 
+    def _get_err_obj(msg):
+        """Generate the error entry with a Sentry ID."""
+        err = {'errors': msg}
+        if hasattr(g, 'sentry_event_id'):
+            err['error_id'] = str(g.sentry_event_id)
+        return err
+
     try:
         release.publish()
         release.model.status = ReleaseStatus.PUBLISHED
@@ -121,12 +128,12 @@ def process_release(release_id, verify_sender=False):
     #         'Error while processing {release}'
     #         .format(release=release.model))
     except CustomGitHubMetadataError as e:
-        release.model.errors = {'errors': str(e)}
+        release.model.errors = _get_err_obj(str(e))
         release.model.status = ReleaseStatus.FAILED
         current_app.logger.exception(
             'Error while processing {release}'.format(release=release.model))
     except Exception:
-        release.model.errors = {'errors': 'Unknown error occured.'}
+        release.model.errors = _get_err_obj('Unknown error occured.')
         release.model.status = ReleaseStatus.FAILED
         current_app.logger.exception(
             'Error while processing {release}'.format(release=release.model))

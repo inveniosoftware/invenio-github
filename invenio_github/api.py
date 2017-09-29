@@ -371,6 +371,11 @@ class GitHubRelease(object):
         )
 
     @cached_property
+    def version(self):
+        """Extract the vesion from the release tag."""
+        return self.release.get('tag_name', '')
+
+    @cached_property
     def defaults(self):
         """Return default metadata."""
         return dict(
@@ -379,6 +384,7 @@ class GitHubRelease(object):
             license='other-open',
             publication_date=self.release['published_at'][:10],
             related_identifiers=list(self.related_identifiers),
+            version=self.version,
             title=self.title,
             upload_type='software',
         )
