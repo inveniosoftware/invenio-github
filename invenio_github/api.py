@@ -349,10 +349,10 @@ class GitHubRelease(object):
     @cached_property
     def description(self):
         """Extract description from a release."""
-        if self.release.get('body'):
-            return markdown(self.release['body'])
-        elif self.repository.get('description'):
+        if self.repository.get('description'):
             return self.repository['description']
+        elif self.release.get('body'):
+            return markdown(self.release['body'])
         return 'No description provided.'
 
     @cached_property
@@ -379,6 +379,7 @@ class GitHubRelease(object):
             license='other-open',
             publication_date=self.release['published_at'][:10],
             related_identifiers=list(self.related_identifiers),
+            version=self.release['tag_name'],
             title=self.title,
             upload_type='software',
         )
