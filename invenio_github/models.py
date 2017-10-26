@@ -189,7 +189,8 @@ class Repository(db.Model, Timestamp):
         """
         repo = cls.query.filter((Repository.github_id == github_id) |
                                 (Repository.name == name)).one()
-        if check_owner and repo and repo.user_id and repo.user_id != user_id:
+        if (check_owner and repo and repo.user_id and
+                repo.user_id != int(user_id)):
             raise RepositoryAccessError(
                 'User {user} cannot access repository {repo}({repo_id}).'
                 .format(user=user_id, repo=name, repo_id=github_id)
