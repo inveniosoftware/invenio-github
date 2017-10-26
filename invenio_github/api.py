@@ -364,7 +364,7 @@ class GitHubRelease(object):
     def related_identifiers(self):
         """Yield related identifiers."""
         yield dict(
-            identifier='https://github.com/{0}/tree/{1}'.format(
+            identifier=u'https://github.com/{0}/tree/{1}'.format(
                 self.repository['full_name'], self.release['tag_name']
             ),
             relation='isSupplementTo',
@@ -406,11 +406,11 @@ class GitHubRelease(object):
         repo_name = self.repository['full_name']
 
         zipball_url = self.release['zipball_url']
-        filename = '{name}-{tag}.zip'.format(name=repo_name, tag=tag_name)
+        filename = u'{name}-{tag}.zip'.format(name=repo_name, tag=tag_name)
 
         response = self.gh.api.session.head(zipball_url)
         assert response.status_code == 302, \
-            'Could not retrieve archive from GitHub: {0}'.format(zipball_url)
+            u'Could not retrieve archive from GitHub: {0}'.format(zipball_url)
 
         yield filename, zipball_url
 

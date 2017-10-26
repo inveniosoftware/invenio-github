@@ -61,7 +61,7 @@ def get_extra_metadata(gh, owner, repo_name, ref):
         return json.loads(content.decoded.decode('utf-8'))
     except ValueError:
         raise CustomGitHubMetadataError(
-            'Metadata file "{file}" is not valid JSON.'
+            u'Metadata file "{file}" is not valid JSON.'
             .format(file=current_app.config['GITHUB_METADATA_FILE'])
         )
 

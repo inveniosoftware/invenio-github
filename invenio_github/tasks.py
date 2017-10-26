@@ -50,7 +50,7 @@ def disconnect_github(access_token, repo_hooks):
             if ghrepo:
                 hook = ghrepo.hook(repo_hook)
                 if hook and hook.delete():
-                    info_msg = 'Deleted hook {hook} from {repo}'.format(
+                    info_msg = u'Deleted hook {hook} from {repo}'.format(
                         hook=hook.id, repo=ghrepo.full_name)
                     current_app.logger.info(info_msg)
         # If we finished our clean-up successfully, we can revoke the token
@@ -101,7 +101,7 @@ def process_release(release_id, verify_sender=False):
     release = current_github.release_api_class(release_model)
     if verify_sender and not release.verify_sender():
         raise InvalidSenderError(
-            'Invalid sender for event {event} for user {user}'
+            u'Invalid sender for event {event} for user {user}'
             .format(event=release.event.id, user=release.event.user_id)
         )
 
@@ -119,7 +119,7 @@ def process_release(release_id, verify_sender=False):
         release.model.errors = json.loads(rest_ex.get_body())
         release.model.status = ReleaseStatus.FAILED
         current_app.logger.exception(
-            'Error while processing {release}'.format(release=release.model))
+            u'Error while processing {release}'.format(release=release.model))
     # TODO: We may want to handle GitHub errors differently in the future
     # except GitHubError as github_ex:
     #     release.model.errors = {'error': str(e)}
@@ -131,11 +131,11 @@ def process_release(release_id, verify_sender=False):
         release.model.errors = _get_err_obj(str(e))
         release.model.status = ReleaseStatus.FAILED
         current_app.logger.exception(
-            'Error while processing {release}'.format(release=release.model))
+            u'Error while processing {release}'.format(release=release.model))
     except Exception:
         release.model.errors = _get_err_obj('Unknown error occured.')
         release.model.status = ReleaseStatus.FAILED
         current_app.logger.exception(
-            'Error while processing {release}'.format(release=release.model))
+            u'Error while processing {release}'.format(release=release.model))
     finally:
         db.session.commit()
