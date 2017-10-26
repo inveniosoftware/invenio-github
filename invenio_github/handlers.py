@@ -72,7 +72,7 @@ def disconnect(remote):
         oauth_unlink_external_id(dict(id=external_ids[0],
                                       method=external_method))
 
-    user_id = current_user.get_id()
+    user_id = int(current_user.get_id())
     token = RemoteToken.get(user_id, remote.consumer_key)
     if token:
         extra_data = token.remote_account.extra_data
