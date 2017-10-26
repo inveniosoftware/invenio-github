@@ -192,7 +192,7 @@ class Repository(db.Model, Timestamp):
         if (check_owner and repo and repo.user_id and
                 repo.user_id != int(user_id)):
             raise RepositoryAccessError(
-                'User {user} cannot access repository {repo}({repo_id}).'
+                u'User {user} cannot access repository {repo}({repo_id}).'
                 .format(user=user_id, repo=name, repo_id=github_id)
             )
         return repo
@@ -247,7 +247,7 @@ class Repository(db.Model, Timestamp):
 
     def __repr__(self):
         """Get repository representation."""
-        return '<Repository {self.name}:{self.github_id}>'.format(self=self)
+        return u'<Repository {self.name}:{self.github_id}>'.format(self=self)
 
 
 class Release(db.Model, Timestamp):
@@ -314,7 +314,7 @@ class Release(db.Model, Timestamp):
         ).first()
         if existing_release:
             raise ReleaseAlreadyReceivedError(
-                '{release} has already been received.'
+                u'{release} has already been received.'
                 .format(release=existing_release)
             )
 
@@ -334,11 +334,11 @@ class Release(db.Model, Timestamp):
             return release
         else:
             current_app.logger.warning(
-                'Release creation attempt on disabled {repo}.'
+                u'Release creation attempt on disabled {repo}.'
                 .format(repo=repo)
             )
             raise RepositoryDisabledError(
-                '{repo} is not enabled for webhooks.'.format(repo=repo)
+                u'{repo} is not enabled for webhooks.'.format(repo=repo)
             )
 
     @property
@@ -359,5 +359,5 @@ class Release(db.Model, Timestamp):
 
     def __repr__(self):
         """Get release representation."""
-        return ('<Release {self.tag}:{self.release_id} ({self.status.title})>'
+        return (u'<Release {self.tag}:{self.release_id} ({self.status.title})>'
                 .format(self=self))
