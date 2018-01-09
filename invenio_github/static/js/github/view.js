@@ -40,9 +40,11 @@ define(function(require, exports, module) {
 
   function init_syncbutton(config){
     var syncButton = $(config.sync_button);
+    var syncIcon = $(syncButton.children()[0])
 
     syncButton.on('click', function() {
       syncButton.prop('disabled', true);
+      syncIcon.addClass('fa-spin');
       $.ajax({
         url: config.sync_url,
         type: 'POST'
@@ -54,6 +56,7 @@ define(function(require, exports, module) {
       })
       .always(function() {
         syncButton.prop('disabled', false);
+        syncIcon.removeClass('fa-spin');
       });
     });
   }
