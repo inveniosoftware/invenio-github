@@ -157,6 +157,18 @@ class GitHubAPI(object):
             self._sync_hooks(list(active_repos.keys()),
                              asynchronous=async_hooks)
 
+        # Update changed names for repositories stored in DB
+        db_repos = Repository.query.filter(
+            Repository.user_id == self.user_id,
+            Repository.github_id.in_(github_repos.keys())
+        )
+
+        for repo in db_repos:
+            gh_repo = github_repos.get(repo.github_id)
+            if gh_repo and repo.name != gh_repo.full_name:
+                repo.name = gh_repo.full_name
+                db.session.add(repo)
+
         # Remove ownership from repositories that the user has no longer
         # 'admin' permissions, or have been deleted.
         Repository.query.filter(
