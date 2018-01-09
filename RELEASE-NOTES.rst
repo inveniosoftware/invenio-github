@@ -1,8 +1,8 @@
 ==========================
- Invenio-GitHub v1.0.0a13
+ Invenio-GitHub v1.0.0a14
 ==========================
 
-Invenio-GitHub v1.0.0a13 was released on December 14, 2017.
+Invenio-GitHub v1.0.0a14 was released on January 9, 2018.
 
 About
 -----
@@ -19,7 +19,7 @@ What's new
 Installation
 ------------
 
-   $ pip install invenio-github==v1.0.0a13
+   $ pip install invenio-github==v1.0.0a14
 
 Documentation
 -------------
