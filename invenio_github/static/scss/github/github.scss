@@ -23,6 +23,8 @@ $github-processing-color: $github-received-color;
 $github-processing-color-text: darken($github-processing-color, 17%);
 $github-failed-color: #db4545;
 $github-failed-color-text: darken($github-failed-color, 17%);
+$github-deleted-color: #db4545;
+$github-deleted-color-text: darken($github-deleted-color, 17%);
 $github-published-color: #39aa56;
 $github-published-color-text: darken($github-published-color, 17%);
 
@@ -93,6 +95,9 @@ $github-published-color-text: darken($github-published-color, 17%);
     .release.failed {
         @include status-border($github-failed-color);
     }
+    .release.deleted {
+        @include status-border($github-deleted-color);
+    }
 
     .received {
         @include status-styling($github-received-color-text);
@@ -105,5 +110,8 @@ $github-published-color-text: darken($github-published-color, 17%);
     }
     .failed {
         @include status-styling($github-failed-color-text);
+    }
+    .deleted {
+        @include status-styling($github-deleted-color-text);
     }
 }

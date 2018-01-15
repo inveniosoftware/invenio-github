@@ -39,7 +39,7 @@ from werkzeug.local import LocalProxy
 from werkzeug.utils import cached_property, import_string
 
 from .errors import RepositoryAccessError
-from .models import Repository
+from .models import ReleaseStatus, Repository
 from .tasks import sync_hooks
 from .utils import get_extra_metadata, iso_utcnow, parse_timestamp, utcnow
 
@@ -439,9 +439,14 @@ class GitHubRelease(object):
         return self.model.record
 
     @cached_property
+    def status(self):
+        """Get the release status."""
+        return self.model.status
+
+    @cached_property
     def pid(self):
         """Get PID object for the Release record."""
-        if self.record:
+        if self.model.status == ReleaseStatus.PUBLISHED and self.record:
             fetcher = current_pidstore.fetchers[
                 current_app.config.get('GITHUB_PID_FETCHER')]
             return fetcher(self.record.id, self.record)

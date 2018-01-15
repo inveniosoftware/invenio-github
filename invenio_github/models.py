@@ -49,6 +49,7 @@ RELEASE_STATUS_TITLES = {
     'PROCESSING': _('Processing'),
     'PUBLISHED': _('Published'),
     'FAILED': _('Failed'),
+    'DELETED': _('Deleted'),
 }
 
 RELEASE_STATUS_ICON = {
@@ -56,6 +57,7 @@ RELEASE_STATUS_ICON = {
     'PROCESSING': 'fa-spinner',
     'PUBLISHED': 'fa-check',
     'FAILED': 'fa-times',
+    'DELETED': 'fa-times',
 }
 
 RELEASE_STATUS_COLOR = {
@@ -63,13 +65,14 @@ RELEASE_STATUS_COLOR = {
     'PROCESSING': 'default',
     'PUBLISHED': 'success',
     'FAILED': 'danger',
+    'DELETED': 'danger',
 }
 
 
 class ReleaseStatus(Enum):
     """Constants for possible status of a Release."""
 
-    __order__ = 'RECEIVED PROCESSING PUBLISHED FAILED'
+    __order__ = 'RECEIVED PROCESSING PUBLISHED FAILED DELETED'
 
     RECEIVED = 'R'
     """Release has been received and is pending processing."""
@@ -82,6 +85,9 @@ class ReleaseStatus(Enum):
 
     FAILED = 'F'
     """Release processing has failed."""
+
+    DELETED = 'E'
+    """Release has been deleted."""
 
     def __init__(self, value):
         """Hack."""
@@ -301,7 +307,7 @@ class Release(db.Model, Timestamp):
         backref=db.backref('releases', lazy='dynamic')
     )
 
-    recordmetadata = db.relationship(RecordMetadata)
+    recordmetadata = db.relationship(RecordMetadata, backref='github_releases')
     event = db.relationship(Event)
 
     @classmethod
