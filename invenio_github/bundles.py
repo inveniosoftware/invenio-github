@@ -24,6 +24,7 @@
 """GitHub bundles for user interface."""
 
 from flask_assets import Bundle
+from flask_webpackext import WebpackBundle
 from invenio_assets import NpmBundle
 
 js = NpmBundle(
@@ -55,3 +56,14 @@ css = NpmBundle(
     output='gen/github.%(version)s.css',
 )
 """Default CSS bundle."""
+
+github = WebpackBundle(
+    __name__,
+    'assets',
+    entry={
+        'github_app': './js/github/app.js',
+        'github_theme': './scss/github/github.scss',
+    },
+    dependencies={
+        'bootstrap-switch': '~3.0.2',
+    })

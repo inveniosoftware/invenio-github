@@ -1,0 +1,119 @@
+/*
+ * This file is part of Invenio.
+ * Copyright (C) 2016 CERN.
+ *
+ * Invenio is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License, or (at your option) any later version.
+ *
+ * Invenio is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Invenio; if not, write to the Free Software Foundation, Inc.,
+ * 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
+ */
+
+@import '~bootstrap-switch/dist/css/bootstrap3/bootstrap-switch.css';
+
+$github-received-color: #edde3f;
+$github-received-color-text: darken($github-received-color, 17%);
+$github-processing-color: $github-received-color;
+$github-processing-color-text: darken($github-processing-color, 17%);
+$github-failed-color: #db4545;
+$github-failed-color-text: darken($github-failed-color, 17%);
+$github-deleted-color: #db4545;
+$github-deleted-color-text: darken($github-deleted-color, 17%);
+$github-published-color: #39aa56;
+$github-published-color-text: darken($github-published-color, 17%);
+
+@mixin status-border($color) {
+    background: linear-gradient(
+        to right,
+        $color 0,
+        $color 10px,
+        #fff 10px,
+        #fff 100%
+    ) no-repeat;
+}
+
+@mixin status-styling($color) {
+    h5 {
+        color: $color;
+        a {
+            color: $color;
+        }
+    }
+}
+
+.github-panels {
+    /* Repositories list page */
+    table#github-repositories td.hook-toggle {
+      vertical-align: middle;
+    }
+
+    a#connect-to-github {
+        margin-top: 40px;
+        margin-bottom: 40px;
+    }
+
+    /* Release page */
+    .jumbotron {
+        background-color: transparent;
+
+        .row.buttons {
+            margin-top: 40px;
+        }
+    }
+
+    h1, h5 {
+        margin-top: 0;
+    }
+
+    hr {
+        margin-top: 0px;
+        margin-bottom: 2px;
+    }
+
+    .switch {
+        margin-top: 7px;
+    }
+
+    .release {
+        padding-left: 20px;
+    }
+    .release.received {
+        @include status-border($github-received-color);
+    }
+    .release.processing {
+        @include status-border($github-processing-color);
+    }
+    .release.published {
+        @include status-border($github-published-color);
+    }
+    .release.failed {
+        @include status-border($github-failed-color);
+    }
+    .release.deleted {
+        @include status-border($github-deleted-color);
+    }
+
+    .received {
+        @include status-styling($github-received-color-text);
+    }
+    .processing {
+        @include status-styling($github-processing-color-text);
+    }
+    .published {
+        @include status-styling($github-published-color-text);
+    }
+    .failed {
+        @include status-styling($github-failed-color-text);
+    }
+    .deleted {
+        @include status-styling($github-deleted-color-text);
+    }
+}

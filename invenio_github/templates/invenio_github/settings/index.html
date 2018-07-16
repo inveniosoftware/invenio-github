@@ -24,12 +24,14 @@
 
 {%- block css %}
 {{ super() }}
-{% assets "invenio_github_css" %}<link href="{{ ASSET_URL }}" rel="stylesheet">{% endassets %}
+{{ webpack['github_theme.css'] }}
+{# assets "invenio_github_css" %}<link href="{{ ASSET_URL }}" rel="stylesheet">{% endassets #}
 {%- endblock css %}
 
 {%- block javascript %}
 {{ super() }}
-{% assets "invenio_github_js" %}<script src="{{ ASSET_URL }}"></script>{% endassets %}
+{{ webpack['github_app.js'] }}
+{# assets "invenio_github_js" %}<script src="{{ ASSET_URL }}"></script>{% endassets #}
 <script type="text/javascript">
 require(['jquery', 'js/github/view'], function($, view) {
   $(document).ready(function(){

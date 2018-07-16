@@ -66,6 +66,7 @@ install_requires = [
     'Flask-Breadcrumbs>=0.3.0',
     'Flask-Menu>=0.5.0',
     'Flask>=0.11.1',
+    'flask-webpackext>=0.1.0',
     'github3.py>=1.0.0a4',
     'humanize>=0.5.1',
     'invenio-assets>=1.0.0b6',
@@ -120,6 +121,9 @@ setup(
         ],
         'invenio_db.models': [
             'invenio_github = invenio_github.models',
+        ],
+        'invenio_assets.webpack': [
+            'invenio_github = invenio_github.bundles:github',
         ],
         'invenio_i18n.translations': [
             'messages = invenio_github',
