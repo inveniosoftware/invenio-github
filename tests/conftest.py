@@ -42,8 +42,8 @@ from flask_menu import Menu
 from invenio_accounts import InvenioAccounts
 from invenio_accounts.views import blueprint as accounts_blueprint
 from invenio_assets import InvenioAssets
-from invenio_db import db as db_
 from invenio_db import InvenioDB
+from invenio_db import db as db_
 from invenio_deposit import InvenioDepositREST
 from invenio_files_rest import InvenioFilesREST
 from invenio_files_rest.models import Location
