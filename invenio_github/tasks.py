@@ -75,8 +75,10 @@ def sync_hooks(user_id, repositories):
                 # We commit per repository, because while the task is running
                 # the user might enable/disable a hook.
                 db.session.commit()
-            except (NoResultFound, RepositoryAccessError) as e:
+            except RepositoryAccessError as e:
                 current_app.logger.warning(e.message, exc_info=True)
+            except NoResultFound:
+                pass  # Repository not in DB yet
     except Exception as exc:
         sync_hooks.retry(exc=exc)
 
