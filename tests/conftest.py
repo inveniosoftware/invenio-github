@@ -379,7 +379,7 @@ def github_api(app, db, tester_id, remote_token):
     mock_api.repository_with_id.side_effect = mock_repo_with_id
     mock_api.repository.side_effect = mock_repo_by_name
     mock_api.markdown.side_effect = lambda x: x
-    mock_api.session.head.return_value = MagicMock(status_code=302)
+    mock_api.session.head.return_value = MagicMock(status_code=200)
     mock_api.session.get.return_value = MagicMock(raw=fixtures.ZIPBALL())
 
     with patch('invenio_github.api.GitHubAPI.api', new=mock_api):

@@ -422,8 +422,8 @@ class GitHubRelease(object):
         zipball_url = self.release['zipball_url']
         filename = u'{name}-{tag}.zip'.format(name=repo_name, tag=tag_name)
 
-        response = self.gh.api.session.head(zipball_url)
-        assert response.status_code == 302, \
+        response = self.gh.api.session.head(zipball_url, allow_redirects=True)
+        assert response.status_code == 200, \
             u'Could not retrieve archive from GitHub: {0}'.format(zipball_url)
 
         yield filename, zipball_url
