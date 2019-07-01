@@ -82,6 +82,8 @@ install_requires = [
     'mistune>=0.7.2',
     'six>=1.10.0',
     'uritemplate.py>=0.2.0,<2.0',
+    'urllib3<1.25,>=1.21.1',  # from "invenio-search"
+    'idna>=2.5,<2.8',  # from "invenio-search"
 ]
 
 packages = find_packages()
