@@ -24,11 +24,13 @@
 
 from __future__ import absolute_import
 
+import datetime
 import json
 
 from celery import shared_task
 from flask import current_app, g
 from invenio_db import db
+from invenio_oauthclient.models import RemoteAccount
 from sqlalchemy.orm.exc import NoResultFound
 
 from .errors import CustomGitHubMetadataError, RepositoryAccessError
@@ -141,3 +143,30 @@ def process_release(release_id, verify_sender=False):
             u'Error while processing {release}'.format(release=release.model))
     finally:
         db.session.commit()
+
+
+@shared_task(ignore_result=True)
+def refresh_accounts(expiration_threshold=None):
+    """Refresh stale accounts, avoiding token expiration.
+
+    :param expiration_threshold: Dictionary containing timedelta parameters
+    referring to the maximum inactivity time.
+    """
+    expiration_date = datetime.datetime.utcnow() - \
+        datetime.timedelta(**(expiration_threshold or {'months': 6}))
+
+    remote_accounts_to_be_updated = RemoteAccount.query.filter(
+        RemoteAccount.updated < expiration_date
+    )
+    for remote_account in remote_accounts_to_be_updated:
+        sync_account.delay(remote_account.user_id)
+
+
+@shared_task(ignore_result=True)
+def sync_account(user_id):
+    """Sync a user account."""
+    from .api import GitHubAPI
+
+    gh = GitHubAPI(user_id=user_id)
+    gh.sync(hooks=False, async_hooks=False)
+    db.session.commit()
