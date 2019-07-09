@@ -22,12 +22,18 @@
 
 from __future__ import absolute_import
 
+from time import sleep
+
+from invenio_db import db
 from invenio_files_rest.models import Bucket
+from invenio_oauthclient.models import RemoteAccount
 from invenio_webhooks.models import Event
 from mock import patch
 
 from invenio_github.api import GitHubRelease
 from invenio_github.models import Release, ReleaseStatus, Repository
+from invenio_github.tasks import refresh_accounts
+from invenio_github.utils import iso_utcnow
 
 from . import fixtures
 
@@ -92,3 +98,27 @@ def test_extract_metadata(app, db, tester_id, remote_token, github_api):
     assert metadata['upload_type'] == 'dataset'
     assert metadata['license'] == 'mit-license'
     assert len(metadata['creators']) == 2
+
+
+def test_refresh_accounts(app, db, tester_id, remote_token, github_api):
+    """Test account refresh task."""
+    def mocked_sync(hooks=True, async_hooks=True):
+        """Mock sync function and update the remote account."""
+        account = RemoteAccount.query.all()[0]
+        account.extra_data.update(dict(
+                last_sync=iso_utcnow(),
+            ))
+        db.session.commit()
+
+    with patch('invenio_github.api.GitHubAPI.sync', side_effect=mocked_sync):
+        updated = RemoteAccount.query.all()[0].updated
+        expiration_threshold = {'seconds': 1}
+        sleep(2)
+        refresh_accounts.delay(expiration_threshold)
+
+        last_update = RemoteAccount.query.all()[0].updated
+        assert updated != last_update
+
+        refresh_accounts.delay(expiration_threshold)
+
+        assert last_update == RemoteAccount.query.all()[0].updated
