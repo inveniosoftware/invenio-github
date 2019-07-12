@@ -43,6 +43,7 @@ tests_require = [
     'pytest-cov>=1.8.0',
     'pytest-pep8>=1.0.6',
     'pytest>=3.6.0',  # due to pytest-cov requirement
+    'invenio-search[elasticsearch7]>=1.2.3',
 ]
 
 extras_require = {
@@ -62,23 +63,23 @@ setup_requires = [
 ]
 
 install_requires = [
-    'Flask-BabelEx>=0.9.2',
+    'Flask-BabelEx>=0.9.3',
     'Flask-Breadcrumbs>=0.3.0',
     'Flask-Menu>=0.5.0',
-    'Flask>=0.11.1',
+    'Flask>=1.0.2',
     'github3.py==1.0.0a4',
     'humanize>=0.5.1',
     'invenio-assets>=1.0.0',
-    'invenio-accounts>=1.1.0',
-    'invenio-celery>=1.0.0',
-    'invenio-db>=1.0.0',
-    'invenio-deposit>=1.0.0a8',
-    'invenio-formatter[badges]>=1.0.0',
+    'invenio-accounts>=1.1.1',
+    'invenio-celery>=1.0.1',
+    'invenio-db>=1.0.4',
+    'invenio-deposit>=1.0.0a11',
+    'invenio-formatter[badges]>=1.0.1',
     'invenio-oauth2server>=1.0.3',
-    'invenio-oauthclient>=1.1.1',
+    'invenio-oauthclient>=1.1.2',
     'invenio-pidstore>=1.0.0',
-    'invenio-records>=1.0.0',
-    'invenio-webhooks>=1.0.0a3',
+    'invenio-records>=1.3.0',
+    'invenio-webhooks>=1.0.0a4',
     'mistune>=0.7.2',
     'six>=1.10.0',
     'uritemplate.py>=0.2.0,<2.0',

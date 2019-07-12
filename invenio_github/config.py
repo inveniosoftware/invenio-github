@@ -83,6 +83,9 @@ GITHUB_TEMPLATE_INDEX = 'invenio_github/settings/index.html'
 GITHUB_TEMPLATE_VIEW = 'invenio_github/settings/view.html'
 """Repository detail view template."""
 
+GITHUB_ERROR_HANDLERS = None
+"""Definition of the way specific exceptions are handled."""
+
 # Copy the default GitHub OAuth application configuration, and update
 # handlers and scope.
 GITHUB_REMOTE_APP = deepcopy(REMOTE_APP)

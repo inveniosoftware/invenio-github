@@ -31,9 +31,43 @@ from celery import shared_task
 from flask import current_app, g
 from invenio_db import db
 from invenio_oauthclient.models import RemoteAccount
+from invenio_rest.errors import RESTException
 from sqlalchemy.orm.exc import NoResultFound
 
-from .errors import CustomGitHubMetadataError, RepositoryAccessError
+from .errors import CustomGitHubMetadataError, InvalidSenderError, \
+    RepositoryAccessError
+from .models import Release, ReleaseStatus
+from .proxies import current_github
+
+
+def _get_err_obj(msg):
+    """Generate the error entry with a Sentry ID."""
+    err = {'errors': msg}
+    if hasattr(g, 'sentry_event_id'):
+        err['error_id'] = str(g.sentry_event_id)
+    return err
+
+
+def release_rest_exception_handler(release, ex):
+    """Handler for RestException."""
+    release.model.errors = json.loads(ex.get_body())
+
+
+def release_gh_metadata_handler(release, ex):
+    """Handler for CustomGithubMetadataError."""
+    release.model.errors = {'errors': ex.message}
+
+
+def release_default_exception_handler(release, ex):
+    """Default handler."""
+    release.model.errors = _get_err_obj('Unknown error occured.')
+
+
+DEFAULT_ERROR_HANDLERS = [
+    (RESTException, release_rest_exception_handler),
+    (CustomGitHubMetadataError, release_gh_metadata_handler),
+    (Exception, release_default_exception_handler),
+]
 
 
 @shared_task(max_retries=6, default_retry_delay=10 * 60, rate_limit='100/m')
@@ -88,13 +122,6 @@ def sync_hooks(user_id, repositories):
 @shared_task(ignore_result=True)
 def process_release(release_id, verify_sender=False):
     """Process a received Release."""
-    from invenio_db import db
-    from invenio_rest.errors import RESTException
-
-    from .errors import InvalidSenderError
-    from .models import Release, ReleaseStatus
-    from .proxies import current_github
-
     release_model = Release.query.filter(
         Release.release_id == release_id,
         Release.status.in_([ReleaseStatus.RECEIVED, ReleaseStatus.FAILED]),
@@ -109,38 +136,21 @@ def process_release(release_id, verify_sender=False):
             .format(event=release.event.id, user=release.event.user_id)
         )
 
-    def _get_err_obj(msg):
-        """Generate the error entry with a Sentry ID."""
-        err = {'errors': msg}
-        if hasattr(g, 'sentry_event_id'):
-            err['error_id'] = str(g.sentry_event_id)
-        return err
-
     try:
         release.publish()
         release.model.status = ReleaseStatus.PUBLISHED
-    except RESTException as rest_ex:
-        release.model.errors = json.loads(rest_ex.get_body())
+
+    except Exception as ex:
+        error_handlers = current_github.release_error_handlers
         release.model.status = ReleaseStatus.FAILED
-        current_app.logger.exception(
-            u'Error while processing {release}'.format(release=release.model))
-    # TODO: We may want to handle GitHub errors differently in the future
-    # except GitHubError as github_ex:
-    #     release.model.errors = {'error': str(e)}
-    #     release.model.status = ReleaseStatus.FAILED
-    #     current_app.logger.exception(
-    #         'Error while processing {release}'
-    #         .format(release=release.model))
-    except CustomGitHubMetadataError as e:
-        release.model.errors = _get_err_obj(str(e))
-        release.model.status = ReleaseStatus.FAILED
-        current_app.logger.exception(
-            u'Error while processing {release}'.format(release=release.model))
-    except Exception:
-        release.model.errors = _get_err_obj('Unknown error occured.')
-        release.model.status = ReleaseStatus.FAILED
-        current_app.logger.exception(
-            u'Error while processing {release}'.format(release=release.model))
+
+        for error_cls, handler in error_handlers + DEFAULT_ERROR_HANDLERS:
+            if isinstance(ex, error_cls):
+                handler(release, ex)
+                current_app.logger.exception(
+                    u'Error while processing GitHub release')
+                break
+
     finally:
         db.session.commit()
 

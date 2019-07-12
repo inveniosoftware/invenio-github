@@ -33,6 +33,7 @@ from werkzeug.utils import cached_property, import_string
 
 from . import config
 from .api import GitHubRelease
+from .utils import obj_or_import_string
 
 
 class InvenioGitHub(object):
@@ -51,6 +52,14 @@ class InvenioGitHub(object):
             cls = import_string(cls)
         assert issubclass(cls, GitHubRelease)
         return cls
+
+    @cached_property
+    def release_error_handlers(self):
+        """Github Release error handlers."""
+        error_handlers = current_app.config.get('GITHUB_ERROR_HANDLERS') or []
+        return [(obj_or_import_string(error_cls),
+                obj_or_import_string(handler))
+                for error_cls, handler in error_handlers]
 
     @cached_property
     def record_serializer(self):
