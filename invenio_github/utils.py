@@ -27,6 +27,7 @@ import dateutil.parser
 import pytz
 import requests
 from flask import current_app
+from github3 import repository
 
 from .errors import CustomGitHubMetadataError
 
@@ -80,12 +81,9 @@ def get_owner(gh, owner):
 def get_contributors(gh, repo_id):
     """Get list of contributors to a repository."""
     try:
-        # FIXME: Use `github3.Repository.contributors` to get this information
-        contrib_url = gh.repository_with_id(repo_id).contributors_url
-
-        r = requests.get(contrib_url)
-        if r.status_code == 200:
-            contributors = r.json()
+        contributors_iter = gh.repository_with_id(repo_id).contributors()
+        contributors = list(contributors_iter)
+        if contributors_iter.last_status == 200:
 
             def get_author(contributor):
                 r = requests.get(contributor['url'])
@@ -96,13 +94,14 @@ def get_contributors(gh, repo_id):
                               else data['login']),
                         affiliation=data.get('company') or '',
                     )
-
             # Sort according to number of contributions
-            contributors.sort(key=itemgetter('contributions'))
-            contributors = [get_author(x) for x in reversed(contributors)
-                            if x['type'] == 'User']
+            contributors = sorted(
+                contributors,
+                key=lambda x: x.as_dict()['contributions'],
+                reverse=True)
+            contributors = [get_author(x.as_dict()) for x in contributors[:30]
+                            if x.as_dict()['type'] == 'User']
             contributors = filter(lambda x: x is not None, contributors)
-
             return contributors
     except Exception:
         return None
