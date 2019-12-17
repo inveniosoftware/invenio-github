@@ -354,12 +354,10 @@ class GitHubRelease(object):
     @cached_property
     def title(self):
         """Extract title from a release."""
-        if self.event:
-            if self.release['name']:
-                return u'{0}: {1}'.format(
-                    self.repository['full_name'], self.release['name']
-                )
-        return u'{0} {1}'.format(self.repo_model.name, self.model.tag)
+        repo_name = self.repository.get('full_name', self.repo_model.name)
+        release_name = self.release.get(
+            'name', self.release.get('tag_name', self.model.tag))
+        return u'{0}: {1}'.format(repo_name, release_name)
 
     @cached_property
     def description(self):
