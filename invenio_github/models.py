@@ -198,9 +198,7 @@ class Repository(db.Model, Timestamp):
         if (check_owner and repo and repo.user_id and
                 repo.user_id != int(user_id)):
             raise RepositoryAccessError(
-                u'User {user} cannot access repository {repo}({repo_id}).'
-                .format(user=user_id, repo=name, repo_id=github_id)
-            )
+                user=user_id, repo=name, repo_id=github_id)
         return repo
 
     @classmethod
@@ -319,10 +317,7 @@ class Release(db.Model, Timestamp):
             release_id=release_id,
         ).first()
         if existing_release:
-            raise ReleaseAlreadyReceivedError(
-                u'{release} has already been received.'
-                .format(release=existing_release)
-            )
+            raise ReleaseAlreadyReceivedError(release=existing_release)
 
         # Create the Release
         repo_id = event.payload['repository']['id']
@@ -340,12 +335,8 @@ class Release(db.Model, Timestamp):
             return release
         else:
             current_app.logger.warning(
-                u'Release creation attempt on disabled {repo}.'
-                .format(repo=repo)
-            )
-            raise RepositoryDisabledError(
-                u'{repo} is not enabled for webhooks.'.format(repo=repo)
-            )
+                u'Release creation attempt on disabled.', exc_info=True)
+            raise RepositoryDisabledError(repo=repo)
 
     @property
     def record(self):

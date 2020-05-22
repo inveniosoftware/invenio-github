@@ -86,9 +86,10 @@ def disconnect_github(access_token, repo_hooks):
             if ghrepo:
                 hook = ghrepo.hook(repo_hook)
                 if hook and hook.delete():
-                    info_msg = u'Deleted hook {hook} from {repo}'.format(
-                        hook=hook.id, repo=ghrepo.full_name)
-                    current_app.logger.info(info_msg)
+                    current_app.logger.info(
+                        'Deleted hook from github repository.',
+                        extra={'hook': hook.id, 'repo': ghrepo.full_name}
+                    )
         # If we finished our clean-up successfully, we can revoke the token
         GitHubAPI.revoke_token(access_token)
     except Exception as exc:
@@ -112,7 +113,7 @@ def sync_hooks(user_id, repositories):
                 # the user might enable/disable a hook.
                 db.session.commit()
             except RepositoryAccessError as e:
-                current_app.logger.warning(e.message, exc_info=True)
+                current_app.logger.warning(str(e), exc_info=True)
             except NoResultFound:
                 pass  # Repository not in DB yet
     except Exception as exc:
@@ -132,9 +133,7 @@ def process_release(release_id, verify_sender=False):
     release = current_github.release_api_class(release_model)
     if verify_sender and not release.verify_sender():
         raise InvalidSenderError(
-            u'Invalid sender for event {event} for user {user}'
-            .format(event=release.event.id, user=release.event.user_id)
-        )
+            event=release.event.id, user=release.event.user_id)
 
     try:
         release.publish()

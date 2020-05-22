@@ -32,18 +32,58 @@ class GitHubError(Exception):
 class RepositoryAccessError(GitHubError):
     """Repository access permissions error."""
 
+    message = u'The user cannot access the github repository'
+
+    def __init__(self, user=None, repo=None, repo_id=None, message=None):
+        """Constructor."""
+        super(RepositoryAccessError, self).__init__(message or self.message)
+        self.user = user
+        self.repo = repo
+        self.repo_id = repo_id
+
 
 class RepositoryDisabledError(GitHubError):
     """Repository access permissions error."""
+
+    message = u'This repository is not enabled for webhooks.'
+
+    def __init__(self, repo=None, message=None):
+        """Constructor."""
+        super(RepositoryDisabledError, self).__init__(message or self.message)
+        self.repo = repo
 
 
 class InvalidSenderError(GitHubError):
     """Invalid release sender error."""
 
+    message = u'Invalid sender for event'
+
+    def __init__(self, event=None, user=None, message=None):
+        """Constructor."""
+        super(InvalidSenderError, self).__init__(message or self.message)
+        self.event = event
+        self.user = user
+
 
 class ReleaseAlreadyReceivedError(GitHubError):
     """Invalid release sender error."""
 
+    message = u'The release has already been received.'
+
+    def __init__(self, release=None, message=None):
+        """Constructor."""
+        super(ReleaseAlreadyReceivedError, self).__init__(
+            message or self.message)
+        self.release = release
+
 
 class CustomGitHubMetadataError(GitHubError):
     """Invalid Custom GitHub Metadata file."""
+
+    message = u'The metadata file is not valid JSON.'
+
+    def __init__(self, file=None, message=None):
+        """Constructor."""
+        super(CustomGitHubMetadataError, self).__init__(
+            message or self.message)
+        self.file = file

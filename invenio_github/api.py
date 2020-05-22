@@ -192,8 +192,9 @@ class GitHubAPI(object):
                     with db.session.begin_nested():
                         self.sync_repo_hook(repo_id)
                     db.session.commit()
-                except RepositoryAccessError as e:
-                    current_app.logger.warning(e.message, exc_info=True)
+                except RepositoryAccessError:
+                    current_app.logger.warning(
+                        str(RepositoryAccessError), exc_info=True)
                 except NoResultFound:
                     pass  # Repository not in DB yet
         else:
