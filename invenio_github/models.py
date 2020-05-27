@@ -334,8 +334,6 @@ class Release(db.Model, Timestamp):
                 db.session.add(release)
             return release
         else:
-            current_app.logger.warning(
-                u'Release creation attempt on disabled.', exc_info=True)
             raise RepositoryDisabledError(repo=repo)
 
     @property
