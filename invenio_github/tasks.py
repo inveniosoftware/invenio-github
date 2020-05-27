@@ -31,6 +31,7 @@ from celery import shared_task
 from flask import current_app, g
 from invenio_db import db
 from invenio_oauthclient.models import RemoteAccount
+from invenio_oauthclient.proxies import current_oauthclient
 from invenio_rest.errors import RESTException
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -164,8 +165,10 @@ def refresh_accounts(expiration_threshold=None):
     expiration_date = datetime.datetime.utcnow() - \
         datetime.timedelta(**(expiration_threshold or {'months': 6}))
 
+    remote = current_oauthclient.oauth.remote_apps['github']
     remote_accounts_to_be_updated = RemoteAccount.query.filter(
-        RemoteAccount.updated < expiration_date
+        RemoteAccount.updated < expiration_date,
+        RemoteAccount.client_id == remote.consumer_key,
     )
     for remote_account in remote_accounts_to_be_updated:
         sync_account.delay(remote_account.user_id)
