@@ -163,7 +163,7 @@ def refresh_accounts(expiration_threshold=None):
     referring to the maximum inactivity time.
     """
     expiration_date = datetime.datetime.utcnow() - \
-        datetime.timedelta(**(expiration_threshold or {'months': 6}))
+        datetime.timedelta(**(expiration_threshold or {'days': 6 * 30}))
 
     remote = current_oauthclient.oauth.remote_apps['github']
     remote_accounts_to_be_updated = RemoteAccount.query.filter(
