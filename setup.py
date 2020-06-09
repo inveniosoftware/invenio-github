@@ -69,6 +69,7 @@ install_requires = [
     'Flask-Menu>=0.5.0',
     'Flask>=1.0.4',
     'WTForms-Alchemy>=0.15.0,<0.17',
+    'convert-codemeta>=0.2.0',
     'email-validator>=1.0.5',
     'github3.py==1.0.0a4',
     'humanize>=0.5.1',

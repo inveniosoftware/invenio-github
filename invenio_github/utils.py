@@ -52,11 +52,11 @@ def parse_timestamp(x):
     return dt
 
 
-def get_extra_metadata(gh, owner, repo_name, ref):
+def get_extra_metadata(gh, owner, repo_name, ref, metadata_file):
     """Get the metadata file."""
     try:
         content = gh.repository(owner, repo_name).file_contents(
-            path=current_app.config['GITHUB_METADATA_FILE'], ref=ref
+            path=metadata_file, ref=ref
         )
         if not content:
             # File does not exists in the given ref
@@ -64,7 +64,7 @@ def get_extra_metadata(gh, owner, repo_name, ref):
         return json.loads(content.decoded.decode('utf-8'))
     except ValueError:
         raise CustomGitHubMetadataError(
-            file=current_app.config['GITHUB_METADATA_FILE'])
+            file=metadata_file)
 
 
 def get_owner(gh, owner):
