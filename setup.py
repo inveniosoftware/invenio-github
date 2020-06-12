@@ -74,7 +74,6 @@ install_requires = [
     'invenio-rest>=1.1.2,<1.2.2',
     'invenio-search[elasticsearch7]>=1.2.2',
     'invenio-webhooks>=1.0.0a4',
-    'jsonresolver>=0.2.1,<0.3.0',
     'mistune>=0.7.2',
     'six>=1.10.0',
     'sqlalchemy-utils>=0.33.11,<0.36',
