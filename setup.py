@@ -32,18 +32,7 @@ readme = open('README.rst').read()
 history = open('CHANGES.rst').read()
 
 tests_require = [
-    'check-manifest>=0.25',
-    'coverage>=4.0',
-    'httpretty>=0.8.14',
-    'invenio-files-rest>=1.0.0a12,<1.2.0',
-    'isort>=4.2.2',
-    'mock>=2.0.0',
-    'pydocstyle>=1.0.0',
-    'pytest-cache>=1.0',
-    'pytest-cov>=1.8.0',
-    'pytest-pep8>=1.0.6',
-    'pytest>=4.6.0',  # due to pytest-cov requirement
-    'invenio-search[elasticsearch7]>=1.2.3',
+    'pytest-invenio>=1.3.2,<1.4.0',
 ]
 
 extras_require = {
@@ -69,9 +58,10 @@ install_requires = [
     'Flask>=1.0.2',
     'email-validator>=1.0.5',
     'github3.py==1.0.0a4',
+    'httpretty>=0.9.6',
     'humanize>=0.5.1',
     'invenio-assets>=1.0.0',
-    'invenio-accounts>=1.1.1,<1.2.0',
+    'invenio-accounts>=1.1.1',
     'invenio-celery>=1.0.1',
     'invenio-db>=1.0.4',
     'invenio-deposit>=1.0.0a11',
@@ -81,7 +71,8 @@ install_requires = [
     'invenio-pidstore>=1.0.0',
     'invenio-records-rest>=1.3.0,<1.7.0',
     'invenio-records>=1.3.0',
-    'invenio-rest>=1.1.2,<1.2.0',
+    'invenio-rest>=1.1.2,<1.2.2',
+    'invenio-search[elasticsearch7]>=1.2.2',
     'invenio-webhooks>=1.0.0a4',
     'jsonresolver>=0.2.1,<0.3.0',
     'mistune>=0.7.2',
