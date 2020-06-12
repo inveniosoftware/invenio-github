@@ -52,7 +52,7 @@ setup_requires = [
 ]
 
 install_requires = [
-    'Flask-BabelEx>=0.9.3',
+    'Flask-BabelEx>=0.9.4',
     'Flask-Breadcrumbs>=0.4.0',
     'Flask-Menu>=0.5.0',
     'Flask>=1.0.2',
@@ -78,7 +78,7 @@ install_requires = [
     'six>=1.10.0',
     'sqlalchemy-utils>=0.33.11,<0.36',
     'uritemplate.py>=0.2.0,<2.0',
-    'werkzeug>=0.14.1'
+    'werkzeug>=0.14.1,<1.0.0'
 ]
 
 packages = find_packages()
