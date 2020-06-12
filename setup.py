@@ -79,8 +79,6 @@ install_requires = [
     'six>=1.10.0',
     'sqlalchemy-utils>=0.33.11,<0.36',
     'uritemplate.py>=0.2.0,<2.0',
-    'urllib3<1.25,>=1.21.1',  # from "invenio-search"
-    'idna>=2.5,<2.8',  # from "invenio-search"
     'werkzeug>=0.14.1,<1.0.0',
 ]
 
