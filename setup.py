@@ -55,7 +55,7 @@ install_requires = [
     'Flask-BabelEx>=0.9.4',
     'Flask-Breadcrumbs>=0.4.0',
     'Flask-Menu>=0.5.0',
-    'Flask>=1.0.2',
+    'Flask>=1.0.4',
     'email-validator>=1.0.5',
     'github3.py==1.0.0a4',
     'httpretty>=0.9.6',
@@ -77,7 +77,7 @@ install_requires = [
     'mistune>=0.7.2',
     'sqlalchemy-utils>=0.33.11,<0.36',
     'uritemplate.py>=0.2.0,<2.0',
-    'werkzeug>=0.14.1,<1.0.0'
+    'werkzeug>=1.0.0'
 ]
 
 packages = find_packages()
