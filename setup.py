@@ -63,7 +63,7 @@ install_requires = [
     'invenio-assets>=1.1.0',
     'invenio-accounts>=1.1.1',
     'invenio-celery>=1.0.1',
-    'invenio-db>=1.0.4<1.5.0',
+    'invenio-db==1.0.4',
     'invenio-deposit>=1.0.0a11',
     'invenio-formatter[badges]>=1.0.1',
     'invenio-oauth2server>=1.0.3,<1.1.0',
