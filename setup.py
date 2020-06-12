@@ -42,7 +42,7 @@ tests_require = [
     'pytest-cache>=1.0',
     'pytest-cov>=1.8.0',
     'pytest-pep8>=1.0.6',
-    'pytest>=3.6.0',  # due to pytest-cov requirement
+    'pytest>=4.6.0',  # due to pytest-cov requirement
     'invenio-search[elasticsearch7]>=1.2.3',
 ]
 
