@@ -60,7 +60,7 @@ install_requires = [
     'github3.py==1.0.0a4',
     'httpretty>=0.9.6',
     'humanize>=0.5.1',
-    'invenio-assets>=1.0.0',
+    'invenio-assets>=1.1.0',
     'invenio-accounts>=1.1.1',
     'invenio-celery>=1.0.1',
     'invenio-db>=1.0.4',
@@ -78,7 +78,6 @@ install_requires = [
     'six>=1.10.0',
     'sqlalchemy-utils>=0.33.11,<0.36',
     'uritemplate.py>=0.2.0,<2.0',
-    'werkzeug>=0.14.1,<1.0.0',
 ]
 
 packages = find_packages()
