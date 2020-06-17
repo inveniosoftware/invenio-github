@@ -28,5 +28,5 @@ pydocstyle invenio_github tests docs && \
 isort -rc -c -df && \
 check-manifest --ignore ".travis-*" && \
 sphinx-build -qnNW docs docs/_build/html && \
-py.test tests && \
+pytest tests && \
 sphinx-build -qnNW -b doctest docs docs/_build/doctest
