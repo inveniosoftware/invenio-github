@@ -32,7 +32,17 @@ readme = open('README.rst').read()
 history = open('CHANGES.rst').read()
 
 tests_require = [
-    'pytest-invenio>=1.3.2,<1.4.0',
+    'check-manifest>=0.35',
+    'coverage>=4.4.1',
+    'isort>=4.3.4',
+    'pydocstyle>=2.0.0',
+    'pytest-cache>=1.0',
+    'pytest-cov>=2.5.1',
+    'pytest-flask>=0.10.0,<1.0.0',
+    'pytest-mock>=1.6.0',
+    'pytest-pep8>=1.0.6',
+    'pytest>=3.7.0',
+    'selenium>=3.5.0,<3.6.0',
 ]
 
 extras_require = {
@@ -47,15 +57,15 @@ for reqs in extras_require.values():
     extras_require['all'].extend(reqs)
 
 setup_requires = [
-    'Babel>=1.3',
-    'pytest-runner>=2.6.2',
+    'Babel>=2.6.0',
+    'pytest-runner>=2.7.0',
 ]
 
 install_requires = [
     'Flask-BabelEx>=0.9.4',
     'Flask-Breadcrumbs>=0.4.0',
     'Flask-Menu>=0.5.0',
-    'Flask>=1.0.4',
+    'Flask>=1.0.2',
     'email-validator>=1.0.5',
     'github3.py==1.0.0a4',
     'httpretty>=0.9.6',
@@ -77,7 +87,6 @@ install_requires = [
     'mistune>=0.7.2',
     'sqlalchemy-utils>=0.33.11,<0.36',
     'uritemplate.py>=0.2.0,<2.0',
-    'werkzeug>=1.0.0'
 ]
 
 packages = find_packages()
