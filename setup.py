@@ -87,6 +87,7 @@ install_requires = [
     'mistune>=0.7.2',
     'sqlalchemy-utils>=0.33.11,<0.36',
     'uritemplate.py>=0.2.0,<2.0',
+    'werkzeug>=0.14.1,<1.0.0',
 ]
 
 packages = find_packages()
