@@ -41,7 +41,7 @@ tests_require = [
     'pytest-flask>=0.10.0,<1.0.0',
     'pytest-mock>=1.6.0',
     'pytest-pep8>=1.0.6',
-    'pytest>=3.7.0',
+    'pytest>=4.6.0',
     'selenium>=3.5.0,<3.6.0',
 ]
 
