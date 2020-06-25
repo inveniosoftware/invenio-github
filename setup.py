@@ -42,7 +42,8 @@ tests_require = [
     'pytest-cache>=1.0',
     'pytest-cov>=1.8.0',
     'pytest-pep8>=1.0.6',
-    'pytest>=3.6.0',  # due to pytest-cov requirement
+    'pytest>=4.6.0',  # due to pytest-cov requirement
+    'pluggy>=0.12,<1.0',
     'invenio-search[elasticsearch7]>=1.2.3',
 ]
 
@@ -67,6 +68,7 @@ install_requires = [
     'Flask-Breadcrumbs>=0.3.0',
     'Flask-Menu>=0.5.0',
     'Flask>=1.0.2',
+    'WTForms-Alchemy>=0.15.0,<0.17',
     'email-validator>=1.0.5',
     'github3.py==1.0.0a4',
     'humanize>=0.5.1',
