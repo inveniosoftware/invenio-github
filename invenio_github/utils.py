@@ -26,8 +26,10 @@ from operator import itemgetter
 import dateutil.parser
 import pytz
 import requests
+import six
 from flask import current_app
 from github3 import repository
+from werkzeug.utils import import_string
 
 from .errors import CustomGitHubMetadataError
 
