@@ -351,6 +351,7 @@ def REPO(owner, repo, repo_id):
 def ZIPBALL():
     """Github repository ZIP fixture."""
     from zipfile import ZipFile
+
     from six import BytesIO
 
     memfile = BytesIO()

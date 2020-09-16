@@ -337,6 +337,7 @@ def tclient_request_factory(client, method, endpoint, urlargs, data,
 def github_api(app, db, tester_id, remote_token):
     """Github API mock."""
     import github3
+
     from . import fixtures
 
     mock_api = MagicMock()

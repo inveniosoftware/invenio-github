@@ -65,9 +65,9 @@ setup_requires = [
 
 install_requires = [
     'Flask-BabelEx>=0.9.3',
-    'Flask-Breadcrumbs>=0.3.0',
+    'Flask-Breadcrumbs>=0.4.0',
     'Flask-Menu>=0.5.0',
-    'Flask>=1.0.2',
+    'Flask>=1.0.4',
     'WTForms-Alchemy>=0.15.0,<0.17',
     'email-validator>=1.0.5',
     'github3.py==1.0.0a4',
@@ -81,18 +81,20 @@ install_requires = [
     'invenio-oauth2server>=1.0.3,<1.1.0',
     'invenio-oauthclient>=1.1.2,<1.2.0',
     'invenio-pidstore>=1.0.0',
-    'invenio-records-rest>=1.3.0,<1.7.0',
+    'invenio-records-rest>=1.6.2,<1.7.0',
     'invenio-records>=1.3.0',
     'invenio-rest>=1.1.2,<1.2.0',
     'invenio-webhooks>=1.0.0a4',
     'jsonresolver>=0.2.1,<0.3.0',
     'mistune>=0.7.2',
-    'six>=1.10.0',
+    'six>=1.12.0',
     'sqlalchemy-utils>=0.33.11,<0.36',
     'uritemplate.py>=0.2.0,<2.0',
     'urllib3<1.25,>=1.21.1',  # from "invenio-search"
     'idna>=2.5,<2.8',  # from "invenio-search"
-    'werkzeug>=0.14.1,<1.0.0',
+    'werkzeug>=0.15.0,<1.0.0',
+    'invenio-indexer>=1.0.2,<1.2.0',
+
 ]
 
 packages = find_packages()

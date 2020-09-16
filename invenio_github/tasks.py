@@ -78,6 +78,7 @@ def disconnect_github(access_token, repo_hooks):
     # already been deleted. The celery task is passed the access_token to make
     # some last cleanup and afterwards delete itself remotely.
     import github3
+
     from .api import GitHubAPI
 
     try:
