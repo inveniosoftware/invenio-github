@@ -25,8 +25,8 @@
  Invenio-GitHub
 ================
 
-.. image:: https://img.shields.io/travis/inveniosoftware/invenio-github.svg
-        :target: https://travis-ci.org/inveniosoftware/invenio-github
+.. image:: https://github.com/inveniosoftware/invenio-github/workflows/CI/badge.svg
+        :target: https://github.com/inveniosoftware/invenio-github/actions
 
 .. image:: https://img.shields.io/coveralls/inveniosoftware/invenio-github.svg
         :target: https://coveralls.io/r/inveniosoftware/invenio-github
