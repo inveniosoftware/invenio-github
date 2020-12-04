@@ -32,24 +32,14 @@ readme = open('README.rst').read()
 history = open('CHANGES.rst').read()
 
 tests_require = [
-    'check-manifest>=0.25',
-    'coverage>=4.0',
-    'httpretty>=0.8.14',
-    'invenio-files-rest>=1.0.0a12,<1.2.0',
-    'isort>=4.2.2',
     'mock>=2.0.0',
-    'pydocstyle>=1.0.0',
-    'pytest-cache>=1.0',
-    'pytest-cov>=1.8.0',
-    'pytest-pep8>=1.0.6',
-    'pytest>=4.6.0',  # due to pytest-cov requirement
-    'pluggy>=0.12,<1.0',
-    'invenio-search[elasticsearch7]>=1.2.3',
+    'pytest-mock>=1.6.0',
+    'pytest-invenio>=1.4.0',
 ]
 
 extras_require = {
     'docs': [
-        'Sphinx>=1.4.2',
+        'Sphinx>=3',
     ],
     'tests': tests_require,
 }
@@ -59,42 +49,38 @@ for reqs in extras_require.values():
     extras_require['all'].extend(reqs)
 
 setup_requires = [
-    'Babel>=1.3',
-    'pytest-runner>=2.6.2',
+    'Babel>=2.6.0',
+    'pytest-runner>=2.7.0',
 ]
 
 install_requires = [
-    'Flask-BabelEx>=0.9.3',
+    'Flask-BabelEx>=0.9.4',
     'Flask-Breadcrumbs>=0.4.0',
     'Flask-Menu>=0.5.0',
     'Flask>=1.0.4',
-    'WTForms-Alchemy>=0.15.0,<0.17',
     'email-validator>=1.0.5',
     'github3.py==1.0.0a4',
+    'httpretty>=0.9.6',
     'humanize>=0.5.1',
-    'invenio-assets>=1.0.0',
-    'invenio-accounts>=1.1.1,<1.2.0',
-    'invenio-celery>=1.0.1',
-    'invenio-db>=1.0.4',
+    'invenio-assets>=1.1.0',
+    'invenio-accounts>=1.3.0',
+    'invenio-celery>=1.1.2',
+    'invenio-db==1.0.4',
     'invenio-deposit>=1.0.0a11',
     'invenio-formatter[badges]>=1.0.1',
     'invenio-oauth2server>=1.0.3,<1.1.0',
-    'invenio-oauthclient>=1.1.2,<1.2.0',
+    'invenio-oauthclient[github]>=1.1.2',
     'invenio-pidstore>=1.0.0',
-    'invenio-records-rest>=1.6.2,<1.7.0',
+    'invenio-records-rest>=1.3.0,<1.7.0',
     'invenio-records>=1.3.0',
-    'invenio-rest>=1.1.2,<1.2.0',
+    'invenio-rest>=1.2.2',
+    'invenio-search[elasticsearch7]>=1.2.2',
     'invenio-webhooks>=1.0.0a4',
     'jsonresolver>=0.2.1,<0.3.0',
     'mistune>=0.7.2',
-    'six>=1.12.0',
     'sqlalchemy-utils>=0.33.11,<0.36',
     'uritemplate.py>=0.2.0,<2.0',
-    'urllib3<1.25,>=1.21.1',  # from "invenio-search"
-    'idna>=2.5,<2.8',  # from "invenio-search"
-    'werkzeug>=0.15.0,<1.0.0',
-    'invenio-indexer>=1.0.2,<1.2.0',
-
+    'werkzeug>=0.14.1,<1.0.0',
 ]
 
 packages = find_packages()
@@ -163,10 +149,10 @@ setup(
         'Programming Language :: Python',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
         'Topic :: Software Development :: Libraries :: Python Modules',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: Implementation :: CPython',
         'Development Status :: 3 - Alpha',
     ],
