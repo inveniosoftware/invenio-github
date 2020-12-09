@@ -25,7 +25,7 @@
 """Invenio module that adds GitHub integration to the platform."""
 
 import github3
-from convert_codemeta import crosswalk
+from convert_codemeta import crosswalk, validate_codemeta
 from flask import current_app
 from invenio_db import db
 from invenio_oauth2server.models import Token as ProviderToken
@@ -421,15 +421,17 @@ class GitHubRelease(object):
     @cached_property
     def codemeta(self):
         """Get extra metadata from codemeta file in repository."""
-        metadata = get_extra_metadata(
+        codemeta = get_extra_metadata(
             self.gh.api,
             self.repository['owner']['login'],
             self.repository['name'],
             self.release['tag_name'],
             'codemeta.json'
         )
-        return crosswalk(metadata, "codemeta", "Zenodo")
-
+        if validate_codemeta(codemeta):
+            return crosswalk(codemeta, "codemeta", "Zenodo")
+        else:
+            return {}
 
     @cached_property
     def files(self):
