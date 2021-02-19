@@ -122,6 +122,7 @@ def sync_hooks(user_id, repositories):
         sync_hooks.retry(exc=exc)
 
 
+@shared_task(ignore_result=True, max_retries=5, default_retry_delay=10 * 60)
 def process_release(release_id, verify_sender=False, use_extra_metadata=True):
     """Process a received Release."""
     release_model = Release.query.filter(
@@ -143,16 +144,21 @@ def process_release(release_id, verify_sender=False, use_extra_metadata=True):
     except Exception as ex:
         error_handlers = current_github.release_error_handlers
         release.model.status = ReleaseStatus.FAILED
-
+        matched_error_cls = None
+        matched_ex = None
         for error_cls, handler in error_handlers + DEFAULT_ERROR_HANDLERS:
             if isinstance(ex, error_cls):
                 handler(release, ex)
                 current_app.logger.exception(
                     u'Error while processing GitHub release')
+                matched_error_cls = error_cls
+                matched_ex = ex
                 break
-
     finally:
         db.session.commit()
+
+    if matched_error_cls is Exception:
+        process_release.retry(ex=matched_ex)
 
 
 @shared_task(ignore_result=True)
