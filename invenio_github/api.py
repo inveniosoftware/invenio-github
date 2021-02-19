@@ -305,9 +305,10 @@ class GitHubAPI(object):
 class GitHubRelease(object):
     """A GitHub release."""
 
-    def __init__(self, release):
+    def __init__(self, release, use_extra_metadata=True):
         """Constructor."""
         self.model = release
+        self.use_extra_metadata = use_extra_metadata
 
     @cached_property
     def gh(self):
@@ -412,6 +413,7 @@ class GitHubRelease(object):
             self.release['tag_name'],
         )
 
+
     @cached_property
     def files(self):
         """Extract files to download from GitHub payload."""
@@ -431,7 +433,8 @@ class GitHubRelease(object):
     def metadata(self):
         """Return extracted metadata."""
         output = dict(self.defaults)
-        output.update(self.extra_metadata)
+        if self.use_extra_metadata:
+            output.update(self.extra_metadata)
         return output
 
     @cached_property
