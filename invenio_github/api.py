@@ -24,6 +24,8 @@
 
 """Invenio module that adds GitHub integration to the platform."""
 
+import json
+
 import github3
 from flask import current_app
 from invenio_db import db
@@ -294,13 +296,24 @@ class GitHubAPI(object):
     @classmethod
     def check_token(cls, token):
         """Check if an access token is authorized."""
-        return cls._dev_api().check_authorization(token)
+        gh_api = cls._dev_api()
+        client_id, client_secret = gh_api.session.retrieve_client_credentials()
+        url = gh_api._build_url('applications', str(client_id), 'token')
+        with gh_api.session.temporary_basic_auth(client_id, client_secret):
+            response = gh_api._post(url, data={'access_token': token})
+        return response.status_code == 200
 
     @classmethod
     def revoke_token(cls, token):
         """Revoke an access token."""
-        return cls._dev_api().revoke_authorization(token)
-
+        gh_api = cls._dev_api()
+        client_id, client_secret = gh_api.session.retrieve_client_credentials()
+        url = gh_api._build_url('applications', str(client_id), 'token')
+        with gh_api.session.temporary_basic_auth(client_id, client_secret):
+            response = gh_api._delete(
+                url, data=json.dumps({'access_token': token})
+            )
+        return response
 
 class GitHubRelease(object):
     """A GitHub release."""
