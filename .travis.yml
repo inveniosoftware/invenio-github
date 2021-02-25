@@ -1,0 +1,76 @@
+# -*- coding: utf-8 -*-
+#
+# This file is part of Invenio.
+# Copyright (C) 2016 CERN.
+#
+# Invenio is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# Invenio is distributed in the hope that it will be
+# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Invenio; if not, write to the
+# Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+# MA 02111-1307, USA.
+#
+# In applying this license, CERN does not
+# waive the privileges and immunities granted to it by virtue of its status
+# as an Intergovernmental Organization or submit itself to any jurisdiction.
+
+
+notifications:
+  email: false
+
+sudo: false
+
+language: python
+
+cache:
+  - pip
+
+services:
+  - redis
+
+env:
+  - REQUIREMENTS=lowest
+  - REQUIREMENTS=release
+  - REQUIREMENTS=devel
+
+python:
+  - "2.7"
+  - "3.6"
+
+before_install:
+  - "travis_retry pip install --upgrade pip setuptools py"
+  - "travis_retry pip uninstall -y six"
+  - "travis_retry pip install twine wheel coveralls requirements-builder configparser"
+  - "requirements-builder --level=min setup.py > .travis-lowest-requirements.txt"
+  - "requirements-builder --level=pypi setup.py > .travis-release-requirements.txt"
+  - "requirements-builder --level=dev --req requirements-devel.txt setup.py > .travis-devel-requirements.txt"
+
+install:
+  - "travis_retry pip install -r .travis-${REQUIREMENTS}-requirements.txt"
+  - "travis_retry pip install -e .[all]"
+  - "pip list"
+
+script:
+  - "./run-tests.sh"
+
+after_success:
+    - coveralls
+
+deploy:
+  provider: pypi
+  user: lnielsen
+  password:
+    secure: Uli7GLwY5Z75oEP6RnYdBDR0DFJ90+Rtk0Ogf0d2nSopxiTRMAi51l9dsN/mHvsuv5345BQGy01ru6XlH1NPKSm3fbVNVok1gDlr3HMvLPP4/J2FU2giPE9GrYE/GH0DSP7qrAFECcyrBPlPFnDOYpJO3sIdBqqrdrBA4uTtqVUGeSmaVT51GIwySh8/8EeyAL/1bgIyW/H1iH7tf0ORBkioOWwfvJI9C8nKBIBHG9RgLdIndsfz3lzwEuhjI1OnS82hiT6I93DIUNbGKGinz+PzDufEMJHPe9ZlCWFloEwydt3P0tvTjjTL1giT7PdKadu0EmNO9N+FN+lPQ+FEI1INzDYRpPEh0z/x8pl9UcAVgzaT1bdDnjjdcXjML6UM8dwTdUvHF/hGm63i7O3frs1ZlGOIO0og0cdCCSoY82TLH6+hVUr0Usu1wlZQ2OT/ZGdG2PTj/gHllSbnt7XzVCq94NWMynYMYncNWH1gLfeFuB0Exrx/+pgcJ4UVs2N4udlWov+mxG75bw+JYpPi1bsdfCSJbvGx0AxYdpMMjKYu9v9vcn7hKFvjQUa7BnCTnQRzRI4TKqWHW3GuziWp6AS65x0Gj6OXeJKSK1qH+xxvhIUEQTPnEl3yrxGXA3Ft9zl2iO2t1E56Mkd/mGM/9xiCcypk2xfBGoohTZFO934=
+  distributions: "compile_catalog sdist bdist_wheel"
+  skip_existing: true
+  on:
+    tags: true
+    condition: $REQUIREMENTS = release
