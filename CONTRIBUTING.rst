@@ -95,8 +95,8 @@ Ready to contribute? Here's how to set up `invenio-github` for local development
    .. code-block:: console
 
       $ git add .
-      $ git commit -s 
-          -m "component: title without verbs" 
+      $ git commit -s
+          -m "component: title without verbs"
           -m "* NEW Adds your new feature."
           -m "* FIX Fixes an existing issue."
           -m "* BETTER Improves and existing feature."
@@ -113,6 +113,6 @@ Before you submit a pull request, check that it meets these guidelines:
 1. The pull request should include tests and must not decrease test coverage.
 2. If the pull request adds functionality, the docs should be updated. Put
    your new functionality into a function with a docstring.
-3. The pull request should work for Python 3.6, 3.7 and 3.8. Check
-   https://github.com/inveniosoftware/invenio-github/actions?query=event%3Apull_request
+3. The pull request should work for Python 2.7, 3.3, 3.4 and 3.5. Check
+   https://travis-ci.org/inveniosoftware/invenio-github/pull_requests
    and make sure that the tests pass for all supported Python versions.
