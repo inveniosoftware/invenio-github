@@ -137,6 +137,9 @@ def process_release(release_id, verify_sender=False, use_extra_metadata=True):
         raise InvalidSenderError(
             event=release.event.id, user=release.event.user_id)
 
+    matched_error_cls = None
+    matched_ex = None
+
     try:
         release.publish()
         release.model.status = ReleaseStatus.PUBLISHED
@@ -144,7 +147,6 @@ def process_release(release_id, verify_sender=False, use_extra_metadata=True):
     except Exception as ex:
         error_handlers = current_github.release_error_handlers
         release.model.status = ReleaseStatus.FAILED
-        matched_error_cls = None
         matched_ex = None
         for error_cls, handler in error_handlers + DEFAULT_ERROR_HANDLERS:
             if isinstance(ex, error_cls):
