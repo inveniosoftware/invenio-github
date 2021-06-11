@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2012, 2013, 2014, 2016 CERN.
+# Copyright (C) 2012-2021 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -437,6 +437,16 @@ class GitHubRelease(object):
         filename = u'{name}-{tag}.zip'.format(name=repo_name, tag=tag_name)
 
         response = self.gh.api.session.head(zipball_url, allow_redirects=True)
+
+        # In case where there is a tag and branch with the same name, we might
+        # get back a "300 Mutliple Choices" response, which requires fetching
+        # an "alternate" link.
+        if response.status_code == 300:
+            zipball_url = response.links.get('alternate', {}).get('url')
+            if zipball_url:
+                response = self.gh.api.session.head(
+                    zipball_url, allow_redirects=True)
+
         assert response.status_code == 200, \
             u'Could not retrieve archive from GitHub: {0}'.format(zipball_url)
 
