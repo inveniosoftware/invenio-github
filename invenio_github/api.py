@@ -35,6 +35,7 @@ from invenio_oauthclient.models import RemoteAccount, RemoteToken
 from invenio_oauthclient.proxies import current_oauthclient
 from invenio_pidstore.proxies import current_pidstore
 from mistune import markdown
+import requests
 from six import string_types
 from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.local import LocalProxy
@@ -446,6 +447,15 @@ class GitHubRelease(object):
             if zipball_url:
                 response = self.gh.api.session.head(
                     zipball_url, allow_redirects=True)
+                # Another edge-case, is when the access token we have does not
+                # have the scopes/permissions to access public links. In that
+                # rare case we fallback to a non-authenticated request.
+                if response.status_code == 404:
+                    response = requests.head(zipball_url, allow_redirects=True)
+                    # If this response is successful we want to use the finally
+                    # resolved URL to fetch the ZIP from.
+                    if response.status_code == 200:
+                        zipball_url = response.url
 
         assert response.status_code == 200, \
             u'Could not retrieve archive from GitHub: {0}'.format(zipball_url)
