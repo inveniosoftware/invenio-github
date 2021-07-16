@@ -44,7 +44,8 @@ from werkzeug.utils import cached_property, import_string
 from .errors import RepositoryAccessError
 from .models import ReleaseStatus, Repository
 from .tasks import sync_hooks
-from .utils import get_extra_metadata, iso_utcnow, parse_timestamp, utcnow
+from .utils import get_extra_metadata, iso_utcnow, parse_timestamp, utcnow, \
+    get_citation_metadata
 
 
 class GitHubAPI(object):
@@ -427,6 +428,17 @@ class GitHubRelease(object):
             self.release['tag_name'],
         )
 
+    @cached_property
+    def citation_metadata(self):
+        """Get citation metadata for file in repository."""
+        return get_citation_metadata(
+            self.gh.api,
+            self.repository['owner']['login'],
+            self.repository['name'],
+            self.release['tag_name'],
+            self.model
+        )
+
 
     @cached_property
     def files(self):
@@ -468,6 +480,7 @@ class GitHubRelease(object):
         output = dict(self.defaults)
         if self.use_extra_metadata:
             output.update(self.extra_metadata)
+            output.update(self.citation_metadata)
         return output
 
     @cached_property

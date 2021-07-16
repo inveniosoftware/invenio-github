@@ -94,7 +94,7 @@ install_requires = [
     'idna>=2.5,<2.8',  # from "invenio-search"
     'werkzeug>=0.15.0,<1.0.0',
     'invenio-indexer>=1.0.2,<1.2.0',
-
+    'PyYAML>=5.4.1',
 ]
 
 packages = find_packages()

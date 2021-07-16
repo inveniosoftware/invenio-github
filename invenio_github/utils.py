@@ -20,6 +20,8 @@
 """Various utility functions."""
 
 import json
+import yaml
+
 from datetime import datetime
 from operator import itemgetter
 
@@ -32,7 +34,6 @@ from github3 import repository
 from werkzeug.utils import import_string
 
 from .errors import CustomGitHubMetadataError
-
 
 def utcnow():
     """UTC timestamp (with timezone)."""
@@ -65,6 +66,33 @@ def get_extra_metadata(gh, owner, repo_name, ref):
     except ValueError:
         raise CustomGitHubMetadataError(
             file=current_app.config['GITHUB_METADATA_FILE'])
+
+
+def get_citation_metadata(gh, owner, repo_name, ref, release):
+    """Get the metadata file."""
+    try:
+        content = gh.repository(owner, repo_name).file_contents(
+            path=current_app.config['GITHUB_CITATION_FILE'], ref=ref
+        )
+        if not content:
+            # File does not exists in the given ref
+            return {}
+        data = yaml.safe_load(content.decoded.decode('utf-8'))
+        citation_schema = \
+            current_app.config.get('GITHUB_CITATION_METADATA_SCHEMA')
+        data, errors = citation_schema().load(data)
+        # TODO: Refactor error storage
+        for key in errors:
+            errors[key] = str(errors[key])
+        if release.errors and errors:
+            release.errors['CITATION.cff'] = errors
+        elif errors:
+            release.errors = {"CITATION.cff": errors}
+        return data
+    except ValueError:
+        raise CustomGitHubMetadataError(
+            file=current_app.config['GITHUB_CITATION_FILE'])
+
 
 
 def get_owner(gh, owner):
