@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2012, 2013, 2014, 2016 CERN.
+# Copyright (C) 2012-2021 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -24,6 +24,8 @@
 
 """Invenio module that adds GitHub integration to the platform."""
 
+import json
+
 import github3
 from convert_codemeta import crosswalk, validate_codemeta
 from flask import current_app
@@ -34,6 +36,7 @@ from invenio_oauthclient.models import RemoteAccount, RemoteToken
 from invenio_oauthclient.proxies import current_oauthclient
 from invenio_pidstore.proxies import current_pidstore
 from mistune import markdown
+import requests
 from six import string_types
 from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.local import LocalProxy
@@ -296,20 +299,32 @@ class GitHubAPI(object):
     @classmethod
     def check_token(cls, token):
         """Check if an access token is authorized."""
-        return cls._dev_api().check_authorization(token)
+        gh_api = cls._dev_api()
+        client_id, client_secret = gh_api.session.retrieve_client_credentials()
+        url = gh_api._build_url('applications', str(client_id), 'token')
+        with gh_api.session.temporary_basic_auth(client_id, client_secret):
+            response = gh_api._post(url, data={'access_token': token})
+        return response.status_code == 200
 
     @classmethod
     def revoke_token(cls, token):
         """Revoke an access token."""
-        return cls._dev_api().revoke_authorization(token)
-
+        gh_api = cls._dev_api()
+        client_id, client_secret = gh_api.session.retrieve_client_credentials()
+        url = gh_api._build_url('applications', str(client_id), 'token')
+        with gh_api.session.temporary_basic_auth(client_id, client_secret):
+            response = gh_api._delete(
+                url, data=json.dumps({'access_token': token})
+            )
+        return response
 
 class GitHubRelease(object):
     """A GitHub release."""
 
-    def __init__(self, release):
+    def __init__(self, release, use_extra_metadata=True):
         """Constructor."""
         self.model = release
+        self.use_extra_metadata = use_extra_metadata
 
     @cached_property
     def gh(self):
@@ -356,12 +371,10 @@ class GitHubRelease(object):
     @cached_property
     def title(self):
         """Extract title from a release."""
-        if self.event:
-            if self.release['name']:
-                return u'{0}: {1}'.format(
-                    self.repository['full_name'], self.release['name']
-                )
-        return u'{0} {1}'.format(self.repo_model.name, self.model.tag)
+        repo_name = self.repository.get('full_name', self.repo_model.name)
+        release_name = self.release.get(
+            'name', self.release.get('tag_name', self.model.tag))
+        return u'{0}: {1}'.format(repo_name, release_name)
 
     @cached_property
     def description(self):
@@ -433,6 +446,7 @@ class GitHubRelease(object):
         else:
             return {}
 
+
     @cached_property
     def files(self):
         """Extract files to download from GitHub payload."""
@@ -443,6 +457,25 @@ class GitHubRelease(object):
         filename = u'{name}-{tag}.zip'.format(name=repo_name, tag=tag_name)
 
         response = self.gh.api.session.head(zipball_url, allow_redirects=True)
+
+        # In case where there is a tag and branch with the same name, we might
+        # get back a "300 Mutliple Choices" response, which requires fetching
+        # an "alternate" link.
+        if response.status_code == 300:
+            zipball_url = response.links.get('alternate', {}).get('url')
+            if zipball_url:
+                response = self.gh.api.session.head(
+                    zipball_url, allow_redirects=True)
+                # Another edge-case, is when the access token we have does not
+                # have the scopes/permissions to access public links. In that
+                # rare case we fallback to a non-authenticated request.
+                if response.status_code == 404:
+                    response = requests.head(zipball_url, allow_redirects=True)
+                    # If this response is successful we want to use the finally
+                    # resolved URL to fetch the ZIP from.
+                    if response.status_code == 200:
+                        zipball_url = response.url
+
         assert response.status_code == 200, \
             u'Could not retrieve archive from GitHub: {0}'.format(zipball_url)
 
@@ -452,8 +485,9 @@ class GitHubRelease(object):
     def metadata(self):
         """Return extracted metadata."""
         output = dict(self.defaults)
-        output.update(self.extra_metadata)
-        output.update(self.codemeta)
+        if self.use_extra_metadata:
+            output.update(self.extra_metadata)
+            output.update(self.codemeta)
         return output
 
     @cached_property

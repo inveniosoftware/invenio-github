@@ -95,8 +95,8 @@ Ready to contribute? Here's how to set up `invenio-github` for local development
    .. code-block:: console
 
       $ git add .
-      $ git commit -s 
-          -m "component: title without verbs" 
+      $ git commit -s
+          -m "component: title without verbs"
           -m "* NEW Adds your new feature."
           -m "* FIX Fixes an existing issue."
           -m "* BETTER Improves and existing feature."
