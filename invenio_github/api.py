@@ -27,6 +27,7 @@
 import json
 
 import github3
+from convert_codemeta import crosswalk, validate_codemeta
 from flask import current_app
 from invenio_db import db
 from invenio_oauth2server.models import Token as ProviderToken
@@ -44,7 +45,8 @@ from werkzeug.utils import cached_property, import_string
 from .errors import RepositoryAccessError
 from .models import ReleaseStatus, Repository
 from .tasks import sync_hooks
-from .utils import get_extra_metadata, iso_utcnow, parse_timestamp, utcnow
+from .utils import get_extra_metadata, iso_utcnow, \
+    parse_timestamp, utcnow
 
 
 class GitHubAPI(object):
@@ -419,13 +421,30 @@ class GitHubRelease(object):
 
     @cached_property
     def extra_metadata(self):
-        """Get extra metadata for file in repository."""
+        """Get extra metadata from file in repository."""
         return get_extra_metadata(
             self.gh.api,
             self.repository['owner']['login'],
             self.repository['name'],
             self.release['tag_name'],
+            current_app.config['GITHUB_METADATA_FILE']
         )
+
+
+    @cached_property
+    def codemeta(self):
+        """Get extra metadata from codemeta file in repository."""
+        codemeta = get_extra_metadata(
+            self.gh.api,
+            self.repository['owner']['login'],
+            self.repository['name'],
+            self.release['tag_name'],
+            'codemeta.json'
+        )
+        if validate_codemeta(codemeta):
+            return crosswalk(codemeta, "codemeta", "Zenodo")
+        else:
+            return {}
 
 
     @cached_property
@@ -468,6 +487,7 @@ class GitHubRelease(object):
         output = dict(self.defaults)
         if self.use_extra_metadata:
             output.update(self.extra_metadata)
+            output.update(self.codemeta)
         return output
 
     @cached_property
