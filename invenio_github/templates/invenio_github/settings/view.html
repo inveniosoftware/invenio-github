@@ -173,7 +173,7 @@ require(['jquery', 'js/github/view'], function($, view) {
         <div class="tab-content">
           {%- block releasetab_cff scoped %}
           <div role="tabpanel" class="tab-pane active" id="{{ release.model.id }}-cff">
-            <a class="pull-right btn btn-xs btn-default" href="{{ (release.event.payload.repository.html_url + '/new/master?filename=CITATION.cff') if release.event else 'https://github.com/{0}/new/master?filename=CITATION.cff'.format(repo.name) }}"><i class="fa fa-github"></i> Create CITATION.cff</a>
+            <a target="_blank" class="pull-right btn btn-xs btn-default" href="{{ (release.event.payload.repository.html_url + '/new/master?filename=CITATION.cff') if release.event else 'https://github.com/{0}/new/master?filename=CITATION.cff'.format(repo.name) }}"><i class="fa fa-github"></i> Create CITATION.cff</a>
             <h4>Citation File</h4>
             <p><a href="https://citation-file-format.github.io/">CITATION.cff</a> files are plain text files with human- and machine-readable citation information for software. Code developers can include them in their repositories to let others know how to correctly cite their software.</p>
             <p>An example of the CITATION.cff for this release can be found below:</p>
@@ -186,7 +186,7 @@ authors:
     orcid: https://orcid.org/0000-0000-0000-0000
 title: {{ release.title }}
 version: {{ release.model.tag }}
-date-released: 2017-12-18
+date-released: {{ release.event.payload.release.published_at[:10] if release.event else '2021-07-28' }}
             </pre>
           </div>
           {%- endblock releasetab_cff %}
