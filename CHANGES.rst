@@ -25,6 +25,6 @@
 Changes
 =======
 
-Version v1.0.0a24 (released 2021-06-16)
+Version v1.0.0a25 (released 2021-07-28)
 
 - Initial public release.
