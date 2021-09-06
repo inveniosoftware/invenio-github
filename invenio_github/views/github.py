@@ -29,6 +29,7 @@ from datetime import datetime
 
 import humanize
 import pytz
+import yaml
 from dateutil.parser import parse
 from flask import Blueprint, abort, current_app, redirect, render_template, \
     request, url_for
@@ -245,3 +246,21 @@ def hook_action(action, repo_id):
             abort(400)
     else:
         abort(400)
+
+
+@blueprint.app_template_filter('cff_yaml')
+def cff_yaml(release):
+    """Outputs the yaml CFF template from a release object."""
+    return yaml.dump({
+        "cff-version": "1.1.0",
+        "message": "If you use this software, please cite it as below.",
+        "authors": [
+            {"family-names": "Joe",
+            "given-names": "Johnson",
+            "orcid": "https://orcid.org/0000-0000-0000-0000"}
+        ],
+        "title": str(release.title),
+        "version": str(release.model.tag),
+        "date-released": str(release.event.payload['release']['published_at'][:10]
+                            if release.event else '2021-07-28')
+        }, indent=2, default_style='"')

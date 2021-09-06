@@ -27,6 +27,7 @@
 import json
 
 import github3
+import requests
 from flask import current_app
 from invenio_db import db
 from invenio_oauth2server.models import Token as ProviderToken
@@ -35,7 +36,6 @@ from invenio_oauthclient.models import RemoteAccount, RemoteToken
 from invenio_oauthclient.proxies import current_oauthclient
 from invenio_pidstore.proxies import current_pidstore
 from mistune import markdown
-import requests
 from six import string_types
 from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.local import LocalProxy
@@ -44,8 +44,8 @@ from werkzeug.utils import cached_property, import_string
 from .errors import RepositoryAccessError
 from .models import ReleaseStatus, Repository
 from .tasks import sync_hooks
-from .utils import get_extra_metadata, iso_utcnow, parse_timestamp, utcnow, \
-    get_citation_metadata
+from .utils import get_citation_metadata, get_extra_metadata, iso_utcnow, \
+    parse_timestamp, utcnow
 
 
 class GitHubAPI(object):

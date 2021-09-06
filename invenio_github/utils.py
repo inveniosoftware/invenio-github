@@ -20,8 +20,6 @@
 """Various utility functions."""
 
 import json
-import yaml
-
 from datetime import datetime
 from operator import itemgetter
 
@@ -29,11 +27,13 @@ import dateutil.parser
 import pytz
 import requests
 import six
+import yaml
 from flask import current_app
 from github3 import repository
 from werkzeug.utils import import_string
 
 from .errors import CustomGitHubMetadataError
+
 
 def utcnow():
     """UTC timestamp (with timezone)."""
@@ -91,7 +91,8 @@ def get_citation_metadata(gh, owner, repo_name, ref, release):
         return data
     except ValueError:
         raise CustomGitHubMetadataError(
-            file=current_app.config['GITHUB_CITATION_FILE'])
+            "We couldn't process the CITATION.cff file. Please "
+            "make sure of the validity of its YAML syntax.")
 
 
 
