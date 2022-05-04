@@ -61,8 +61,13 @@ class GitHubReceiver(Receiver):
             return
 
         # Release event
-        if 'release' in event.payload and \
-                event.payload.get('action') == 'published':
+        action = event.payload.get('action')
+        is_draft_release = event.payload.get('release', {}).get('draft')
+        is_release_event = (
+            action in ('published', 'released', 'created')
+            and not is_draft_release
+        )
+        if is_release_event:
             try:
                 release = Release.create(event)
                 db.session.commit()
