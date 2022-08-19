@@ -1,8 +1,8 @@
 ==========================
- Invenio-GitHub v1.0.0a26
+ Invenio-GitHub v1.0.0a27
 ==========================
 
-Invenio-GitHub v1.0.0a26 was released on September 26, 2019.
+Invenio-GitHub v1.0.0a27 was released on August 19, 2022.
 
 About
 -----
@@ -19,7 +19,7 @@ What's new
 Installation
 ------------
 
-   $ pip install invenio-github==v1.0.0a26
+   $ pip install invenio-github==v1.0.0a27
 
 Documentation
 -------------
