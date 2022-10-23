@@ -127,7 +127,7 @@ require(['jquery', 'js/github/view'], function($, view) {
               </p>
               {%- endif %}
               <p>
-                <a href="{{release.event.payload.release.html_url if release.event else 'https://github.com/{0}/releases/tag/{1}'.format(repo.name, release.model.tag)}}" class="text-muted">
+                <a href="{{ release.event.payload.release.html_url if release.event else 'https://github.com/{0}/releases/tag/{1}'.format(repo.name, release.model.tag)}}" class="text-muted">
                   <i class="fa fa-fw fa-github"></i>
                   {{release.event.payload.release.name if release.event and release.event.payload.release.name else release.model.tag}}
                 </a>
@@ -172,8 +172,10 @@ require(['jquery', 'js/github/view'], function($, view) {
         </ul>
         <div class="tab-content">
           {%- block releasetab_cff scoped %}
+          {% set repo_name = value %}
+          {% set citation_cff_create_link = 'https://github.com/{0}/new/{1}?filename=CITATION.cff'.format(repo.name, (repo_info.default_branch or 'master')) %}
           <div role="tabpanel" class="tab-pane active" id="{{ release.model.id }}-cff">
-            <a target="_blank" class="pull-right btn btn-xs btn-default" href="{{ (release.event.payload.repository.html_url + '/new/master?filename=CITATION.cff') if release.event else 'https://github.com/{0}/new/master?filename=CITATION.cff'.format(repo.name) }}"><i class="fa fa-github"></i> Create CITATION.cff</a>
+            <a target="_blank" class="pull-right btn btn-xs btn-default" href="{{ citation_cff_create_link }}"><i class="fa fa-github"></i> Create CITATION.cff</a>
             <h4>Citation File</h4>
             <p><a href="https://citation-file-format.github.io/">CITATION.cff</a> files are plain text files with human- and machine-readable citation information for software. Code developers can include them in their repositories to let others know how to correctly cite their software.</p>
             <p>An example of the CITATION.cff for this release can be found below:</p>

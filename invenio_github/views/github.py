@@ -173,6 +173,7 @@ def repository(name):
         return render_template(
             current_app.config['GITHUB_TEMPLATE_VIEW'],
             repo=repo_instance,
+            repo_info=repo,
             releases=releases,
             serializer=current_github.record_serializer,
         )

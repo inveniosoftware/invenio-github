@@ -155,6 +155,7 @@ class GitHubAPI(object):
                 'id': gh_repo_id,
                 'full_name': gh_repo.full_name,
                 'description': gh_repo.description,
+                'default_branch': gh_repo.default_branch,
             }
 
         if hooks:
