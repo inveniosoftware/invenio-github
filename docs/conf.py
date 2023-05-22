@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2016 CERN.
+# Copyright (C) 2023 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -23,10 +24,6 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
 """Sphinx configuration."""
-
-from __future__ import print_function
-
-import sphinx.environment
 
 from invenio_github import __version__
 
@@ -82,7 +79,7 @@ release = __version__
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "en"
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
