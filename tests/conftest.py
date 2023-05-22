@@ -34,7 +34,6 @@ from datetime import datetime
 
 import pytest
 from flask import Flask, url_for
-from flask_babelex import Babel
 from flask_breadcrumbs import Breadcrumbs
 from flask_celeryext import FlaskCeleryExt
 from flask_mail import Mail
@@ -48,6 +47,7 @@ from invenio_deposit import InvenioDepositREST
 from invenio_files_rest import InvenioFilesREST
 from invenio_files_rest.models import Location
 from invenio_formatter import InvenioFormatter
+from invenio_i18n import Babel
 from invenio_indexer import InvenioIndexer
 from invenio_jsonschemas import InvenioJSONSchemas
 from invenio_oauth2server import InvenioOAuth2Server
