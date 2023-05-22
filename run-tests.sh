@@ -3,6 +3,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2016 CERN.
+# Copyright (C) 2023 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -23,10 +24,6 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-
-pydocstyle invenio_github tests docs && \
-isort invenio_github tests --check-only --diff && \
-check-manifest --ignore ".travis-*" && \
-sphinx-build -qnNW docs docs/_build/html && \
-py.test tests && \
-sphinx-build -qnNW -b doctest docs docs/_build/doctest
+python -m check_manifest
+python -m sphinx.cmd.build -qnNW docs docs/_build/html
+python -m pytest
