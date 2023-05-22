@@ -30,9 +30,9 @@ import uuid
 from enum import Enum
 
 from flask import current_app
-from flask_babelex import lazy_gettext as _
 from invenio_accounts.models import User
 from invenio_db import db
+from invenio_i18n import lazy_gettext as _
 from invenio_records.api import Record
 from invenio_records.models import RecordMetadata
 from invenio_webhooks.models import Event

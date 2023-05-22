@@ -92,7 +92,6 @@ from __future__ import absolute_import, print_function
 import os
 
 from flask import Flask
-from flask_babelex import Babel
 from flask_celeryext import FlaskCeleryExt
 from flask_mail import Mail
 from invenio_access import InvenioAccess
@@ -102,6 +101,7 @@ from invenio_assets import InvenioAssets
 from invenio_db import InvenioDB
 from invenio_deposit import InvenioDepositREST
 from invenio_files_rest import InvenioFilesREST
+from invenio_i18n import Babel
 from invenio_indexer import InvenioIndexer
 from invenio_jsonschemas import InvenioJSONSchemas
 from invenio_oauth2server import InvenioOAuth2Server

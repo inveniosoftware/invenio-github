@@ -28,7 +28,7 @@
 from __future__ import absolute_import, print_function
 
 from flask import Flask
-from flask_babelex import Babel
+from invenio_i18n import Babel
 
 from invenio_github import InvenioGitHub
 
