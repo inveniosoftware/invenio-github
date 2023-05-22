@@ -38,81 +38,81 @@ from invenio_github.utils import iso_utcnow
 from . import fixtures
 
 
-def test_handle_payload(app, db, location, tester_id, remote_token,
-                        github_api):
-
+def test_handle_payload(app, db, location, tester_id, remote_token, github_api):
     from invenio_webhooks.models import Event
 
     extra_data = remote_token.remote_account.extra_data
 
-    assert '1' in extra_data['repos']
-    assert 'repo-1' in extra_data['repos']['1']['full_name']
-    assert '2' in extra_data['repos']
-    assert 'repo-2' in extra_data['repos']['2']['full_name']
+    assert "1" in extra_data["repos"]
+    assert "repo-1" in extra_data["repos"]["1"]["full_name"]
+    assert "2" in extra_data["repos"]
+    assert "repo-2" in extra_data["repos"]["2"]["full_name"]
 
     # Create the repository that will make the release
 
     with db.session.begin_nested():
-        Repository.enable(tester_id, github_id=1, name='repo-1', hook=1234)
+        Repository.enable(tester_id, github_id=1, name="repo-1", hook=1234)
         event = Event(
-            receiver_id='github',
+            receiver_id="github",
             user_id=tester_id,
-            payload=fixtures.PAYLOAD('auser', 'repo-1', 1)
+            payload=fixtures.PAYLOAD("auser", "repo-1", 1),
         )
         db.session.add(event)
 
-    with patch('invenio_deposit.api.Deposit.indexer'):
+    with patch("invenio_deposit.api.Deposit.indexer"):
         event.process()
 
-        repo_1 = Repository.query.filter_by(name='repo-1', github_id=1).first()
+        repo_1 = Repository.query.filter_by(name="repo-1", github_id=1).first()
         assert repo_1.releases.count() == 1
 
         release = repo_1.releases.first()
         assert release.status == ReleaseStatus.PUBLISHED
         assert release.errors is None
-        assert release.tag == 'v1.0'
+        assert release.tag == "v1.0"
         assert release.record is not None
-        assert release.record.get('control_number') == '1'
-        record_files = release.record.get('_files')
+        assert release.record.get("control_number") == "1"
+        record_files = release.record.get("_files")
         assert len(record_files) == 1
-        assert record_files[0]['size'] > 0
+        assert record_files[0]["size"] > 0
 
-        bucket = Bucket.get(record_files[0]['bucket'])
+        bucket = Bucket.get(record_files[0]["bucket"])
         assert bucket is not None
         assert len(bucket.objects) == 1
-        assert bucket.objects[0].key == 'auser/repo-1-v1.0.zip'
+        assert bucket.objects[0].key == "auser/repo-1-v1.0.zip"
 
 
 def test_extract_metadata(app, db, tester_id, remote_token, github_api):
-
-    Repository.enable(tester_id, github_id=2, name='repo-2', hook=1234)
+    Repository.enable(tester_id, github_id=2, name="repo-2", hook=1234)
     event = Event(
-        receiver_id='github',
+        receiver_id="github",
         user_id=tester_id,
-        payload=fixtures.PAYLOAD('auser', 'repo-2', 2, tag='v1.0'),
+        payload=fixtures.PAYLOAD("auser", "repo-2", 2, tag="v1.0"),
     )
     release = Release.create(event)
     gh = GitHubRelease(release)
     metadata = gh.metadata
 
-    assert metadata['upload_type'] == 'dataset'
-    assert metadata['license'] == 'mit-license'
-    assert len(metadata['creators']) == 2
+    assert metadata["upload_type"] == "dataset"
+    assert metadata["license"] == "mit-license"
+    assert len(metadata["creators"]) == 2
 
 
 def test_refresh_accounts(app, db, tester_id, remote_token, github_api):
     """Test account refresh task."""
+
     def mocked_sync(hooks=True, async_hooks=True):
         """Mock sync function and update the remote account."""
         account = RemoteAccount.query.all()[0]
-        account.extra_data.update(dict(
+        account.extra_data.update(
+            dict(
                 last_sync=iso_utcnow(),
-            ))
+            )
+        )
         db.session.commit()
 
-    with patch('invenio_github.api.GitHubAPI.sync', side_effect=mocked_sync):
+    with patch("invenio_github.api.GitHubAPI.sync", side_effect=mocked_sync):
         updated = RemoteAccount.query.all()[0].updated
-        expiration_threshold = {'seconds': 1}
+        expiration_threshold = {"seconds": 1}
         sleep(2)
         refresh_accounts.delay(expiration_threshold)
 

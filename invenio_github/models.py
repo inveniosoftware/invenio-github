@@ -41,52 +41,55 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy_utils.models import Timestamp
 from sqlalchemy_utils.types import ChoiceType, JSONType, UUIDType
 
-from .errors import ReleaseAlreadyReceivedError, RepositoryAccessError, \
-    RepositoryDisabledError
+from .errors import (
+    ReleaseAlreadyReceivedError,
+    RepositoryAccessError,
+    RepositoryDisabledError,
+)
 
 RELEASE_STATUS_TITLES = {
-    'RECEIVED': _('Received'),
-    'PROCESSING': _('Processing'),
-    'PUBLISHED': _('Published'),
-    'FAILED': _('Failed'),
-    'DELETED': _('Deleted'),
+    "RECEIVED": _("Received"),
+    "PROCESSING": _("Processing"),
+    "PUBLISHED": _("Published"),
+    "FAILED": _("Failed"),
+    "DELETED": _("Deleted"),
 }
 
 RELEASE_STATUS_ICON = {
-    'RECEIVED': 'fa-spinner',
-    'PROCESSING': 'fa-spinner',
-    'PUBLISHED': 'fa-check',
-    'FAILED': 'fa-times',
-    'DELETED': 'fa-times',
+    "RECEIVED": "fa-spinner",
+    "PROCESSING": "fa-spinner",
+    "PUBLISHED": "fa-check",
+    "FAILED": "fa-times",
+    "DELETED": "fa-times",
 }
 
 RELEASE_STATUS_COLOR = {
-    'RECEIVED': 'default',
-    'PROCESSING': 'default',
-    'PUBLISHED': 'success',
-    'FAILED': 'danger',
-    'DELETED': 'danger',
+    "RECEIVED": "default",
+    "PROCESSING": "default",
+    "PUBLISHED": "success",
+    "FAILED": "danger",
+    "DELETED": "danger",
 }
 
 
 class ReleaseStatus(Enum):
     """Constants for possible status of a Release."""
 
-    __order__ = 'RECEIVED PROCESSING PUBLISHED FAILED DELETED'
+    __order__ = "RECEIVED PROCESSING PUBLISHED FAILED DELETED"
 
-    RECEIVED = 'R'
+    RECEIVED = "R"
     """Release has been received and is pending processing."""
 
-    PROCESSING = 'P'
+    PROCESSING = "P"
     """Release is still being processed."""
 
-    PUBLISHED = 'D'
+    PUBLISHED = "D"
     """Release was successfully processed and published."""
 
-    FAILED = 'F'
+    FAILED = "F"
     """Release processing has failed."""
 
-    DELETED = 'E'
+    DELETED = "E"
     """Release has been deleted."""
 
     def __init__(self, value):
@@ -119,7 +122,7 @@ class ReleaseStatus(Enum):
 class Repository(db.Model, Timestamp):
     """Information about a GitHub repository."""
 
-    __tablename__ = 'github_repositories'
+    __tablename__ = "github_repositories"
 
     id = db.Column(
         UUIDType,
@@ -172,8 +175,7 @@ class Repository(db.Model, Timestamp):
     def create(cls, user_id, github_id=None, name=None, **kwargs):
         """Create the repository."""
         with db.session.begin_nested():
-            obj = cls(user_id=user_id, github_id=github_id, name=name,
-                      **kwargs)
+            obj = cls(user_id=user_id, github_id=github_id, name=name, **kwargs)
             db.session.add(obj)
         return obj
 
@@ -193,12 +195,11 @@ class Repository(db.Model, Timestamp):
         :raises: :py:exc:`RepositoryAccessError`: if the user is not the owner
                  of the repository.
         """
-        repo = cls.query.filter((Repository.github_id == github_id) |
-                                (Repository.name == name)).one()
-        if (check_owner and repo and repo.user_id and
-                repo.user_id != int(user_id)):
-            raise RepositoryAccessError(
-                user=user_id, repo=name, repo_id=github_id)
+        repo = cls.query.filter(
+            (Repository.github_id == github_id) | (Repository.name == name)
+        ).one()
+        if check_owner and repo and repo.user_id and repo.user_id != int(user_id):
+            raise RepositoryAccessError(user=user_id, repo=name, repo_id=github_id)
         return repo
 
     @classmethod
@@ -245,19 +246,18 @@ class Repository(db.Model, Timestamp):
         # Bail out fast if object not in DB session.
         if self not in db.session:
             return None
-        q = self.releases if status is None else self.releases.filter_by(
-            status=status)
+        q = self.releases if status is None else self.releases.filter_by(status=status)
         return q.order_by(db.desc(Release.created)).first()
 
     def __repr__(self):
         """Get repository representation."""
-        return u'<Repository {self.name}:{self.github_id}>'.format(self=self)
+        return "<Repository {self.name}:{self.github_id}>".format(self=self)
 
 
 class Release(db.Model, Timestamp):
     """Information about a GitHub release."""
 
-    __tablename__ = 'github_releases'
+    __tablename__ = "github_releases"
 
     id = db.Column(
         UUIDType,
@@ -275,7 +275,7 @@ class Release(db.Model, Timestamp):
     errors = db.Column(
         JSONType().with_variant(
             postgresql.JSON(none_as_null=True),
-            'postgresql',
+            "postgresql",
         ),
         nullable=True,
     )
@@ -301,18 +301,17 @@ class Release(db.Model, Timestamp):
     """Status of the release, e.g. 'processing', 'published', 'failed', etc."""
 
     repository = db.relationship(
-        Repository,
-        backref=db.backref('releases', lazy='dynamic')
+        Repository, backref=db.backref("releases", lazy="dynamic")
     )
 
-    recordmetadata = db.relationship(RecordMetadata, backref='github_releases')
+    recordmetadata = db.relationship(RecordMetadata, backref="github_releases")
     event = db.relationship(Event)
 
     @classmethod
     def create(cls, event):
         """Create a new Release model."""
         # Check if the release has already been received
-        release_id = event.payload['release']['id']
+        release_id = event.payload["release"]["id"]
         existing_release = Release.query.filter_by(
             release_id=release_id,
         ).first()
@@ -320,13 +319,13 @@ class Release(db.Model, Timestamp):
             raise ReleaseAlreadyReceivedError(release=existing_release)
 
         # Create the Release
-        repo_id = event.payload['repository']['id']
+        repo_id = event.payload["repository"]["id"]
         repo = Repository.get(user_id=event.user_id, github_id=repo_id)
         if repo.enabled:
             with db.session.begin_nested():
                 release = cls(
                     release_id=release_id,
-                    tag=event.payload['release']['tag_name'],
+                    tag=event.payload["release"]["tag_name"],
                     repository=repo,
                     event=event,
                     status=ReleaseStatus.RECEIVED,
@@ -347,12 +346,13 @@ class Release(db.Model, Timestamp):
     @property
     def deposit_id(self):
         """Get deposit identifier."""
-        if self.record and '_deposit' in self.record:
-            return self.record['_deposit']['id']
+        if self.record and "_deposit" in self.record:
+            return self.record["_deposit"]["id"]
         else:
             return None
 
     def __repr__(self):
         """Get release representation."""
-        return (u'<Release {self.tag}:{self.release_id} ({self.status.title})>'
-                .format(self=self))
+        return "<Release {self.tag}:{self.release_id} ({self.status.title})>".format(
+            self=self
+        )

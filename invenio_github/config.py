@@ -27,7 +27,7 @@ from datetime import timedelta
 
 from invenio_oauthclient.contrib.github import REMOTE_APP
 
-GITHUB_WEBHOOK_RECEIVER_ID = 'github'
+GITHUB_WEBHOOK_RECEIVER_ID = "github"
 """Local name of webhook receiver."""
 
 GITHUB_WEBHOOK_RECEIVER_URL = None
@@ -44,7 +44,7 @@ This configuration variable must be set explicitly. Example::
     context, doesn't work as expected.
 """
 
-GITHUB_SHARED_SECRET = 'CHANGEME'
+GITHUB_SHARED_SECRET = "CHANGEME"
 """Shared secret between you and GitHub.
 
 Used to make GitHub sign webhook requests with HMAC.
@@ -62,28 +62,28 @@ development and integration servers.
 GITHUB_REFRESH_TIMEDELTA = timedelta(days=1)
 """Time period after which a GitHub account sync should be initiated."""
 
-GITHUB_RELEASE_CLASS = 'invenio_github.api:GitHubRelease'
+GITHUB_RELEASE_CLASS = "invenio_github.api:GitHubRelease"
 """GitHubRelease class to be used for release handling."""
 
-GITHUB_METADATA_FILE = '.invenio.json'
+GITHUB_METADATA_FILE = ".invenio.json"
 """File with extra metadata stored in GitHub repository."""
 
-GITHUB_CITATION_FILE = 'CITATION.cff'
+GITHUB_CITATION_FILE = "CITATION.cff"
 """File with citation metadata stored in GitHub repository."""
 
-GITHUB_DEPOSIT_CLASS = 'invenio_deposit.api:Deposit'
+GITHUB_DEPOSIT_CLASS = "invenio_deposit.api:Deposit"
 """Deposit class that implements a `publish` method."""
 
 GITHUB_RECORD_SERIALIZER = None
 """Serializer to use to display record metadata."""
 
-GITHUB_PID_FETCHER = 'recid'
+GITHUB_PID_FETCHER = "recid"
 """PID Fetcher for Release records."""
 
-GITHUB_TEMPLATE_INDEX = 'invenio_github/settings/index.html'
+GITHUB_TEMPLATE_INDEX = "invenio_github/settings/index.html"
 """Repositories list template."""
 
-GITHUB_TEMPLATE_VIEW = 'invenio_github/settings/view.html'
+GITHUB_TEMPLATE_VIEW = "invenio_github/settings/view.html"
 """Repository detail view template."""
 
 GITHUB_ERROR_HANDLERS = None
@@ -93,8 +93,8 @@ GITHUB_ERROR_HANDLERS = None
 # handlers and scope.
 GITHUB_REMOTE_APP = deepcopy(REMOTE_APP)
 """OAuth Client configuration."""
-GITHUB_REMOTE_APP['disconnect_handler'] = 'invenio_github.handlers:disconnect'
-GITHUB_REMOTE_APP['signup_handler']['setup'] = \
-    'invenio_github.handlers:account_setup'
-GITHUB_REMOTE_APP['params']['request_token_params']['scope'] = \
-    'user,admin:repo_hook,read:org'
+GITHUB_REMOTE_APP["disconnect_handler"] = "invenio_github.handlers:disconnect"
+GITHUB_REMOTE_APP["signup_handler"]["setup"] = "invenio_github.handlers:account_setup"
+GITHUB_REMOTE_APP["params"]["request_token_params"][
+    "scope"
+] = "user,admin:repo_hook,read:org"

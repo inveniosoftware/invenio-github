@@ -29,8 +29,7 @@ from flask_login import current_user
 from invenio_db import db
 from invenio_oauth2server.models import Token as ProviderToken
 from invenio_oauthclient.models import RemoteToken
-from invenio_oauthclient.utils import oauth_link_external_id, \
-    oauth_unlink_external_id
+from invenio_oauthclient.utils import oauth_link_external_id, oauth_unlink_external_id
 from sqlalchemy.orm.exc import NoResultFound
 
 from .api import GitHubAPI
@@ -38,8 +37,7 @@ from .models import Repository
 from .tasks import disconnect_github, sync_hooks
 
 
-def account_setup(remote, token=None, response=None,
-                  account_setup=None):
+def account_setup(remote, token=None, response=None, account_setup=None):
     """Setup user account."""
     gh = GitHubAPI(user_id=token.remote_account.user_id)
     with db.session.begin_nested():
@@ -48,14 +46,14 @@ def account_setup(remote, token=None, response=None,
         # Create user <-> external id link.
         oauth_link_external_id(
             token.remote_account.user,
-            dict(id=str(gh.account.extra_data['id']), method="github")
+            dict(id=str(gh.account.extra_data["id"]), method="github"),
         )
 
 
 def account_post_init(remote, token=None):
     """Perform post initialization."""
     gh = GitHubAPI(user_id=token.remote_account.user_id)
-    repos = [r.id for r in gh.api.repositories() if r.permissions['admin']]
+    repos = [r.id for r in gh.api.repositories() if r.permissions["admin"]]
     sync_hooks.delay(token.remote_account.user_id, repos)
 
 
@@ -65,12 +63,12 @@ def disconnect(remote):
     if not current_user.is_authenticated:
         return current_app.login_manager.unauthorized()
 
-    external_method = 'github'
-    external_ids = [i.id for i in current_user.external_identifiers
-                    if i.method == external_method]
+    external_method = "github"
+    external_ids = [
+        i.id for i in current_user.external_identifiers if i.method == external_method
+    ]
     if external_ids:
-        oauth_unlink_external_id(dict(id=external_ids[0],
-                                      method=external_method))
+        oauth_unlink_external_id(dict(id=external_ids[0], method=external_method))
 
     user_id = int(current_user.get_id())
     token = RemoteToken.get(user_id, remote.consumer_key)
@@ -78,7 +76,7 @@ def disconnect(remote):
         extra_data = token.remote_account.extra_data
 
         # Delete the token that we issued for GitHub to deliver webhooks
-        webhook_token_id = extra_data.get('tokens', {}).get('webhook')
+        webhook_token_id = extra_data.get("tokens", {}).get("webhook")
         ProviderToken.query.filter_by(id=webhook_token_id).delete()
 
         # Disable GitHub webhooks from our side
@@ -87,9 +85,9 @@ def disconnect(remote):
         repos_with_hooks = [(r.github_id, r.hook) for r in db_repos if r.hook]
         for repo in db_repos:
             try:
-                Repository.disable(user_id=user_id,
-                                   github_id=repo.github_id,
-                                   name=repo.name)
+                Repository.disable(
+                    user_id=user_id, github_id=repo.github_id, name=repo.name
+                )
             except NoResultFound:
                 # If the repository doesn't exist, no action is necessary
                 pass
@@ -100,4 +98,4 @@ def disconnect(remote):
         # Delete the RemoteAccount (along with the associated RemoteToken)
         token.remote_account.delete()
 
-    return redirect(url_for('invenio_oauthclient_settings.index'))
+    return redirect(url_for("invenio_oauthclient_settings.index"))

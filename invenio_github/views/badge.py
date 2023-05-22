@@ -31,11 +31,11 @@ from ..api import GitHubRelease
 from ..models import ReleaseStatus, Repository
 
 blueprint = Blueprint(
-    'invenio_github_badge',
+    "invenio_github_badge",
     __name__,
-    url_prefix='/badge',
-    static_folder='../static',
-    template_folder='../templates',
+    url_prefix="/badge",
+    static_folder="../static",
+    template_folder="../templates",
 )
 
 
@@ -48,42 +48,46 @@ def get_pid_of_latest_release_or_404(**kwargs):
     abort(404)
 
 
-def get_badge_image_url(pid, ext='svg'):
+def get_badge_image_url(pid, ext="svg"):
     """Return the badge for a DOI."""
-    return url_for('invenio_formatter_badges.badge',
-                   title=pid.pid_type, value=pid.pid_value, ext=ext)
+    return url_for(
+        "invenio_formatter_badges.badge",
+        title=pid.pid_type,
+        value=pid.pid_value,
+        ext=ext,
+    )
 
 
 def get_doi_url(pid):
     """Return the badge for a DOI."""
-    return 'https://doi.org/{pid.pid_value}'.format(pid=pid)
+    return "https://doi.org/{pid.pid_value}".format(pid=pid)
 
 
 #
 # Views
 #
-@blueprint.route('/<int:github_id>.svg')
+@blueprint.route("/<int:github_id>.svg")
 def index(github_id):
     """Generate a badge for a specific GitHub repository."""
     pid = get_pid_of_latest_release_or_404(github_id=github_id)
     return redirect(get_badge_image_url(pid))
 
 
-@blueprint.route('/<int:user_id>/<path:repo_name>.svg')
+@blueprint.route("/<int:user_id>/<path:repo_name>.svg")
 def index_old(user_id, repo_name):
     """Generate a badge for a specific GitHub repository."""
     pid = get_pid_of_latest_release_or_404(name=repo_name)
     return redirect(get_badge_image_url(pid))
 
 
-@blueprint.route('/latestdoi/<int:github_id>')
+@blueprint.route("/latestdoi/<int:github_id>")
 def latest_doi(github_id):
     """Redirect to the newest record version."""
     pid = get_pid_of_latest_release_or_404(github_id=github_id)
     return redirect(get_doi_url(pid))
 
 
-@blueprint.route('/latestdoi/<int:user_id>/<path:repo_name>')
+@blueprint.route("/latestdoi/<int:user_id>/<path:repo_name>")
 def latest_doi_old(user_id, repo_name):
     """Redirect to the newest record version."""
     pid = get_pid_of_latest_release_or_404(name=repo_name)

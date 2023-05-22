@@ -28,13 +28,14 @@ from flask import current_app, url_for
 from invenio_pidstore.fetchers import FetchedPID
 
 
-def tclient_request_factory(client, method, endpoint, urlargs, data,
-                            is_json, headers, files, verify_ssl):
+def tclient_request_factory(
+    client, method, endpoint, urlargs, data, is_json, headers, files, verify_ssl
+):
     """Make requests with test client package."""
     client_func = getattr(client, method.lower())
 
     if headers is None:
-        headers = [('Content-Type', 'application/json')] if is_json else []
+        headers = [("Content-Type", "application/json")] if is_json else []
 
     if data is not None:
         request_args = dict(
@@ -45,19 +46,14 @@ def tclient_request_factory(client, method, endpoint, urlargs, data,
         request_args = {}
 
     if files is not None:
-        data.update({
-            'file': (files['file'], data['filename']),
-            'name': data['filename']
-        })
-        del data['filename']
+        data.update(
+            {"file": (files["file"], data["filename"]), "name": data["filename"]}
+        )
+        del data["filename"]
 
     resp = client_func(
-        url_for(
-            endpoint,
-            _external=False,
-            **urlargs
-        ),
-        base_url=current_app.config['CFG_SITE_SECURE_URL'],
+        url_for(endpoint, _external=False, **urlargs),
+        base_url=current_app.config["CFG_SITE_SECURE_URL"],
         **request_args
     )
 
@@ -70,6 +66,6 @@ def doi_fetcher(record_uuid, record_data):
     """DOI fetcher."""
     return FetchedPID(
         provider=None,
-        pid_type='doi',
-        pid_value=str(record_data['doi']),
+        pid_type="doi",
+        pid_value=str(record_data["doi"]),
     )

@@ -79,41 +79,42 @@ from invenio_github.views.github import blueprint as github_blueprint
 def app(request):
     """Flask application fixture."""
     instance_path = tempfile.mkdtemp()
-    app_ = Flask('testapp', instance_path=instance_path)
+    app_ = Flask("testapp", instance_path=instance_path)
     app_.config.update(
         # HTTPretty doesn't play well with Redis.
         # See gabrielfalcao/HTTPretty#110
-        CACHE_TYPE='simple',
+        CACHE_TYPE="simple",
         CELERY_ALWAYS_EAGER=True,
-        CELERY_CACHE_BACKEND='memory',
+        CELERY_CACHE_BACKEND="memory",
         CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
-        CELERY_RESULT_BACKEND='cache',
+        CELERY_RESULT_BACKEND="cache",
         GITHUB_APP_CREDENTIALS=dict(
-            consumer_key='changeme',
-            consumer_secret='changeme',
+            consumer_key="changeme",
+            consumer_secret="changeme",
         ),
-        GITHUB_PID_FETCHER='doi_fetcher',
+        GITHUB_PID_FETCHER="doi_fetcher",
         LOGIN_DISABLED=False,
         OAUTHLIB_INSECURE_TRANSPORT=True,
-        OAUTH2_CACHE_TYPE='simple',
+        OAUTH2_CACHE_TYPE="simple",
         OAUTHCLIENT_REMOTE_APPS=dict(
             github=REMOTE_APP,
         ),
-        SECRET_KEY='test_key',
-        SERVER_NAME='testserver',
+        SECRET_KEY="test_key",
+        SERVER_NAME="testserver",
         SQLALCHEMY_TRACK_MODIFICATIONS=True,
-        SQLALCHEMY_DATABASE_URI=os.getenv('SQLALCHEMY_DATABASE_URI',
-                                          'sqlite:///test.db'),
-        SECURITY_PASSWORD_HASH='plaintext',
-        SECURITY_PASSWORD_SCHEMES=['plaintext'],
+        SQLALCHEMY_DATABASE_URI=os.getenv(
+            "SQLALCHEMY_DATABASE_URI", "sqlite:///test.db"
+        ),
+        SECURITY_PASSWORD_HASH="plaintext",
+        SECURITY_PASSWORD_SCHEMES=["plaintext"],
         SECURITY_DEPRECATED_PASSWORD_SCHEMES=[],
         TESTING=True,
         WTF_CSRF_ENABLED=False,
     )
-    app_.config['OAUTHCLIENT_REMOTE_APPS']['github']['params'][
-        'request_token_params'][
-        'scope'] = 'user:email,admin:repo_hook,read:org'
-    app_.url_map.converters['pid'] = PIDConverter
+    app_.config["OAUTHCLIENT_REMOTE_APPS"]["github"]["params"]["request_token_params"][
+        "scope"
+    ] = "user:email,admin:repo_hook,read:org"
+    app_.url_map.converters["pid"] = PIDConverter
 
     celeryext = FlaskCeleryExt(app_)
     Babel(app_)
@@ -132,8 +133,9 @@ def app(request):
     InvenioFormatter(app_)
 
     from .helpers import doi_fetcher
+
     pidstore = InvenioPIDStore(app_)
-    pidstore.register_fetcher('doi_fetcher', doi_fetcher)
+    pidstore.register_fetcher("doi_fetcher", doi_fetcher)
 
     InvenioJSONSchemas(app_)
     InvenioRecords(app_)
@@ -169,9 +171,10 @@ def db(app):
 @pytest.fixture
 def tester_id(app, db):
     """Fixture that contains the test data for models tests."""
-    datastore = app.extensions['security'].datastore
+    datastore = app.extensions["security"].datastore
     tester = datastore.create_user(
-        email='info@inveniosoftware.org', password='tester',
+        email="info@inveniosoftware.org",
+        password="tester",
     )
     db.session.commit()
     return tester.id
@@ -182,11 +185,7 @@ def location(db):
     """File system location."""
     tmppath = tempfile.mkdtemp()
 
-    loc = Location(
-        name='testloc',
-        uri=tmppath,
-        default=True
-    )
+    loc = Location(name="testloc", uri=tmppath, default=True)
     db.session.add(loc)
     db.session.commit()
 
@@ -199,9 +198,9 @@ def location(db):
 def deposit_token(app, db, tester_id):
     """Fixture that create an access token."""
     token = Token.create_personal(
-        'deposit-personal-{0}'.format(tester_id),
+        "deposit-personal-{0}".format(tester_id),
         tester_id,
-        scopes=['deposit:write', 'deposit:actions'],
+        scopes=["deposit:write", "deposit:actions"],
         is_internal=True,
     ).access_token
     db.session.commit()
@@ -212,9 +211,9 @@ def deposit_token(app, db, tester_id):
 def access_token(app, db, tester_id):
     """Fixture that create an access token."""
     token = Token.create_personal(
-        'test-personal-{0}'.format(tester_id),
+        "test-personal-{0}".format(tester_id),
         tester_id,
-        scopes=['webhooks:event'],
+        scopes=["webhooks:event"],
         is_internal=True,
     ).access_token
     db.session.commit()
@@ -225,9 +224,9 @@ def access_token(app, db, tester_id):
 def access_token_no_scope(app, tester_id):
     """Fixture that create an access token without scope."""
     token = Token.create_personal(
-        'test-personal-{0}'.format(tester_id),
+        "test-personal-{0}".format(tester_id),
         tester_id,
-        scopes=[''],
+        scopes=[""],
         is_internal=True,
     ).access_token
     db.session.commit()
@@ -243,8 +242,8 @@ def remote_token(app, db, tester_id):
     token = RemoteToken.create(
         tester_id,
         GitHubAPI.remote.consumer_key,
-        'test',
-        '',
+        "test",
+        "",
     )
     db.session.commit()
     return token
@@ -254,17 +253,17 @@ def remote_token(app, db, tester_id):
 def minimal_record(app, db, tester_id):
     """Minimal record metadata that is compliant with the JSON schema."""
     metadata = {
-        'doi': 'test/1',
-        'recid': 1,
-        'resource_type': {'type': 'software'},
-        'publication_date': datetime.utcnow().date().isoformat(),
-        'title': 'Test title',
-        'creators': [
-            dict(name='Doe, John', affiliation='Atlantis'),
-            dict(name='Smith, Jane', affiliation='Atlantis')
+        "doi": "test/1",
+        "recid": 1,
+        "resource_type": {"type": "software"},
+        "publication_date": datetime.utcnow().date().isoformat(),
+        "title": "Test title",
+        "creators": [
+            dict(name="Doe, John", affiliation="Atlantis"),
+            dict(name="Smith, Jane", affiliation="Atlantis"),
         ],
-        'description': 'Test description',
-        'access_right': 'open',
+        "description": "Test description",
+        "access_right": "open",
     }
     record = Record.create(metadata)
     return record
@@ -273,8 +272,7 @@ def minimal_record(app, db, tester_id):
 @pytest.fixture()
 def repository_model(app, db, tester_id):
     """Github repository fixture."""
-    repository = Repository(
-        github_id=1, name='testuser/testrepo', user_id=tester_id)
+    repository = Repository(github_id=1, name="testuser/testrepo", user_id=tester_id)
     db.session.add(repository)
     db.session.commit()
     return repository
@@ -285,23 +283,24 @@ def release_model(app, db, repository_model, minimal_record):
     """Github release fixture."""
     release = Release(
         release_id=1,
-        tag='v1.0',
+        tag="v1.0",
         repository=repository_model,
         status=ReleaseStatus.PUBLISHED,
-        recordmetadata=minimal_record.model
+        recordmetadata=minimal_record.model,
     )
     db.session.add(release)
     db.session.commit()
     return release
 
 
-def tclient_request_factory(client, method, endpoint, urlargs, data,
-                            is_json, headers, files, verify_ssl):
+def tclient_request_factory(
+    client, method, endpoint, urlargs, data, is_json, headers, files, verify_ssl
+):
     """Make requests with test client package."""
     client_func = getattr(client, method.lower())
 
     if headers is None:
-        headers = [('Content-Type', 'application/json')] if is_json else []
+        headers = [("Content-Type", "application/json")] if is_json else []
 
     if data is not None:
         request_args = dict(
@@ -312,18 +311,13 @@ def tclient_request_factory(client, method, endpoint, urlargs, data,
         request_args = {}
 
     if files is not None:
-        data.update({
-            'file': (files['file'], data['filename']),
-            'name': data['filename']
-        })
-        del data['filename']
+        data.update(
+            {"file": (files["file"], data["filename"]), "name": data["filename"]}
+        )
+        del data["filename"]
 
     resp = client_func(
-        url_for(
-            endpoint,
-            _external=True,
-            **urlargs
-        ),
+        url_for(endpoint, _external=True, **urlargs),
         # base_url=current_app.config['CFG_SITE_SECURE_URL'],
         **request_args
     )
@@ -342,28 +336,32 @@ def github_api(app, db, tester_id, remote_token):
 
     mock_api = MagicMock()
     mock_api.me.return_value = github3.users.User(
-        fixtures.USER(login='auser', email='auser@inveniosoftware.org'))
+        fixtures.USER(login="auser", email="auser@inveniosoftware.org")
+    )
 
-    repo_1 = github3.repos.Repository(fixtures.REPO('auser', 'repo-1', 1))
+    repo_1 = github3.repos.Repository(fixtures.REPO("auser", "repo-1", 1))
     repo_1.hooks = MagicMock(return_value=[])
     repo_1.file_contents = MagicMock(return_value=None)
 
-    repo_2 = github3.repos.Repository(fixtures.REPO('auser', 'repo-2', 2))
+    repo_2 = github3.repos.Repository(fixtures.REPO("auser", "repo-2", 2))
     repo_2.hooks = MagicMock(return_value=[])
 
     def mock_metadata_contents(path, ref):
-        data = json.dumps(dict(
-            upload_type='dataset',
-            license='mit-license',
-            creators=[
-                dict(name='Smith, Joe', affiliation='CERN'),
-                dict(name='Smith, Sam', affiliation='NASA'),
-            ]
-        ))
+        data = json.dumps(
+            dict(
+                upload_type="dataset",
+                license="mit-license",
+                creators=[
+                    dict(name="Smith, Joe", affiliation="CERN"),
+                    dict(name="Smith, Sam", affiliation="NASA"),
+                ],
+            )
+        )
         return MagicMock(decoded=b(data))
+
     repo_2.file_contents = MagicMock(side_effect=mock_metadata_contents)
 
-    repo_3 = github3.repos.Repository(fixtures.REPO('auser', 'arepo', 3))
+    repo_3 = github3.repos.Repository(fixtures.REPO("auser", "arepo", 3))
     repo_3.hooks = MagicMock(return_value=[])
     repo_3.file_contents = MagicMock(return_value=None)
 
@@ -375,7 +373,7 @@ def github_api(app, db, tester_id, remote_token):
         return repos.get(id)
 
     def mock_repo_by_name(owner, name):
-        return repos_by_name.get('/'.join((owner, name)))
+        return repos_by_name.get("/".join((owner, name)))
 
     mock_api.repository_with_id.side_effect = mock_repo_with_id
     mock_api.repository.side_effect = mock_repo_by_name
@@ -383,8 +381,8 @@ def github_api(app, db, tester_id, remote_token):
     mock_api.session.head.return_value = MagicMock(status_code=200)
     mock_api.session.get.return_value = MagicMock(raw=fixtures.ZIPBALL())
 
-    with patch('invenio_github.api.GitHubAPI.api', new=mock_api):
-        with patch('invenio_github.api.GitHubAPI._sync_hooks'):
+    with patch("invenio_github.api.GitHubAPI.api", new=mock_api):
+        with patch("invenio_github.api.GitHubAPI._sync_hooks"):
             gh = GitHubAPI(user_id=tester_id)
             with db.session.begin_nested():
                 gh.init_account()

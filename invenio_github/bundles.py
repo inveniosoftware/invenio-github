@@ -27,31 +27,31 @@ from flask_assets import Bundle
 from invenio_assets import NpmBundle
 
 js = NpmBundle(
-    'node_modules/bootstrap-switch/dist/js/bootstrap-switch.js',
+    "node_modules/bootstrap-switch/dist/js/bootstrap-switch.js",
     Bundle(
-        'js/github/init.js',
-        filters='requirejs',
+        "js/github/init.js",
+        filters="requirejs",
     ),
-    depends=('js/github/*.js'),
-    filters='jsmin',
+    depends=("js/github/*.js"),
+    filters="jsmin",
     npm={
-        'bootstrap-switch': '~3.0.2',
+        "bootstrap-switch": "~3.0.2",
     },
-    output='gen/github.%(version)s.js',
+    output="gen/github.%(version)s.js",
 )
 """Default Javascript bundle."""
 
 css = NpmBundle(
-    'node_modules/bootstrap-switch/dist/css/bootstrap3/bootstrap-switch.css',
+    "node_modules/bootstrap-switch/dist/css/bootstrap3/bootstrap-switch.css",
     Bundle(
-        'scss/github/github.scss',
-        filters='scss',
+        "scss/github/github.scss",
+        filters="scss",
     ),
-    filters='cleancss',
-    depends=('scss/github/*.scss'),
+    filters="cleancss",
+    depends=("scss/github/*.scss"),
     npm={
-        'bootstrap-switch': '~3.0.2',
+        "bootstrap-switch": "~3.0.2",
     },
-    output='gen/github.%(version)s.css',
+    output="gen/github.%(version)s.css",
 )
 """Default CSS bundle."""
