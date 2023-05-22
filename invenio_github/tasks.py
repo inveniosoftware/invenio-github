@@ -35,17 +35,16 @@ from invenio_oauthclient.proxies import current_oauthclient
 from invenio_rest.errors import RESTException
 from sqlalchemy.orm.exc import NoResultFound
 
-from .errors import CustomGitHubMetadataError, InvalidSenderError, \
-    RepositoryAccessError
+from .errors import CustomGitHubMetadataError, InvalidSenderError, RepositoryAccessError
 from .models import Release, ReleaseStatus
 from .proxies import current_github
 
 
 def _get_err_obj(msg):
     """Generate the error entry with a Sentry ID."""
-    err = {'errors': msg}
-    if hasattr(g, 'sentry_event_id'):
-        err['error_id'] = str(g.sentry_event_id)
+    err = {"errors": msg}
+    if hasattr(g, "sentry_event_id"):
+        err["error_id"] = str(g.sentry_event_id)
     return err
 
 
@@ -56,12 +55,12 @@ def release_rest_exception_handler(release, ex):
 
 def release_gh_metadata_handler(release, ex):
     """Handler for CustomGithubMetadataError."""
-    release.model.errors = {'errors': ex.message}
+    release.model.errors = {"errors": ex.message}
 
 
 def release_default_exception_handler(release, ex):
     """Default handler."""
-    release.model.errors = _get_err_obj('Unknown error occured.')
+    release.model.errors = _get_err_obj("Unknown error occured.")
 
 
 DEFAULT_ERROR_HANDLERS = [
@@ -71,7 +70,7 @@ DEFAULT_ERROR_HANDLERS = [
 ]
 
 
-@shared_task(max_retries=6, default_retry_delay=10 * 60, rate_limit='100/m')
+@shared_task(max_retries=6, default_retry_delay=10 * 60, rate_limit="100/m")
 def disconnect_github(access_token, repo_hooks):
     """Uninstall webhooks."""
     # Note at this point the remote account and all associated data have
@@ -89,8 +88,8 @@ def disconnect_github(access_token, repo_hooks):
                 hook = ghrepo.hook(repo_hook)
                 if hook and hook.delete():
                     current_app.logger.info(
-                        'Deleted hook from github repository.',
-                        extra={'hook': hook.id, 'repo': ghrepo.full_name}
+                        "Deleted hook from github repository.",
+                        extra={"hook": hook.id, "repo": ghrepo.full_name},
                     )
         # If we finished our clean-up successfully, we can revoke the token
         GitHubAPI.revoke_token(access_token)
@@ -99,7 +98,7 @@ def disconnect_github(access_token, repo_hooks):
         disconnect_github.retry(exc=exc)
 
 
-@shared_task(max_retries=6, default_retry_delay=10 * 60, rate_limit='100/m')
+@shared_task(max_retries=6, default_retry_delay=10 * 60, rate_limit="100/m")
 def sync_hooks(user_id, repositories):
     """Sync repository hooks for a user."""
     from .api import GitHubAPI
@@ -132,10 +131,10 @@ def process_release(release_id, verify_sender=False, use_extra_metadata=True):
     release_model.status = ReleaseStatus.PROCESSING
     db.session.commit()
     release = current_github.release_api_class(
-        release_model, use_extra_metadata=use_extra_metadata)
+        release_model, use_extra_metadata=use_extra_metadata
+    )
     if verify_sender and not release.verify_sender():
-        raise InvalidSenderError(
-            event=release.event.id, user=release.event.user_id)
+        raise InvalidSenderError(event=release.event.id, user=release.event.user_id)
 
     matched_error_cls = None
     matched_ex = None
@@ -151,8 +150,7 @@ def process_release(release_id, verify_sender=False, use_extra_metadata=True):
         for error_cls, handler in error_handlers + DEFAULT_ERROR_HANDLERS:
             if isinstance(ex, error_cls):
                 handler(release, ex)
-                current_app.logger.exception(
-                    u'Error while processing GitHub release')
+                current_app.logger.exception("Error while processing GitHub release")
                 matched_error_cls = error_cls
                 matched_ex = ex
                 break
@@ -170,10 +168,11 @@ def refresh_accounts(expiration_threshold=None):
     :param expiration_threshold: Dictionary containing timedelta parameters
     referring to the maximum inactivity time.
     """
-    expiration_date = datetime.datetime.utcnow() - \
-        datetime.timedelta(**(expiration_threshold or {'days': 6 * 30}))
+    expiration_date = datetime.datetime.utcnow() - datetime.timedelta(
+        **(expiration_threshold or {"days": 6 * 30})
+    )
 
-    remote = current_oauthclient.oauth.remote_apps['github']
+    remote = current_oauthclient.oauth.remote_apps["github"]
     remote_accounts_to_be_updated = RemoteAccount.query.filter(
         RemoteAccount.updated < expiration_date,
         RemoteAccount.client_id == remote.consumer_key,

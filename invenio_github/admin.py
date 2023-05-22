@@ -44,15 +44,15 @@ class RepositoryModelView(ModelView):
     can_view_details = True
     column_display_all_relations = True
     column_list = (
-        'id',
-        'github_id',
-        'name',
-        'user',
-        'enabled',
-        'ping',
-        'hook',
+        "id",
+        "github_id",
+        "name",
+        "user",
+        "enabled",
+        "ping",
+        "hook",
     )
-    column_searchable_list = ('github_id', 'name', 'user.email')
+    column_searchable_list = ("github_id", "name", "user.email")
 
 
 class ReleaseModelView(ModelView):
@@ -64,30 +64,30 @@ class ReleaseModelView(ModelView):
     can_view_details = True
     column_display_all_relations = True
     column_list = (
-        'repository',
-        'tag',
-        'status',
-        'id',
-        'release_id',
-        'record_id',
-        'record',
+        "repository",
+        "tag",
+        "status",
+        "id",
+        "release_id",
+        "record_id",
+        "record",
     )
     column_searchable_list = (
-        'tag',
-        'status',
-        'repository.name',
-        'repository.github_id',
+        "tag",
+        "status",
+        "repository.name",
+        "repository.github_id",
     )
 
 
 repository_adminview = dict(
     model=Repository,
     modelview=RepositoryModelView,
-    category=_('GitHub'),
+    category=_("GitHub"),
 )
 
 release_adminview = dict(
     model=Release,
     modelview=ReleaseModelView,
-    category=_('GitHub'),
+    category=_("GitHub"),
 )

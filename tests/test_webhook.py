@@ -35,19 +35,21 @@ from invenio_github.models import Repository
 def test_webhook_post(app, db, tester_id, location, remote_token, github_api):
     """Test payload parsing on webhook."""
     from . import fixtures
-    with patch('invenio_deposit.api.Deposit.indexer'):
+
+    with patch("invenio_deposit.api.Deposit.indexer"):
         # Enable repository webhook.
-        Repository.enable(tester_id, github_id=3, name='arepo', hook=1234)
+        Repository.enable(tester_id, github_id=3, name="arepo", hook=1234)
         db.session.commit()
 
         # JSON payload parsing.
-        payload = json.dumps(fixtures.PAYLOAD('auser', 'arepo', 3, 'v1.0'))
-        headers = [('Content-Type', 'application/json')]
+        payload = json.dumps(fixtures.PAYLOAD("auser", "arepo", 3, "v1.0"))
+        headers = [("Content-Type", "application/json")]
         with app.test_request_context(headers=headers, data=payload):
-            event = Event.create(receiver_id='github', user_id=tester_id)
+            event = Event.create(receiver_id="github", user_id=tester_id)
             db.session.commit()
             event.process()
             db.session.commit()
 
         from invenio_records.models import RecordMetadata
+
         assert RecordMetadata.query.count() == 2

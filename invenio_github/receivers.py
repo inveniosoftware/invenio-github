@@ -29,8 +29,11 @@ from datetime import datetime
 from invenio_db import db
 from invenio_webhooks.models import Receiver
 
-from .errors import ReleaseAlreadyReceivedError, RepositoryAccessError, \
-    RepositoryDisabledError
+from .errors import (
+    ReleaseAlreadyReceivedError,
+    RepositoryAccessError,
+    RepositoryDisabledError,
+)
 from .models import Release, Repository
 from .tasks import process_release
 
@@ -49,23 +52,20 @@ class GitHubReceiver(Receiver):
             the rest of the processing to a Celery task which will be mainly
             accessing the GitHub API.
         """
-        repo_id = event.payload['repository']['id']
+        repo_id = event.payload["repository"]["id"]
 
         # Ping event - update the ping timestamp of the repository
-        if 'hook_id' in event.payload and 'zen' in event.payload:
-            repository = Repository.query.filter_by(
-                github_id=repo_id
-            ).one()
+        if "hook_id" in event.payload and "zen" in event.payload:
+            repository = Repository.query.filter_by(github_id=repo_id).one()
             repository.ping = datetime.utcnow()
             db.session.commit()
             return
 
         # Release event
-        action = event.payload.get('action')
-        is_draft_release = event.payload.get('release', {}).get('draft')
+        action = event.payload.get("action")
+        is_draft_release = event.payload.get("release", {}).get("draft")
         is_release_event = (
-            action in ('published', 'released', 'created')
-            and not is_draft_release
+            action in ("published", "released", "created") and not is_draft_release
         )
         if is_release_event:
             try:
@@ -76,8 +76,7 @@ class GitHubReceiver(Receiver):
                 # here (eg. We're in the middle of a migration).
                 # if current_app.config['GITHUB_PROCESS_RELEASES']:
                 process_release.delay(
-                    release.release_id,
-                    verify_sender=self.verify_sender
+                    release.release_id, verify_sender=self.verify_sender
                 )
             except (ReleaseAlreadyReceivedError, RepositoryDisabledError) as e:
                 event.response_code = 409

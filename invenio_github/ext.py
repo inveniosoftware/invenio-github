@@ -47,7 +47,7 @@ class InvenioGitHub(object):
     @cached_property
     def release_api_class(self):
         """Github Release API class."""
-        cls = current_app.config['GITHUB_RELEASE_CLASS']
+        cls = current_app.config["GITHUB_RELEASE_CLASS"]
         if isinstance(cls, string_types):
             cls = import_string(cls)
         assert issubclass(cls, GitHubRelease)
@@ -56,15 +56,16 @@ class InvenioGitHub(object):
     @cached_property
     def release_error_handlers(self):
         """Github Release error handlers."""
-        error_handlers = current_app.config.get('GITHUB_ERROR_HANDLERS') or []
-        return [(obj_or_import_string(error_cls),
-                obj_or_import_string(handler))
-                for error_cls, handler in error_handlers]
+        error_handlers = current_app.config.get("GITHUB_ERROR_HANDLERS") or []
+        return [
+            (obj_or_import_string(error_cls), obj_or_import_string(handler))
+            for error_cls, handler in error_handlers
+        ]
 
     @cached_property
     def record_serializer(self):
         """Github Release API class."""
-        imp = current_app.config['GITHUB_RECORD_SERIALIZER']
+        imp = current_app.config["GITHUB_RECORD_SERIALIZER"]
         if isinstance(imp, string_types):
             return import_string(imp)
         return imp
@@ -72,7 +73,7 @@ class InvenioGitHub(object):
     def init_app(self, app):
         """Flask application initialization."""
         self.init_config(app)
-        app.extensions['invenio-github'] = self
+        app.extensions["invenio-github"] = self
 
         @app.before_first_request
         def connect_signals():
@@ -84,11 +85,10 @@ class InvenioGitHub(object):
             from .handlers import account_post_init
 
             account_setup_committed.connect(
-                account_post_init,
-                sender=GitHubAPI.remote._get_current_object()
+                account_post_init, sender=GitHubAPI.remote._get_current_object()
             )
 
-            @event.listens_for(RemoteAccount, 'before_delete')
+            @event.listens_for(RemoteAccount, "before_delete")
             def receive_before_delete(mapper, connection, target):
                 """Listen for the 'before_delete' event."""
                 # TODO remove hooks
@@ -96,15 +96,17 @@ class InvenioGitHub(object):
     def init_config(self, app):
         """Initialize configuration."""
         app.config.setdefault(
-            'GITHUB_BASE_TEMPLATE',
-            app.config.get('BASE_TEMPLATE',
-                           'invenio_github/base.html'))
+            "GITHUB_BASE_TEMPLATE",
+            app.config.get("BASE_TEMPLATE", "invenio_github/base.html"),
+        )
 
         app.config.setdefault(
-            'GITHUB_SETTINGS_TEMPLATE',
-            app.config.get('SETTINGS_TEMPLATE',
-                           'invenio_oauth2server/settings/base.html'))
+            "GITHUB_SETTINGS_TEMPLATE",
+            app.config.get(
+                "SETTINGS_TEMPLATE", "invenio_oauth2server/settings/base.html"
+            ),
+        )
 
         for k in dir(config):
-            if k.startswith('GITHUB_'):
+            if k.startswith("GITHUB_"):
                 app.config.setdefault(k, getattr(config, k))

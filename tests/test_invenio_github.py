@@ -36,17 +36,18 @@ from invenio_github import InvenioGitHub
 def test_version():
     """Test version import."""
     from invenio_github import __version__
+
     assert __version__
 
 
 def test_init():
     """Test extension initialization."""
-    app = Flask('testapp')
+    app = Flask("testapp")
     ext = InvenioGitHub(app)
-    assert 'invenio-github' in app.extensions
+    assert "invenio-github" in app.extensions
 
-    app = Flask('testapp')
+    app = Flask("testapp")
     ext = InvenioGitHub()
-    assert 'invenio-github' not in app.extensions
+    assert "invenio-github" not in app.extensions
     ext.init_app(app)
-    assert 'invenio-github' in app.extensions
+    assert "invenio-github" in app.extensions

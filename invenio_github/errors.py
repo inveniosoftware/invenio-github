@@ -32,7 +32,7 @@ class GitHubError(Exception):
 class RepositoryAccessError(GitHubError):
     """Repository access permissions error."""
 
-    message = u'The user cannot access the github repository'
+    message = "The user cannot access the github repository"
 
     def __init__(self, user=None, repo=None, repo_id=None, message=None):
         """Constructor."""
@@ -45,7 +45,7 @@ class RepositoryAccessError(GitHubError):
 class RepositoryDisabledError(GitHubError):
     """Repository access permissions error."""
 
-    message = u'This repository is not enabled for webhooks.'
+    message = "This repository is not enabled for webhooks."
 
     def __init__(self, repo=None, message=None):
         """Constructor."""
@@ -56,7 +56,7 @@ class RepositoryDisabledError(GitHubError):
 class InvalidSenderError(GitHubError):
     """Invalid release sender error."""
 
-    message = u'Invalid sender for event'
+    message = "Invalid sender for event"
 
     def __init__(self, event=None, user=None, message=None):
         """Constructor."""
@@ -68,22 +68,20 @@ class InvalidSenderError(GitHubError):
 class ReleaseAlreadyReceivedError(GitHubError):
     """Invalid release sender error."""
 
-    message = u'The release has already been received.'
+    message = "The release has already been received."
 
     def __init__(self, release=None, message=None):
         """Constructor."""
-        super(ReleaseAlreadyReceivedError, self).__init__(
-            message or self.message)
+        super(ReleaseAlreadyReceivedError, self).__init__(message or self.message)
         self.release = release
 
 
 class CustomGitHubMetadataError(GitHubError):
     """Invalid Custom GitHub Metadata file."""
 
-    message = u'The metadata file is not valid JSON.'
+    message = "The metadata file is not valid JSON."
 
     def __init__(self, file=None, message=None):
         """Constructor."""
-        super(CustomGitHubMetadataError, self).__init__(
-            message or self.message)
+        super(CustomGitHubMetadataError, self).__init__(message or self.message)
         self.file = file

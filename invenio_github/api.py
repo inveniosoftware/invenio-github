@@ -27,6 +27,7 @@
 import json
 
 import github3
+import requests
 from flask import current_app
 from invenio_db import db
 from invenio_oauth2server.models import Token as ProviderToken
@@ -35,7 +36,6 @@ from invenio_oauthclient.models import RemoteAccount, RemoteToken
 from invenio_oauthclient.proxies import current_oauthclient
 from invenio_pidstore.proxies import current_pidstore
 from mistune import markdown
-import requests
 from six import string_types
 from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.local import LocalProxy
@@ -44,8 +44,13 @@ from werkzeug.utils import cached_property, import_string
 from .errors import RepositoryAccessError
 from .models import ReleaseStatus, Repository
 from .tasks import sync_hooks
-from .utils import get_extra_metadata, iso_utcnow, parse_timestamp, utcnow, \
-    get_citation_metadata
+from .utils import (
+    get_citation_metadata,
+    get_extra_metadata,
+    iso_utcnow,
+    parse_timestamp,
+    utcnow,
+)
 
 
 class GitHubAPI(object):
@@ -64,9 +69,7 @@ class GitHubAPI(object):
     def access_token(self):
         """Return OAuth access token."""
         if self.user_id:
-            return RemoteToken.get(
-                self.user_id, self.remote.consumer_key
-            ).access_token
+            return RemoteToken.get(self.user_id, self.remote.consumer_key).access_token
         return self.remote.get_request_token()[0]
 
     @property
@@ -77,15 +80,14 @@ class GitHubAPI(object):
             session_token = token_getter(self.remote)
         if session_token:
             token = RemoteToken.get(
-                self.user_id, self.remote.consumer_key,
-                access_token=session_token[0]
+                self.user_id, self.remote.consumer_key, access_token=session_token[0]
             )
             return token
         return None
 
     remote = LocalProxy(
         lambda: current_oauthclient.oauth.remote_apps[
-            current_app.config['GITHUB_WEBHOOK_RECEIVER_ID']
+            current_app.config["GITHUB_WEBHOOK_RECEIVER_ID"]
         ]
     )
     """Return OAuth remote application."""
@@ -99,23 +101,23 @@ class GitHubAPI(object):
     def webhook_url(self):
         """Return the url to be used by a GitHub webhook."""
         webhook_token = ProviderToken.query.filter_by(
-            id=self.account.extra_data['tokens']['webhook']
+            id=self.account.extra_data["tokens"]["webhook"]
         ).first()
         if webhook_token:
-            wh_url = current_app.config.get('GITHUB_WEBHOOK_RECEIVER_URL')
+            wh_url = current_app.config.get("GITHUB_WEBHOOK_RECEIVER_URL")
             if wh_url:
                 return wh_url.format(token=webhook_token.access_token)
             else:
-                raise RuntimeError('You must set GITHUB_WEBHOOK_RECEIVER_URL.')
+                raise RuntimeError("You must set GITHUB_WEBHOOK_RECEIVER_URL.")
 
     def init_account(self):
         """Setup a new GitHub account."""
         ghuser = self.api.me()
         # Setup local access tokens to be used by the webhooks
         hook_token = ProviderToken.create_personal(
-            'github-webhook',
+            "github-webhook",
             self.user_id,
-            scopes=['webhooks:event'],
+            scopes=["webhooks:event"],
             is_internal=True,
         )
         # Initial structure of extra data
@@ -148,24 +150,26 @@ class GitHubAPI(object):
             own state based on this information.
         """
         active_repos = {}
-        github_repos = {repo.id: repo for repo in self.api.repositories()
-                        if repo.permissions['admin']}
+        github_repos = {
+            repo.id: repo
+            for repo in self.api.repositories()
+            if repo.permissions["admin"]
+        }
         for gh_repo_id, gh_repo in github_repos.items():
             active_repos[gh_repo_id] = {
-                'id': gh_repo_id,
-                'full_name': gh_repo.full_name,
-                'description': gh_repo.description,
-                'default_branch': gh_repo.default_branch,
+                "id": gh_repo_id,
+                "full_name": gh_repo.full_name,
+                "description": gh_repo.description,
+                "default_branch": gh_repo.default_branch,
             }
 
         if hooks:
-            self._sync_hooks(list(active_repos.keys()),
-                             asynchronous=async_hooks)
+            self._sync_hooks(list(active_repos.keys()), asynchronous=async_hooks)
 
         # Update changed names for repositories stored in DB
         db_repos = Repository.query.filter(
             Repository.user_id == self.user_id,
-            Repository.github_id.in_(github_repos.keys())
+            Repository.github_id.in_(github_repos.keys()),
         )
 
         for repo in db_repos:
@@ -178,14 +182,16 @@ class GitHubAPI(object):
         # 'admin' permissions, or have been deleted.
         Repository.query.filter(
             Repository.user_id == self.user_id,
-            ~Repository.github_id.in_(github_repos.keys())
+            ~Repository.github_id.in_(github_repos.keys()),
         ).update(dict(user_id=None, hook=None), synchronize_session=False)
 
         # Update repos and last sync
-        self.account.extra_data.update(dict(
-            repos=active_repos,
-            last_sync=iso_utcnow(),
-        ))
+        self.account.extra_data.update(
+            dict(
+                repos=active_repos,
+                last_sync=iso_utcnow(),
+            )
+        )
         self.account.extra_data.changed()
         db.session.add(self.account)
 
@@ -199,7 +205,8 @@ class GitHubAPI(object):
                     db.session.commit()
                 except RepositoryAccessError:
                     current_app.logger.warning(
-                        str(RepositoryAccessError), exc_info=True)
+                        str(RepositoryAccessError), exc_info=True
+                    )
                 except NoResultFound:
                     pass  # Repository not in DB yet
         else:
@@ -211,67 +218,78 @@ class GitHubAPI(object):
         """Sync a GitHub repo's hook with the locally stored repo."""
         # Get the hook that we may have set in the past
         gh_repo = self.api.repository_with_id(repo_id)
-        hooks = (hook.id for hook in gh_repo.hooks()
-                 if hook.config.get('url', '') == self.webhook_url)
+        hooks = (
+            hook.id
+            for hook in gh_repo.hooks()
+            if hook.config.get("url", "") == self.webhook_url
+        )
         hook_id = next(hooks, None)
 
         # If hook on GitHub exists, get or create corresponding db object and
         # enable the hook. Otherwise remove the old hook information.
         if hook_id:
-            Repository.enable(user_id=self.user_id,
-                              github_id=gh_repo.id,
-                              name=gh_repo.full_name,
-                              hook=hook_id)
+            Repository.enable(
+                user_id=self.user_id,
+                github_id=gh_repo.id,
+                name=gh_repo.full_name,
+                hook=hook_id,
+            )
         else:
-            Repository.disable(user_id=self.user_id,
-                               github_id=gh_repo.id,
-                               name=gh_repo.full_name)
+            Repository.disable(
+                user_id=self.user_id, github_id=gh_repo.id, name=gh_repo.full_name
+            )
 
     def check_sync(self):
         """Check if sync is required based on last sync date."""
         # If refresh interval is not specified, we should refresh every time.
         expiration = utcnow()
-        refresh_td = current_app.config.get('GITHUB_REFRESH_TIMEDELTA')
+        refresh_td = current_app.config.get("GITHUB_REFRESH_TIMEDELTA")
         if refresh_td:
             expiration -= refresh_td
-        last_sync = parse_timestamp(self.account.extra_data['last_sync'])
+        last_sync = parse_timestamp(self.account.extra_data["last_sync"])
         return last_sync < expiration
 
     def create_hook(self, repo_id, repo_name):
         """Create repository hook."""
         config = dict(
             url=self.webhook_url,
-            content_type='json',
-            secret=current_app.config['GITHUB_SHARED_SECRET'],
-            insecure_ssl='1' if current_app.config['GITHUB_INSECURE_SSL']
-                         else '0',
+            content_type="json",
+            secret=current_app.config["GITHUB_SHARED_SECRET"],
+            insecure_ssl="1" if current_app.config["GITHUB_INSECURE_SSL"] else "0",
         )
 
         ghrepo = self.api.repository_with_id(repo_id)
         if ghrepo:
             try:
                 hook = ghrepo.create_hook(
-                    'web',  # GitHub identifier for webhook service
+                    "web",  # GitHub identifier for webhook service
                     config,
-                    events=['release'],
+                    events=["release"],
                 )
             except github3.GitHubError as e:
                 # Check if hook is already installed
-                hook_errors = (m for m in e.errors
-                               if m['code'] == 'custom' and
-                               m['resource'] == 'Hook')
+                hook_errors = (
+                    m
+                    for m in e.errors
+                    if m["code"] == "custom" and m["resource"] == "Hook"
+                )
                 if next(hook_errors, None):
-                    hooks = (h for h in ghrepo.hooks()
-                             if h.config.get('url', '') == config['url'])
+                    hooks = (
+                        h
+                        for h in ghrepo.hooks()
+                        if h.config.get("url", "") == config["url"]
+                    )
                     hook = next(hooks, None)
                     if hook:
-                        hook.edit(config=config, events=['release'])
+                        hook.edit(config=config, events=["release"])
             finally:
                 if hook:
-                    Repository.enable(user_id=self.user_id,
-                                      github_id=repo_id,
-                                      name=repo_name,
-                                      hook=hook.id)
+                    Repository.enable(
+                        user_id=self.user_id,
+                        github_id=repo_id,
+                        name=repo_name,
+                        hook=hook.id,
+                    )
                     return True
         return False
 
@@ -279,13 +297,12 @@ class GitHubAPI(object):
         """Remove repository hook."""
         ghrepo = self.api.repository_with_id(repo_id)
         if ghrepo:
-            hooks = (h for h in ghrepo.hooks()
-                     if h.config.get('url', '') == self.webhook_url)
+            hooks = (
+                h for h in ghrepo.hooks() if h.config.get("url", "") == self.webhook_url
+            )
             hook = next(hooks, None)
             if not hook or hook.delete():
-                Repository.disable(user_id=self.user_id,
-                                   github_id=repo_id,
-                                   name=name)
+                Repository.disable(user_id=self.user_id, github_id=repo_id, name=name)
                 return True
         return False
 
@@ -301,9 +318,9 @@ class GitHubAPI(object):
         """Check if an access token is authorized."""
         gh_api = cls._dev_api()
         client_id, client_secret = gh_api.session.retrieve_client_credentials()
-        url = gh_api._build_url('applications', str(client_id), 'token')
+        url = gh_api._build_url("applications", str(client_id), "token")
         with gh_api.session.temporary_basic_auth(client_id, client_secret):
-            response = gh_api._post(url, data={'access_token': token})
+            response = gh_api._post(url, data={"access_token": token})
         return response.status_code == 200
 
     @classmethod
@@ -311,12 +328,11 @@ class GitHubAPI(object):
         """Revoke an access token."""
         gh_api = cls._dev_api()
         client_id, client_secret = gh_api.session.retrieve_client_credentials()
-        url = gh_api._build_url('applications', str(client_id), 'token')
+        url = gh_api._build_url("applications", str(client_id), "token")
         with gh_api.session.temporary_basic_auth(client_id, client_secret):
-            response = gh_api._delete(
-                url, data=json.dumps({'access_token': token})
-            )
+            response = gh_api._delete(url, data=json.dumps({"access_token": token}))
         return response
+
 
 class GitHubRelease(object):
     """A GitHub release."""
@@ -334,7 +350,7 @@ class GitHubRelease(object):
     @cached_property
     def deposit_class(self):
         """Return a class implementing `publish` method."""
-        cls = current_app.config['GITHUB_DEPOSIT_CLASS']
+        cls = current_app.config["GITHUB_DEPOSIT_CLASS"]
         if isinstance(cls, string_types):
             cls = import_string(cls)
         assert isinstance(cls, type)
@@ -353,70 +369,71 @@ class GitHubRelease(object):
     @cached_property
     def release(self):
         """Return release metadata."""
-        return self.payload['release']
+        return self.payload["release"]
 
     @cached_property
     def repository(self):
         """Return repository metadata."""
-        return self.payload['repository']
+        return self.payload["repository"]
 
     @property
     def repo_model(self):
         """Return repository model from database."""
         return Repository.query.filter_by(
             user_id=self.event.user_id,
-            github_id=self.repository['id'],
+            github_id=self.repository["id"],
         ).one()
 
     @cached_property
     def title(self):
         """Extract title from a release."""
-        repo_name = self.repository.get('full_name', self.repo_model.name)
-        release_name = self.release.get(
-            'name') or self.release.get('tag_name', self.model.tag)
-        return u'{0}: {1}'.format(repo_name, release_name)
+        repo_name = self.repository.get("full_name", self.repo_model.name)
+        release_name = self.release.get("name") or self.release.get(
+            "tag_name", self.model.tag
+        )
+        return "{0}: {1}".format(repo_name, release_name)
 
     @cached_property
     def description(self):
         """Extract description from a release."""
-        if self.release.get('body'):
-            return markdown(self.release['body'])
-        elif self.repository.get('description'):
-            return self.repository['description']
-        return 'No description provided.'
+        if self.release.get("body"):
+            return markdown(self.release["body"])
+        elif self.repository.get("description"):
+            return self.repository["description"]
+        return "No description provided."
 
     @cached_property
     def author(self):
         """Extract the author's GitHub username from a release."""
-        return self.release.get('author', {}).get('login')
+        return self.release.get("author", {}).get("login")
 
     @cached_property
     def related_identifiers(self):
         """Yield related identifiers."""
         yield dict(
-            identifier=u'https://github.com/{0}/tree/{1}'.format(
-                self.repository['full_name'], self.release['tag_name']
+            identifier="https://github.com/{0}/tree/{1}".format(
+                self.repository["full_name"], self.release["tag_name"]
             ),
-            relation='isSupplementTo',
+            relation="isSupplementTo",
         )
 
     @cached_property
     def version(self):
         """Extract the vesion from the release tag."""
-        return self.release.get('tag_name', '')
+        return self.release.get("tag_name", "")
 
     @cached_property
     def defaults(self):
         """Return default metadata."""
         return dict(
-            access_right='open',
+            access_right="open",
             description=self.description,
-            license='other-open',
-            publication_date=self.release['published_at'][:10],
+            license="other-open",
+            publication_date=self.release["published_at"][:10],
             related_identifiers=list(self.related_identifiers),
             version=self.version,
             title=self.title,
-            upload_type='software',
+            upload_type="software",
         )
 
     @cached_property
@@ -424,9 +441,9 @@ class GitHubRelease(object):
         """Get extra metadata for file in repository."""
         return get_extra_metadata(
             self.gh.api,
-            self.repository['owner']['login'],
-            self.repository['name'],
-            self.release['tag_name'],
+            self.repository["owner"]["login"],
+            self.repository["name"],
+            self.release["tag_name"],
         )
 
     @cached_property
@@ -434,21 +451,20 @@ class GitHubRelease(object):
         """Get citation metadata for file in repository."""
         return get_citation_metadata(
             self.gh.api,
-            self.repository['owner']['login'],
-            self.repository['name'],
-            self.release['tag_name'],
-            self.model
+            self.repository["owner"]["login"],
+            self.repository["name"],
+            self.release["tag_name"],
+            self.model,
         )
-
 
     @cached_property
     def files(self):
         """Extract files to download from GitHub payload."""
-        tag_name = self.release['tag_name']
-        repo_name = self.repository['full_name']
+        tag_name = self.release["tag_name"]
+        repo_name = self.repository["full_name"]
 
-        zipball_url = self.release['zipball_url']
-        filename = u'{name}-{tag}.zip'.format(name=repo_name, tag=tag_name)
+        zipball_url = self.release["zipball_url"]
+        filename = "{name}-{tag}.zip".format(name=repo_name, tag=tag_name)
 
         response = self.gh.api.session.head(zipball_url, allow_redirects=True)
 
@@ -456,10 +472,9 @@ class GitHubRelease(object):
         # get back a "300 Mutliple Choices" response, which requires fetching
         # an "alternate" link.
         if response.status_code == 300:
-            zipball_url = response.links.get('alternate', {}).get('url')
+            zipball_url = response.links.get("alternate", {}).get("url")
             if zipball_url:
-                response = self.gh.api.session.head(
-                    zipball_url, allow_redirects=True)
+                response = self.gh.api.session.head(zipball_url, allow_redirects=True)
                 # Another edge-case, is when the access token we have does not
                 # have the scopes/permissions to access public links. In that
                 # rare case we fallback to a non-authenticated request.
@@ -470,8 +485,9 @@ class GitHubRelease(object):
                     if response.status_code == 200:
                         zipball_url = response.url
 
-        assert response.status_code == 200, \
-            u'Could not retrieve archive from GitHub: {0}'.format(zipball_url)
+        assert (
+            response.status_code == 200
+        ), "Could not retrieve archive from GitHub: {0}".format(zipball_url)
 
         yield filename, zipball_url
 
@@ -499,25 +515,27 @@ class GitHubRelease(object):
         """Get PID object for the Release record."""
         if self.model.status == ReleaseStatus.PUBLISHED and self.record:
             fetcher = current_pidstore.fetchers[
-                current_app.config.get('GITHUB_PID_FETCHER')]
+                current_app.config.get("GITHUB_PID_FETCHER")
+            ]
             return fetcher(self.record.id, self.record)
 
     def verify_sender(self):
         """Check if the sender is valid."""
-        return self.payload['repository']['full_name'] in \
-            self.gh.account.extra_data['repos']
+        return (
+            self.payload["repository"]["full_name"]
+            in self.gh.account.extra_data["repos"]
+        )
 
     def publish(self):
         """Publish GitHub release as record."""
         with db.session.begin_nested():
             deposit = self.deposit_class.create(self.metadata)
-            deposit['_deposit']['created_by'] = self.event.user_id
-            deposit['_deposit']['owners'] = [self.event.user_id]
+            deposit["_deposit"]["created_by"] = self.event.user_id
+            deposit["_deposit"]["owners"] = [self.event.user_id]
 
             # Fetch the deposit files
             for key, url in self.files:
-                deposit.files[key] = self.gh.api.session.get(
-                    url, stream=True).raw
+                deposit.files[key] = self.gh.api.session.get(url, stream=True).raw
 
             deposit.publish()
             recid, record = deposit.fetch_published()
