@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2016 CERN.
+# Copyright (C) 2023 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -29,23 +29,13 @@ from __future__ import absolute_import
 import uuid
 from enum import Enum
 
-from flask import current_app
 from invenio_accounts.models import User
 from invenio_db import db
 from invenio_i18n import lazy_gettext as _
-from invenio_records.api import Record
-from invenio_records.models import RecordMetadata
 from invenio_webhooks.models import Event
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy_utils.models import Timestamp
 from sqlalchemy_utils.types import ChoiceType, JSONType, UUIDType
-
-from .errors import (
-    ReleaseAlreadyReceivedError,
-    RepositoryAccessError,
-    RepositoryDisabledError,
-)
 
 RELEASE_STATUS_TITLES = {
     "RECEIVED": _("Received"),
@@ -160,6 +150,7 @@ class Repository(db.Model, Timestamp):
     user_id = db.Column(db.Integer, db.ForeignKey(User.id), nullable=True)
     """Reference user that can manage this repository."""
 
+    # TODO probably useless. Check for what it's used
     ping = db.Column(db.DateTime, nullable=True)
     """Last ping of the repository."""
 
@@ -174,16 +165,14 @@ class Repository(db.Model, Timestamp):
     @classmethod
     def create(cls, user_id, github_id=None, name=None, **kwargs):
         """Create the repository."""
-        with db.session.begin_nested():
-            obj = cls(user_id=user_id, github_id=github_id, name=name, **kwargs)
-            db.session.add(obj)
+        obj = cls(user_id=user_id, github_id=github_id, name=name, **kwargs)
+        db.session.add(obj)
         return obj
 
     @classmethod
-    def get(cls, user_id, github_id=None, name=None, check_owner=True):
-        """Return a repository.
+    def get(cls, github_id=None, name=None):
+        """Return a repository given its name or github id.
 
-        :param integer user_id: User identifier.
         :param integer github_id: GitHub repository identifier.
         :param str name: GitHub repository full name.
         :returns: The repository object.
@@ -192,18 +181,15 @@ class Repository(db.Model, Timestamp):
         :raises: :py:exc:`~sqlalchemy.orm.exc.MultipleResultsFound`: if
                  multiple repositories with the specified GitHub id and/or name
                  exist.
-        :raises: :py:exc:`RepositoryAccessError`: if the user is not the owner
-                 of the repository.
         """
+        # TODO check how many cases we have where github_id returns multiple results
         repo = cls.query.filter(
             (Repository.github_id == github_id) | (Repository.name == name)
         ).one()
-        if check_owner and repo and repo.user_id and repo.user_id != int(user_id):
-            raise RepositoryAccessError(user=user_id, repo=name, repo_id=github_id)
         return repo
 
     @classmethod
-    def enable(cls, user_id, github_id, name, hook):
+    def enable(cls, repo, user_id, hook):
         """Enable webhooks for a repository.
 
         If the repository does not exist it will create one.
@@ -211,18 +197,15 @@ class Repository(db.Model, Timestamp):
         :param user_id: User identifier.
         :param repo_id: GitHub repository identifier.
         :param name: Fully qualified name of the repository.
-        :param hook: GitHub hook identifier.
+        :param hook: GitHub hook identifier (hook id).
         """
-        try:
-            repo = cls.get(user_id, github_id=github_id, name=name)
-        except NoResultFound:
-            repo = cls.create(user_id=user_id, github_id=github_id, name=name)
         repo.hook = hook
         repo.user_id = user_id
+        db.session.add(repo)
         return repo
 
     @classmethod
-    def disable(cls, user_id, github_id, name):
+    def disable(cls, repo):
         """Disable webhooks for a repository.
 
         Disables the webhook from a repository if it exists in the DB.
@@ -231,9 +214,9 @@ class Repository(db.Model, Timestamp):
         :param repo_id: GitHub id of the repository.
         :param name: Fully qualified name of the repository.
         """
-        repo = cls.get(user_id, github_id=github_id, name=name)
         repo.hook = None
         repo.user_id = None
+        db.session.add(repo)
         return repo
 
     @property
@@ -243,9 +226,10 @@ class Repository(db.Model, Timestamp):
 
     def latest_release(self, status=None):
         """Chronologically latest published release of the repository."""
-        # Bail out fast if object not in DB session.
+        # Bail out fast if object (Repository) not in DB session.
         if self not in db.session:
             return None
+
         q = self.releases if status is None else self.releases.filter_by(status=status)
         return q.order_by(db.desc(Release.created)).first()
 
@@ -274,6 +258,7 @@ class Release(db.Model, Timestamp):
 
     errors = db.Column(
         JSONType().with_variant(
+            # TODO postgresql specific. Limits the usage of the DB engine.
             postgresql.JSON(none_as_null=True),
             "postgresql",
         ),
@@ -289,10 +274,10 @@ class Release(db.Model, Timestamp):
 
     record_id = db.Column(
         UUIDType,
-        db.ForeignKey(RecordMetadata.id),
+        index=True,
         nullable=True,
     )
-    """Record identifier."""
+    """Weak reference to a record identifier."""
 
     status = db.Column(
         ChoiceType(ReleaseStatus, impl=db.CHAR(1)),
@@ -304,55 +289,8 @@ class Release(db.Model, Timestamp):
         Repository, backref=db.backref("releases", lazy="dynamic")
     )
 
-    recordmetadata = db.relationship(RecordMetadata, backref="github_releases")
     event = db.relationship(Event)
-
-    @classmethod
-    def create(cls, event):
-        """Create a new Release model."""
-        # Check if the release has already been received
-        release_id = event.payload["release"]["id"]
-        existing_release = Release.query.filter_by(
-            release_id=release_id,
-        ).first()
-        if existing_release:
-            raise ReleaseAlreadyReceivedError(release=existing_release)
-
-        # Create the Release
-        repo_id = event.payload["repository"]["id"]
-        repo = Repository.get(user_id=event.user_id, github_id=repo_id)
-        if repo.enabled:
-            with db.session.begin_nested():
-                release = cls(
-                    release_id=release_id,
-                    tag=event.payload["release"]["tag_name"],
-                    repository=repo,
-                    event=event,
-                    status=ReleaseStatus.RECEIVED,
-                )
-                db.session.add(release)
-            return release
-        else:
-            raise RepositoryDisabledError(repo=repo)
-
-    @property
-    def record(self):
-        """Get Record object."""
-        if self.recordmetadata:
-            return Record(self.recordmetadata.json, model=self.recordmetadata)
-        else:
-            return None
-
-    @property
-    def deposit_id(self):
-        """Get deposit identifier."""
-        if self.record and "_deposit" in self.record:
-            return self.record["_deposit"]["id"]
-        else:
-            return None
 
     def __repr__(self):
         """Get release representation."""
-        return "<Release {self.tag}:{self.release_id} ({self.status.title})>".format(
-            self=self
-        )
+        return f"<Release {self.tag}:{self.release_id} ({self.status.title})>"

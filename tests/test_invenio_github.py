@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2016 CERN.
+# Copyright (C) 2023 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -28,7 +28,6 @@
 from __future__ import absolute_import, print_function
 
 from flask import Flask
-from invenio_i18n import Babel
 
 from invenio_github import InvenioGitHub
 

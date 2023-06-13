@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2016 CERN.
+# Copyright (C) 2023 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -53,6 +53,17 @@ class RepositoryDisabledError(GitHubError):
         self.repo = repo
 
 
+class RepositoryNotFoundError(GitHubError):
+    """Repository not found error."""
+
+    message = "The repository does not exist."
+
+    def __init__(self, repo=None, message=None):
+        """Constructor."""
+        super(RepositoryNotFoundError, self).__init__(message or self.message)
+        self.repo = repo
+
+
 class InvalidSenderError(GitHubError):
     """Invalid release sender error."""
 
@@ -85,3 +96,36 @@ class CustomGitHubMetadataError(GitHubError):
         """Constructor."""
         super(CustomGitHubMetadataError, self).__init__(message or self.message)
         self.file = file
+
+
+class GithubTokenNotFound(GitHubError):
+    """Oauth session token was not found."""
+
+    message = "The oauth session token was not found."
+
+    def __init__(self, user=None, message=None):
+        """Constructor."""
+        super(GithubTokenNotFound, self).__init__(message or self.message)
+        self.user = user
+
+
+class RemoteAccountNotFound(GitHubError):
+    """Remote account for the user is not setup."""
+
+    message = "RemoteAccount not found for user"
+
+    def __init__(self, user=None, message=None):
+        """Constructor."""
+        super(RemoteAccountNotFound, self).__init__(message or self.message)
+        self.user = user
+
+
+class RemoteAccountDataNotSet(GitHubError):
+    """Remote account extra data for the user is not set."""
+
+    message = "RemoteAccount extra data not set for user."
+
+    def __init__(self, user=None, message=None):
+        """Constructor."""
+        super(RemoteAccountDataNotSet, self).__init__(message or self.message)
+        self.user = user

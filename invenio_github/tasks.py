@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2014, 2015, 2016 CERN.
+# Copyright (C) 2023 CERN.
 #
 # Invenio is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,17 +27,17 @@ from __future__ import absolute_import
 import datetime
 import json
 
+import github3
 from celery import shared_task
 from flask import current_app, g
 from invenio_db import db
 from invenio_oauthclient.models import RemoteAccount
 from invenio_oauthclient.proxies import current_oauthclient
 from invenio_rest.errors import RESTException
-from sqlalchemy.orm.exc import NoResultFound
 
-from .errors import CustomGitHubMetadataError, InvalidSenderError, RepositoryAccessError
-from .models import Release, ReleaseStatus
-from .proxies import current_github
+from invenio_github.errors import CustomGitHubMetadataError, RepositoryAccessError
+from invenio_github.models import Release, ReleaseStatus
+from invenio_github.proxies import current_github
 
 
 def _get_err_obj(msg):
@@ -50,17 +50,17 @@ def _get_err_obj(msg):
 
 def release_rest_exception_handler(release, ex):
     """Handler for RestException."""
-    release.model.errors = json.loads(ex.get_body())
+    release.release_object.errors = json.loads(ex.get_body())
 
 
 def release_gh_metadata_handler(release, ex):
     """Handler for CustomGithubMetadataError."""
-    release.model.errors = {"errors": ex.message}
+    release.release_object.errors = {"errors": ex.message}
 
 
 def release_default_exception_handler(release, ex):
     """Default handler."""
-    release.model.errors = _get_err_obj("Unknown error occured.")
+    release.release_object.errors = _get_err_obj("Unknown error occured.")
 
 
 DEFAULT_ERROR_HANDLERS = [
@@ -76,23 +76,25 @@ def disconnect_github(access_token, repo_hooks):
     # Note at this point the remote account and all associated data have
     # already been deleted. The celery task is passed the access_token to make
     # some last cleanup and afterwards delete itself remotely.
-    import github3
 
+    # Local import to avoid circular imports
     from .api import GitHubAPI
 
     try:
-        gh = github3.login(token=access_token)
-        for repo_id, repo_hook in repo_hooks:
-            ghrepo = gh.repository_with_id(repo_id)
-            if ghrepo:
-                hook = ghrepo.hook(repo_hook)
-                if hook and hook.delete():
-                    current_app.logger.info(
-                        "Deleted hook from github repository.",
-                        extra={"hook": hook.id, "repo": ghrepo.full_name},
-                    )
-        # If we finished our clean-up successfully, we can revoke the token
-        GitHubAPI.revoke_token(access_token)
+        # Create a nested transaction to make sure that hook deletion + token revoke is atomic
+        with db.session.begin_nested():
+            gh = github3.login(token=access_token)
+            for repo_id, repo_hook in repo_hooks:
+                ghrepo = gh.repository_with_id(repo_id)
+                if ghrepo:
+                    hook = ghrepo.hook(repo_hook)
+                    if hook and hook.delete():
+                        current_app.logger.info(
+                            "Deleted hook from github repository.",
+                            extra={"hook": hook.id, "repo": ghrepo.full_name},
+                        )
+            # If we finished our clean-up successfully, we can revoke the token
+            GitHubAPI.revoke_token(access_token)
     except Exception as exc:
         # Retry in case GitHub may be down...
         disconnect_github.retry(exc=exc)
@@ -101,6 +103,7 @@ def disconnect_github(access_token, repo_hooks):
 @shared_task(max_retries=6, default_retry_delay=10 * 60, rate_limit="100/m")
 def sync_hooks(user_id, repositories):
     """Sync repository hooks for a user."""
+    # Local import to avoid circular imports
     from .api import GitHubAPI
 
     try:
@@ -111,51 +114,40 @@ def sync_hooks(user_id, repositories):
                 with db.session.begin_nested():
                     gh.sync_repo_hook(repo_id)
                 # We commit per repository, because while the task is running
-                # the user might enable/disable a hook.
                 db.session.commit()
             except RepositoryAccessError as e:
                 current_app.logger.warning(str(e), exc_info=True)
-            except NoResultFound:
                 pass  # Repository not in DB yet
     except Exception as exc:
+        current_app.logger.warning(str(exc), exc_info=True)
         sync_hooks.retry(exc=exc)
 
 
 @shared_task(ignore_result=True, max_retries=5, default_retry_delay=10 * 60)
-def process_release(release_id, verify_sender=False, use_extra_metadata=True):
+def process_release(release_id):
     """Process a received Release."""
     release_model = Release.query.filter(
         Release.release_id == release_id,
         Release.status.in_([ReleaseStatus.RECEIVED, ReleaseStatus.FAILED]),
     ).one()
-    release_model.status = ReleaseStatus.PROCESSING
-    db.session.commit()
-    release = current_github.release_api_class(
-        release_model, use_extra_metadata=use_extra_metadata
-    )
-    if verify_sender and not release.verify_sender():
-        raise InvalidSenderError(event=release.event.id, user=release.event.user_id)
+
+    release = current_github.release_api_class(release_model)
 
     matched_error_cls = None
     matched_ex = None
 
     try:
-        release.publish()
-        release.model.status = ReleaseStatus.PUBLISHED
-
+        release.process_release()
+        db.session.commit()
     except Exception as ex:
         error_handlers = current_github.release_error_handlers
-        release.model.status = ReleaseStatus.FAILED
         matched_ex = None
         for error_cls, handler in error_handlers + DEFAULT_ERROR_HANDLERS:
             if isinstance(ex, error_cls):
                 handler(release, ex)
-                current_app.logger.exception("Error while processing GitHub release")
                 matched_error_cls = error_cls
                 matched_ex = ex
                 break
-    finally:
-        db.session.commit()
 
     if matched_error_cls is Exception:
         process_release.retry(ex=matched_ex)
@@ -184,8 +176,10 @@ def refresh_accounts(expiration_threshold=None):
 @shared_task(ignore_result=True)
 def sync_account(user_id):
     """Sync a user account."""
+    # Local import to avoid circular imports
     from .api import GitHubAPI
 
-    gh = GitHubAPI(user_id=user_id)
-    gh.sync(hooks=False, async_hooks=False)
-    db.session.commit()
+    # Start a nested transaction so every data writing inside sync is executed atomically
+    with db.session.begin_nested():
+        gh = GitHubAPI(user_id=user_id)
+        gh.sync(hooks=False, async_hooks=False)

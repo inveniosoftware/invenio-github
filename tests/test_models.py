@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2016 CERN.
+# Copyright (C) 2023 CERN.
 #
 # Invenio is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,11 +24,10 @@
 
 from __future__ import absolute_import
 
-from flask import url_for
-
 from invenio_github.models import Repository
 
 
+# TODO this tests a very specific behavior of latest_release(). If we remove the check from latest_release() then we can remove this test as well
 def test_repository_unbound(app):
     """Test create_badge method."""
     assert Repository(name="org/repo", github_id=1).latest_release() is None

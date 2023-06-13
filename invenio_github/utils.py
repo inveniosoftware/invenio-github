@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2014, 2015, 2016 CERN.
+# Copyright (C) 2023 CERN.
 #
 # Invenio is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -19,20 +19,13 @@
 
 """Various utility functions."""
 
-import json
 from datetime import datetime
-from operator import itemgetter
 
 import dateutil.parser
 import pytz
 import requests
 import six
-import yaml
-from flask import current_app
-from github3 import repository
 from werkzeug.utils import import_string
-
-from .errors import CustomGitHubMetadataError
 
 
 def utcnow():
@@ -51,44 +44,6 @@ def parse_timestamp(x):
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=pytz.utc)
     return dt
-
-
-def get_extra_metadata(gh, owner, repo_name, ref):
-    """Get the metadata file."""
-    try:
-        content = gh.repository(owner, repo_name).file_contents(
-            path=current_app.config["GITHUB_METADATA_FILE"], ref=ref
-        )
-        if not content:
-            # File does not exists in the given ref
-            return {}
-        return json.loads(content.decoded.decode("utf-8"))
-    except ValueError:
-        raise CustomGitHubMetadataError(file=current_app.config["GITHUB_METADATA_FILE"])
-
-
-def get_citation_metadata(gh, owner, repo_name, ref, release):
-    """Get the metadata file."""
-    try:
-        content = gh.repository(owner, repo_name).file_contents(
-            path=current_app.config["GITHUB_CITATION_FILE"], ref=ref
-        )
-        if not content:
-            # File does not exists in the given ref
-            return {}
-        data = yaml.safe_load(content.decoded.decode("utf-8"))
-        citation_schema = current_app.config.get("GITHUB_CITATION_METADATA_SCHEMA")
-        data, errors = citation_schema().load(data)
-        # TODO: Refactor error storage
-        for key in errors:
-            errors[key] = str(errors[key])
-        if release.errors and errors:
-            release.errors["CITATION.cff"] = errors
-        elif errors:
-            release.errors = {"CITATION.cff": errors}
-        return data
-    except ValueError:
-        raise CustomGitHubMetadataError(file=current_app.config["GITHUB_CITATION_FILE"])
 
 
 def get_owner(gh, owner):

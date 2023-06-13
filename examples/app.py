@@ -92,6 +92,7 @@ from __future__ import absolute_import, print_function
 import os
 
 from flask import Flask
+from invenio_i18n import InvenioI18N
 from flask_celeryext import FlaskCeleryExt
 from flask_mail import Mail
 from invenio_access import InvenioAccess
@@ -99,10 +100,7 @@ from invenio_accounts import InvenioAccounts
 from invenio_accounts.views import blueprint as accounts_blueprint
 from invenio_assets import InvenioAssets
 from invenio_db import InvenioDB
-from invenio_deposit import InvenioDepositREST
 from invenio_files_rest import InvenioFilesREST
-from invenio_i18n import Babel
-from invenio_indexer import InvenioIndexer
 from invenio_jsonschemas import InvenioJSONSchemas
 from invenio_oauth2server import InvenioOAuth2Server
 from invenio_oauth2server.views import server_blueprint, settings_blueprint
@@ -113,8 +111,6 @@ from invenio_oauthclient.views.settings import (
     blueprint as oauthclient_settings_blueprint,
 )
 from invenio_pidstore import InvenioPIDStore
-from invenio_records import InvenioRecords
-from invenio_records_rest import InvenioRecordsREST
 from invenio_records_rest.utils import PIDConverter
 from invenio_search import InvenioSearch
 from invenio_search_ui import InvenioSearchUI
@@ -167,7 +163,7 @@ if ULTRAHOOK_NAME:
 app.url_map.converters["pid"] = PIDConverter
 
 celeryext = FlaskCeleryExt(app)
-Babel(app)
+InvenioI18N(app)
 Mail(app)
 InvenioDB(app)
 InvenioAssets(app)
@@ -183,13 +179,9 @@ app.register_blueprint(settings_blueprint)
 InvenioAccess(app)
 InvenioPIDStore(app)
 InvenioJSONSchemas(app)
-InvenioRecords(app)
 InvenioSearch(app)
 InvenioSearchUI(app)
-InvenioIndexer(app)
 InvenioFilesREST(app)
-InvenioRecordsREST(app)
-InvenioDepositREST(app)
 InvenioWebhooks(app)
 celeryext.celery.flask_app = app  # Make sure both apps are the same!
 app.register_blueprint(webhooks_blueprint)

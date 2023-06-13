@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2014, 2015, 2016 CERN.
+# Copyright (C) 2023 CERN.
 #
 # Invenio is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,168 +22,59 @@
 
 """Define fixtures for tests."""
 
-import json
-
-import httpretty
-from six.moves import urllib_parse
+from invenio_github.api import GitHubRelease
+from invenio_github.models import ReleaseStatus
 
 
-def register_github_api():
-    """Register GitHub API endpoints."""
-    register_oauth_flow()
-    register_endpoint("/user", USER("auser", email="auser@inveniosoftware.org"))
-    register_endpoint(
-        "/user/orgs",
-        [
-            ORG("inveniosoftware"),
-        ],
-    )
-    register_endpoint(
-        "/users/auser/repos", [REPO("auser", "repo-1", 1), REPO("auser", "repo-2", 2)]
-    )
-    register_endpoint(
-        "/users/inveniosoftware/repos",
-        [
-            REPO("inveniosoftware", "myorgrepo", 3),
-        ],
-    )
-    register_endpoint(
-        "/repos/auser/repo-1/contents/.invenio.json",
-        dict(
-            message="Not Found",
-        ),
-        status=404,
-    )
-    register_endpoint(
-        "/repos/auser/repo-1",
-        REPO("auser", "repo-1", 1),
-    )
-    register_endpoint(
-        "/repos/auser/repo-1/contributors",
-        [
-            dict(
-                contributions=4,
-                url="https://api.github.com/users/buser",
-                type="User",
-            ),
-            dict(
-                contributions=10,
-                url="https://api.github.com/users/auser",
-                type="User",
-            ),
-            dict(
-                contributions=1,
-                url="https://api.github.com/users/cuser",
-                type="User",
-            ),
-        ],
-    )
-    register_endpoint("/users/auser", USER("auser", email="auser@inveniosoftware.org"))
-    register_endpoint("/users/buser", USER("buser", bio=False))
-    register_endpoint("/users/cuser", USER("cuser", email="cuser@inveniosoftware.org"))
-    register_endpoint(
-        "/user/repos", [REPO("auser", "repo-1", 1), REPO("auser", "repo-2", 2)]
-    )
-    httpretty.register_uri(
-        httpretty.HEAD,
-        "https://api.github.com/repos/auser/repo-1/zipball/v1.0",
-        status=302,
-    )
-    httpretty.register_uri(
-        httpretty.GET,
-        "https://api.github.com/repos/auser/repo-1/zipball/v1.0",
-        body=ZIPBALL(stream=True),
-        streaming=True,
-    )
+class TestGithubRelease(GitHubRelease):
+    """Implements GithubRelease with test methods."""
 
+    def publish(self):
+        """Sets release status to published.
 
-def register_oauth_flow():
-    """Register URIs used for OAuth flow."""
-    # https://developer.github.com/v3/oauth/
-    httpretty.register_uri(
-        httpretty.GET,
-        "https://github.com/login/oauth/authorize",
-        status=200,
-        body="User required to accept/reject scopes on this page",
-    )
+        Does not create a "real" record, as this only used to test the API.
+        """
+        self.release_object.status = ReleaseStatus.PUBLISHED
+        self.release_object.record_id = "445aaacd-9de1-41ab-af52-25ab6cb93df7"
+        return {}
 
-    def access_token_callback(request, uri, headers):
-        assert request.method == "POST"
-        parsed_body = request.parse_request_body(request.body)
-        assert "client_id" in parsed_body
-        assert "client_secret" in parsed_body
-        assert "code" in parsed_body
-        assert "redirect_uri" in parsed_body
+    def process_release(self):
+        """Processes a release."""
+        self.publish()
+        return {}
 
-        if parsed_body["code"][0] == "bad_verification_code":
-            body = dict(
-                error_uri="http://developer.github.com/v3/oauth/"
-                "#bad-verification-code",
-                error_description="The code passed is " "incorrect or expired.",
-                error="bad_verification_code",
-            )
-        else:
-            body = dict(
-                access_token="%s_token" % parsed_body["code"][0],
-                scope="admin:repo_hook,user:email",
-                token_type="bearer",
-            )
+    def resolve_record(self):
+        """Resolves a record.
 
-        headers["content-type"] = "application/x-www-form-urlencoded"
-
-        return (200, headers, urllib_parse.urlencode(body))
-
-    httpretty.register_uri(
-        httpretty.POST,
-        "https://github.com/login/oauth/access_token",
-        body=access_token_callback,
-    )
-
-
-def register_endpoint(endpoint, body, status=200, method=httpretty.GET):
-    """Mock GitHub API response."""
-    httpretty.register_uri(
-        method,
-        "https://api.github.com%s" % endpoint,
-        body=json.dumps(body),
-        status=status,
-    )
-
-
-def register_local_endpoint(endpoint, body, status=200, method=httpretty.GET):
-    """Mock GitHub API response."""
-    httpretty.register_uri(
-        method,
-        "https://api.github.com%s" % endpoint,
-        body=json.dumps(body),
-        status=status,
-    )
+        Returns an empty object as this class is only used to test the API.
+        """
+        return {}
 
 
 #
 # Fixture generators
 #
-def USER(login, email=None, bio=True):
+def github_user_metadata(login, email=None, bio=True):
     """Github user fixture generator."""
-    l = login
+    username = login
 
     user = {
         "avatar_url": "https://avatars.githubusercontent.com/u/7533764?",
         "collaborators": 0,
         "created_at": "2014-05-09T12:26:44Z",
         "disk_usage": 0,
-        "events_url": "https://api.github.com/users/%s/events{/privacy}" % l,
+        "events_url": "https://api.github.com/users/%s/events{/privacy}" % username,
         "followers": 0,
-        "followers_url": "https://api.github.com/users/%s/followers" % l,
+        "followers_url": "https://api.github.com/users/%s/followers" % username,
         "following": 0,
         "following_url": "https://api.github.com/users/%s/"
-        "following{/other_user}" % l,
-        "gists_url": "https://api.github.com/users/%s/gists{/gist_id}" % l,
+        "following{/other_user}" % username,
+        "gists_url": "https://api.github.com/users/%s/gists{/gist_id}" % username,
         "gravatar_id": "12345678",
-        "html_url": "https://github.com/%s" % l,
+        "html_url": "https://github.com/%s" % username,
         "id": 1234,
-        "login": "%s" % l,
-        "organizations_url": "https://api.github.com/users/%s/orgs" % l,
+        "login": "%s" % username,
+        "organizations_url": "https://api.github.com/users/%s/orgs" % username,
         "owned_private_repos": 0,
         "plan": {
             "collaborators": 0,
@@ -194,15 +85,20 @@ def USER(login, email=None, bio=True):
         "private_gists": 0,
         "public_gists": 0,
         "public_repos": 0,
-        "received_events_url": "https://api.github.com/users/%s/" "received_events" % l,
-        "repos_url": "https://api.github.com/users/%s/repos" % l,
+        "received_events_url": "https://api.github.com/users/%s/"
+        "received_events" % username,
+        "repos_url": "https://api.github.com/users/%s/repos" % username,
         "site_admin": False,
-        "starred_url": "https://api.github.com/users/%s/" "starred{/owner}{/repo}" % l,
-        "subscriptions_url": "https://api.github.com/users/%s/" "subscriptions" % l,
+        "starred_url": "https://api.github.com/users/%s/"
+        "starred{/owner}{/repo}" % username,
+        "subscriptions_url": "https://api.github.com/users/%s/"
+        "subscriptions" % username,
         "total_private_repos": 0,
         "type": "User",
         "updated_at": "2014-05-09T12:26:44Z",
-        "url": "https://api.github.com/users/%s" % l,
+        "url": "https://api.github.com/users/%s" % username,
+        "hireable": False,
+        "location": "Geneve",
     }
 
     if bio:
@@ -225,56 +121,62 @@ def USER(login, email=None, bio=True):
     return user
 
 
-def REPO(owner, repo, repo_id):
+def github_repo_metadata(owner, repo, repo_id):
     """Github repository fixture generator."""
-    r = "%s/%s" % (owner, repo)
-    o = owner
+    repo_url = "%s/%s" % (owner, repo)
 
     return {
-        "archive_url": "https://api.github.com/repos/%s/" "{archive_format}{/ref}" % r,
-        "assignees_url": "https://api.github.com/repos/%s/" "assignees{/user}" % r,
-        "blobs_url": "https://api.github.com/repos/%s/git/blobs{/sha}" % r,
-        "branches_url": "https://api.github.com/repos/%s/" "branches{/branch}" % r,
-        "clone_url": "https://github.com/%s.git" % r,
+        "archive_url": "https://api.github.com/repos/%s/"
+        "{archive_format}{/ref}" % repo_url,
+        "assignees_url": "https://api.github.com/repos/%s/"
+        "assignees{/user}" % repo_url,
+        "blobs_url": "https://api.github.com/repos/%s/git/blobs{/sha}" % repo_url,
+        "branches_url": "https://api.github.com/repos/%s/"
+        "branches{/branch}" % repo_url,
+        "clone_url": "https://github.com/%s.git" % repo_url,
         "collaborators_url": "https://api.github.com/repos/%s/"
-        "collaborators{/collaborator}" % r,
-        "comments_url": "https://api.github.com/repos/%s/" "comments{/number}" % r,
-        "commits_url": "https://api.github.com/repos/%s/commits{/sha}" % r,
-        "compare_url": "https://api.github.com/repos/%s/compare/" "{base}...{head}" % r,
-        "contents_url": "https://api.github.com/repos/%s/contents/{+path}" % r,
-        "contributors_url": "https://api.github.com/repos/%s/contributors" % r,
+        "collaborators{/collaborator}" % repo_url,
+        "comments_url": "https://api.github.com/repos/%s/"
+        "comments{/number}" % repo_url,
+        "commits_url": "https://api.github.com/repos/%s/commits{/sha}" % repo_url,
+        "compare_url": "https://api.github.com/repos/%s/compare/"
+        "{base}...{head}" % repo_url,
+        "contents_url": "https://api.github.com/repos/%s/contents/{+path}" % repo_url,
+        "contributors_url": "https://api.github.com/repos/%s/contributors" % repo_url,
         "created_at": "2012-10-29T10:24:02Z",
         "default_branch": "master",
         "description": "",
-        "downloads_url": "https://api.github.com/repos/%s/downloads" % r,
-        "events_url": "https://api.github.com/repos/%s/events" % r,
+        "downloads_url": "https://api.github.com/repos/%s/downloads" % repo_url,
+        "events_url": "https://api.github.com/repos/%s/events" % repo_url,
         "fork": False,
         "forks": 0,
         "forks_count": 0,
-        "forks_url": "https://api.github.com/repos/%s/forks" % r,
-        "full_name": r,
-        "git_commits_url": "https://api.github.com/repos/%s/git/" "commits{/sha}" % r,
-        "git_refs_url": "https://api.github.com/repos/%s/git/refs{/sha}" % r,
-        "git_tags_url": "https://api.github.com/repos/%s/git/tags{/sha}" % r,
-        "git_url": "git://github.com/%s.git" % r,
+        "forks_url": "https://api.github.com/repos/%s/forks" % repo_url,
+        "full_name": repo_url,
+        "git_commits_url": "https://api.github.com/repos/%s/git/"
+        "commits{/sha}" % repo_url,
+        "git_refs_url": "https://api.github.com/repos/%s/git/refs{/sha}" % repo_url,
+        "git_tags_url": "https://api.github.com/repos/%s/git/tags{/sha}" % repo_url,
+        "git_url": "git://github.com/%s.git" % repo_url,
         "has_downloads": True,
         "has_issues": True,
         "has_wiki": True,
         "homepage": None,
-        "hooks_url": "https://api.github.com/repos/%s/hooks" % r,
-        "html_url": "https://github.com/%s" % r,
+        "hooks_url": "https://api.github.com/repos/%s/hooks" % repo_url,
+        "html_url": "https://github.com/%s" % repo_url,
         "id": repo_id,
         "issue_comment_url": "https://api.github.com/repos/%s/issues/"
-        "comments/{number}" % r,
+        "comments/{number}" % repo_url,
         "issue_events_url": "https://api.github.com/repos/%s/issues/"
-        "events{/number}" % r,
-        "issues_url": "https://api.github.com/repos/%s/issues{/number}" % r,
-        "keys_url": "https://api.github.com/repos/%s/keys{/key_id}" % r,
-        "labels_url": "https://api.github.com/repos/%s/labels{/name}" % r,
+        "events{/number}" % repo_url,
+        "issues_url": "https://api.github.com/repos/%s/issues{/number}" % repo_url,
+        "keys_url": "https://api.github.com/repos/%s/keys{/key_id}" % repo_url,
+        "labels_url": "https://api.github.com/repos/%s/labels{/name}" % repo_url,
         "language": None,
-        "languages_url": "https://api.github.com/repos/%s/languages" % r,
-        "merges_url": "https://api.github.com/repos/%s/merges" % r,
-        "milestones_url": "https://api.github.com/repos/%s/" "milestones{/number}" % r,
+        "languages_url": "https://api.github.com/repos/%s/languages" % repo_url,
+        "merges_url": "https://api.github.com/repos/%s/merges" % repo_url,
+        "milestones_url": "https://api.github.com/repos/%s/"
+        "milestones{/number}" % repo_url,
         "mirror_url": None,
         "name": "altantis-conf",
         "notifications_url": "https://api.github.com/repos/%s/"
@@ -283,46 +185,53 @@ def REPO(owner, repo, repo_id):
         "open_issues_count": 0,
         "owner": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1234?",
-            "events_url": "https://api.github.com/users/%s/" "events{/privacy}" % o,
-            "followers_url": "https://api.github.com/users/%s/followers" % o,
+            "events_url": "https://api.github.com/users/%s/" "events{/privacy}" % owner,
+            "followers_url": "https://api.github.com/users/%s/followers" % owner,
             "following_url": "https://api.github.com/users/%s/"
-            "following{/other_user}" % o,
-            "gists_url": "https://api.github.com/users/%s/gists{/gist_id}" % o,
+            "following{/other_user}" % owner,
+            "gists_url": "https://api.github.com/users/%s/gists{/gist_id}" % owner,
             "gravatar_id": "1234",
-            "html_url": "https://github.com/%s" % o,
+            "html_url": "https://github.com/%s" % owner,
             "id": 1698163,
-            "login": "%s" % o,
-            "organizations_url": "https://api.github.com/users/%s/orgs" % o,
+            "login": "%s" % owner,
+            "organizations_url": "https://api.github.com/users/%s/orgs" % owner,
             "received_events_url": "https://api.github.com/users/%s/"
-            "received_events" % o,
-            "repos_url": "https://api.github.com/users/%s/repos" % o,
+            "received_events" % owner,
+            "repos_url": "https://api.github.com/users/%s/repos" % owner,
             "site_admin": False,
             "starred_url": "https://api.github.com/users/%s/"
-            "starred{/owner}{/repo}" % o,
-            "subscriptions_url": "https://api.github.com/users/%s/" "subscriptions" % o,
+            "starred{/owner}{/repo}" % owner,
+            "subscriptions_url": "https://api.github.com/users/%s/"
+            "subscriptions" % owner,
             "type": "User",
-            "url": "https://api.github.com/users/%s" % o,
+            "url": "https://api.github.com/users/%s" % owner,
         },
         "permissions": {"admin": True, "pull": True, "push": True},
         "private": False,
-        "pulls_url": "https://api.github.com/repos/%s/pulls{/number}" % r,
+        "pulls_url": "https://api.github.com/repos/%s/pulls{/number}" % repo_url,
         "pushed_at": "2012-10-29T10:28:08Z",
-        "releases_url": "https://api.github.com/repos/%s/releases{/id}" % r,
+        "releases_url": "https://api.github.com/repos/%s/releases{/id}" % repo_url,
         "size": 104,
-        "ssh_url": "git@github.com:%s.git" % r,
+        "ssh_url": "git@github.com:%s.git" % repo_url,
         "stargazers_count": 0,
-        "stargazers_url": "https://api.github.com/repos/%s/stargazers" % r,
-        "statuses_url": "https://api.github.com/repos/%s/statuses/{sha}" % r,
-        "subscribers_url": "https://api.github.com/repos/%s/subscribers" % r,
-        "subscription_url": "https://api.github.com/repos/%s/subscription" % r,
-        "svn_url": "https://github.com/%s" % r,
-        "tags_url": "https://api.github.com/repos/%s/tags" % r,
-        "teams_url": "https://api.github.com/repos/%s/teams" % r,
-        "trees_url": "https://api.github.com/repos/%s/git/trees{/sha}" % r,
+        "stargazers_url": "https://api.github.com/repos/%s/stargazers" % repo_url,
+        "statuses_url": "https://api.github.com/repos/%s/statuses/{sha}" % repo_url,
+        "subscribers_url": "https://api.github.com/repos/%s/subscribers" % repo_url,
+        "subscription_url": "https://api.github.com/repos/%s/subscription" % repo_url,
+        "svn_url": "https://github.com/%s" % repo_url,
+        "tags_url": "https://api.github.com/repos/%s/tags" % repo_url,
+        "teams_url": "https://api.github.com/repos/%s/teams" % repo_url,
+        "trees_url": "https://api.github.com/repos/%s/git/trees{/sha}" % repo_url,
         "updated_at": "2013-10-25T11:30:04Z",
-        "url": "https://api.github.com/repos/%s" % r,
+        "url": "https://api.github.com/repos/%s" % repo_url,
         "watchers": 0,
         "watchers_count": 0,
+        "deployments_url": "https://api.github.com/repos/%s/deployments" % repo_url,
+        "archived": False,
+        "has_pages": False,
+        "has_projects": False,
+        "network_count": 0,
+        "subscribers_count": 0,
     }
 
 
@@ -550,7 +459,7 @@ def ORG(login):
     }
 
 
-def CONTENT(owner, repo, file_, ref, data):
+def github_file_contents(owner, repo, file_path, ref, data):
     """Github content fixture generator."""
     import os
     from base64 import b64encode
@@ -559,7 +468,7 @@ def CONTENT(owner, repo, file_, ref, data):
         url="%s/%s" % (owner, repo),
         owner=owner,
         repo=repo,
-        file=file_,
+        file=file_path,
         ref=ref,
     )
 
@@ -576,8 +485,8 @@ def CONTENT(owner, repo, file_, ref, data):
         "git_url": "https://api.github.com/repos/%(url)s/git/blobs/"
         "aaaffdfbead0b67bd6a5f5819c458a1215ecb0f6" % c,
         "html_url": "https://github.com/%(url)s/blob/%(ref)s/%(file)s" % c,
-        "name": os.path.basename(file_),
-        "path": file_,
+        "name": os.path.basename(file_path),
+        "path": file_path,
         "sha": "aaaffdfbead0b67bd6a5f5819c458a1215ecb0f6",
         "size": 1209,
         "type": "file",

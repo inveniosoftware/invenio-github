@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2016 CERN.
+# Copyright (C) 2023 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -27,62 +27,40 @@
 from __future__ import absolute_import, print_function
 
 import json
-import os
-import shutil
-import tempfile
+from collections import namedtuple
 from datetime import datetime
 
 import pytest
-from flask import Flask, url_for
-from flask_breadcrumbs import Breadcrumbs
-from flask_celeryext import FlaskCeleryExt
-from flask_mail import Mail
-from flask_menu import Menu
-from invenio_accounts import InvenioAccounts
-from invenio_accounts.views import blueprint as accounts_blueprint
-from invenio_assets import InvenioAssets
-from invenio_db import InvenioDB
-from invenio_db import db as db_
-from invenio_deposit import InvenioDepositREST
-from invenio_files_rest import InvenioFilesREST
-from invenio_files_rest.models import Location
-from invenio_formatter import InvenioFormatter
-from invenio_i18n import Babel
-from invenio_indexer import InvenioIndexer
-from invenio_jsonschemas import InvenioJSONSchemas
-from invenio_oauth2server import InvenioOAuth2Server
+from invenio_access.permissions import system_identity
+from invenio_app.factory import create_api
 from invenio_oauth2server.models import Token
-from invenio_oauth2server.views import server_blueprint, settings_blueprint
-from invenio_oauthclient import InvenioOAuthClient
-from invenio_oauthclient.contrib.github import REMOTE_APP
-from invenio_oauthclient.views.client import blueprint as oauthclient_blueprint
-from invenio_pidstore import InvenioPIDStore
-from invenio_records import InvenioRecords
+from invenio_oauthclient.contrib.github import REMOTE_APP as GITHUB_REMOTE_APP
+from invenio_oauthclient.contrib.github import REMOTE_REST_APP as GITHUB_REMOTE_REST_APP
+from invenio_oauthclient.models import RemoteToken
+from invenio_oauthclient.proxies import current_oauthclient
 from invenio_records.api import Record
-from invenio_records_rest import InvenioRecordsREST
-from invenio_records_rest.utils import PIDConverter
-from invenio_search import InvenioSearch
-from invenio_webhooks import InvenioWebhooks
-from invenio_webhooks.views import blueprint as webhooks_blueprint
+from invenio_vocabularies.proxies import current_service as vocabulary_service
+from invenio_vocabularies.records.api import Vocabulary
 from mock import MagicMock, patch
 from six import b
-from sqlalchemy_utils.functions import create_database, database_exists
 
-from invenio_github import InvenioGitHub
-from invenio_github.api import GitHubAPI
 from invenio_github.models import Release, ReleaseStatus, Repository
-from invenio_github.views.badge import blueprint as github_badge_blueprint
-from invenio_github.views.github import blueprint as github_blueprint
+
+from .fixtures import (
+    TestGithubRelease,
+    github_file_contents,
+    github_repo_metadata,
+    github_user_metadata,
+)
 
 
-@pytest.yield_fixture()
-def app(request):
-    """Flask application fixture."""
-    instance_path = tempfile.mkdtemp()
-    app_ = Flask("testapp", instance_path=instance_path)
-    app_.config.update(
+@pytest.fixture(scope="module")
+def app_config(app_config):
+    """Test app config."""
+    app_config.update(
         # HTTPretty doesn't play well with Redis.
         # See gabrielfalcao/HTTPretty#110
+        APP_THEME=[],
         CACHE_TYPE="simple",
         CELERY_ALWAYS_EAGER=True,
         CELERY_CACHE_BACKEND="memory",
@@ -92,110 +70,136 @@ def app(request):
             consumer_key="changeme",
             consumer_secret="changeme",
         ),
-        GITHUB_PID_FETCHER="doi_fetcher",
+        GITHUB_ASYNC_MODE=False,
+        GITHUB_SHARED_SECRET="changeme",
+        GITHUB_INSECURE_SSL=False,
+        GITHUB_METADATA_FILE=".invenio.json",
+        GITHUB_CITATION_FILE="citation.cff",
+        GITHUB_WEBHOOK_RECEIVER_URL="http://localhost:5000/api/receivers/github/events/?access_token={token}",
+        GITHUB_WEBHOOK_RECEIVER_ID="github",
+        GITHUB_RELEASE_CLASS=TestGithubRelease,
         LOGIN_DISABLED=False,
         OAUTHLIB_INSECURE_TRANSPORT=True,
         OAUTH2_CACHE_TYPE="simple",
         OAUTHCLIENT_REMOTE_APPS=dict(
-            github=REMOTE_APP,
+            github=GITHUB_REMOTE_APP,
+        ),
+        OAUTHCLIENT_REST_REMOTE_APPS=dict(
+            github=GITHUB_REMOTE_REST_APP,
         ),
         SECRET_KEY="test_key",
         SERVER_NAME="testserver",
-        SQLALCHEMY_TRACK_MODIFICATIONS=True,
-        SQLALCHEMY_DATABASE_URI=os.getenv(
-            "SQLALCHEMY_DATABASE_URI", "sqlite:///test.db"
-        ),
         SECURITY_PASSWORD_HASH="plaintext",
         SECURITY_PASSWORD_SCHEMES=["plaintext"],
         SECURITY_DEPRECATED_PASSWORD_SCHEMES=[],
         TESTING=True,
         WTF_CSRF_ENABLED=False,
+        JSONSCHEMAS_HOST="not-used",
+        RECORDS_REFRESOLVER_CLS="invenio_records.resolver.InvenioRefResolver",
+        RECORDS_REFRESOLVER_STORE="invenio_jsonschemas.proxies.current_refresolver_store",
+        # Storage classes
+        FILES_REST_STORAGE_CLASS_LIST=dict(
+            L="Local",
+            F="Fetch",
+            R="Remote",
+        ),
+        FILES_REST_DEFAULT_STORAGE_CLASS="L",
     )
-    app_.config["OAUTHCLIENT_REMOTE_APPS"]["github"]["params"]["request_token_params"][
+    app_config["OAUTHCLIENT_REMOTE_APPS"]["github"]["params"]["request_token_params"][
         "scope"
     ] = "user:email,admin:repo_hook,read:org"
-    app_.url_map.converters["pid"] = PIDConverter
-
-    celeryext = FlaskCeleryExt(app_)
-    Babel(app_)
-    Mail(app_)
-    Menu(app_)
-    Breadcrumbs(app_)
-    InvenioAssets(app_)
-    InvenioDB(app_)
-    InvenioAccounts(app_)
-    app_.register_blueprint(accounts_blueprint)
-    InvenioOAuthClient(app_)
-    app_.register_blueprint(oauthclient_blueprint)
-    InvenioOAuth2Server(app_)
-    app_.register_blueprint(server_blueprint)
-    app_.register_blueprint(settings_blueprint)
-    InvenioFormatter(app_)
-
-    from .helpers import doi_fetcher
-
-    pidstore = InvenioPIDStore(app_)
-    pidstore.register_fetcher("doi_fetcher", doi_fetcher)
-
-    InvenioJSONSchemas(app_)
-    InvenioRecords(app_)
-    InvenioSearch(app_)
-    InvenioIndexer(app_)
-    InvenioFilesREST(app_)
-    InvenioRecordsREST(app_)
-    InvenioDepositREST(app_)
-    InvenioWebhooks(app_)
-    celeryext.celery.flask_app = app_  # Make sure both apps are the same!
-    app_.register_blueprint(webhooks_blueprint)
-    InvenioGitHub(app_)
-    app_.register_blueprint(github_blueprint)
-    app_.register_blueprint(github_badge_blueprint)
-
-    with app_.app_context():
-        yield app_
-
-    shutil.rmtree(instance_path)
+    return app_config
 
 
-@pytest.yield_fixture()
-def db(app):
-    """Database fixture."""
-    if not database_exists(str(db_.engine.url)):
-        create_database(str(db_.engine.url))
-    db_.create_all()
-    yield db_
-    db_.session.remove()
-    db_.drop_all()
+@pytest.fixture(scope="module")
+def create_app(instance_path):
+    """Application factory fixture."""
+    return create_api
 
 
-@pytest.fixture
-def tester_id(app, db):
-    """Fixture that contains the test data for models tests."""
+RunningApp = namedtuple(
+    "RunningApp",
+    [
+        "app",
+        "location",
+        "cache",
+        "resource_type_v",
+        "relation_type_v",
+    ],
+)
+
+
+@pytest.fixture()
+def running_app(app, location, cache, resource_type_v, relation_type_v):
+    """This fixture provides an app with the typically needed db data loaded.
+
+    All of these fixtures are often needed together, so collecting them
+    under a semantic umbrella makes sense.
+    """
+    return RunningApp(app, location, cache, resource_type_v, relation_type_v)
+
+
+@pytest.fixture()
+def test_user(app, db, github_remote_app):
+    """Creates a test user.
+
+    Links the user to a github RemoteToken.
+    """
     datastore = app.extensions["security"].datastore
-    tester = datastore.create_user(
+    user = datastore.create_user(
         email="info@inveniosoftware.org",
         password="tester",
     )
+
+    # Create GitHub link for user
+    token = RemoteToken.get(user.id, github_remote_app.consumer_key)
+    if not token:
+        RemoteToken.create(
+            user.id,
+            github_remote_app.consumer_key,
+            "test",
+            "",
+        )
     db.session.commit()
-    return tester.id
+    return user
 
 
-@pytest.yield_fixture()
-def location(db):
-    """File system location."""
-    tmppath = tempfile.mkdtemp()
+@pytest.fixture()
+def github_remote_app():
+    """Returns github remote app."""
+    return current_oauthclient.oauth.remote_apps["github"]
 
-    loc = Location(name="testloc", uri=tmppath, default=True)
-    db.session.add(loc)
-    db.session.commit()
 
-    yield loc
-
-    shutil.rmtree(tmppath)
+@pytest.fixture()
+def remote_token(test_user, github_remote_app):
+    """Returns github RemoteToken for user."""
+    token = RemoteToken.get(
+        test_user.id,
+        github_remote_app.consumer_key,
+    )
+    return token
 
 
 @pytest.fixture
-def deposit_token(app, db, tester_id):
+def unlinked_user(app, db):
+    """Creates an user that is not linked to a remote account."""
+    datastore = app.extensions["security"].datastore
+    user = datastore.create_user(
+        email="unlinked@inveniosoftware.org",
+        password="unlinked",
+    )
+    db.session.commit()
+    return user
+
+
+@pytest.fixture()
+def tester_id(test_user):
+    """Returns tester id."""
+    return test_user.id
+
+
+@pytest.fixture()
+def deposit_token(running_app, db, tester_id):
     """Fixture that create an access token."""
     token = Token.create_personal(
         "deposit-personal-{0}".format(tester_id),
@@ -207,8 +211,8 @@ def deposit_token(app, db, tester_id):
     return token
 
 
-@pytest.fixture
-def access_token(app, db, tester_id):
+@pytest.fixture()
+def access_token(running_app, db, tester_id):
     """Fixture that create an access token."""
     token = Token.create_personal(
         "test-personal-{0}".format(tester_id),
@@ -220,8 +224,8 @@ def access_token(app, db, tester_id):
     return token
 
 
-@pytest.fixture
-def access_token_no_scope(app, tester_id):
+@pytest.fixture()
+def access_token_no_scope(running_app, db, tester_id):
     """Fixture that create an access token without scope."""
     token = Token.create_personal(
         "test-personal-{0}".format(tester_id),
@@ -234,23 +238,7 @@ def access_token_no_scope(app, tester_id):
 
 
 @pytest.fixture()
-def remote_token(app, db, tester_id):
-    """Create a remove token for accessing GitHub API."""
-    from invenio_oauthclient.models import RemoteToken
-
-    # Create GitHub link
-    token = RemoteToken.create(
-        tester_id,
-        GitHubAPI.remote.consumer_key,
-        "test",
-        "",
-    )
-    db.session.commit()
-    return token
-
-
-@pytest.fixture()
-def minimal_record(app, db, tester_id):
+def minimal_record(running_app, db, tester_id):
     """Minimal record metadata that is compliant with the JSON schema."""
     metadata = {
         "doi": "test/1",
@@ -270,7 +258,7 @@ def minimal_record(app, db, tester_id):
 
 
 @pytest.fixture()
-def repository_model(app, db, tester_id):
+def repository_model(running_app, db, tester_id):
     """Github repository fixture."""
     repository = Repository(github_id=1, name="testuser/testrepo", user_id=tester_id)
     db.session.add(repository)
@@ -279,7 +267,7 @@ def repository_model(app, db, tester_id):
 
 
 @pytest.fixture()
-def release_model(app, db, repository_model, minimal_record):
+def release_model(running_app, db, repository_model, minimal_record):
     """Github release fixture."""
     release = Release(
         release_id=1,
@@ -293,75 +281,91 @@ def release_model(app, db, repository_model, minimal_record):
     return release
 
 
-def tclient_request_factory(
-    client, method, endpoint, urlargs, data, is_json, headers, files, verify_ssl
-):
-    """Make requests with test client package."""
-    client_func = getattr(client, method.lower())
+@pytest.fixture()
+def test_repo_data_one():
+    """Test repository."""
+    return {"name": "repo-1", "id": 1}
 
-    if headers is None:
-        headers = [("Content-Type", "application/json")] if is_json else []
 
-    if data is not None:
-        request_args = dict(
-            data=json.dumps(data) if is_json else data,
-            headers=headers,
-        )
-    else:
-        request_args = {}
+@pytest.fixture()
+def test_repo_data_two():
+    """Test repository."""
+    return {"name": "repo-2", "id": 2}
 
-    if files is not None:
-        data.update(
-            {"file": (files["file"], data["filename"]), "name": data["filename"]}
-        )
-        del data["filename"]
 
-    resp = client_func(
-        url_for(endpoint, _external=True, **urlargs),
-        # base_url=current_app.config['CFG_SITE_SECURE_URL'],
-        **request_args
-    )
-
-    # Patch response
-    resp.json = lambda: json.loads(resp.data)
-    return resp
+@pytest.fixture()
+def test_repo_data_three():
+    """Test repository."""
+    return {"name": "arepo", "id": 3}
 
 
 @pytest.yield_fixture()
-def github_api(app, db, tester_id, remote_token):
+def github_api(
+    running_app, db, test_repo_data_one, test_repo_data_two, test_repo_data_three
+):
     """Github API mock."""
     import github3
 
     from . import fixtures
 
     mock_api = MagicMock()
+    mock_api.session = MagicMock()
     mock_api.me.return_value = github3.users.User(
-        fixtures.USER(login="auser", email="auser@inveniosoftware.org")
+        github_user_metadata(login="auser", email="auser@inveniosoftware.org"),
+        mock_api.session,
     )
 
-    repo_1 = github3.repos.Repository(fixtures.REPO("auser", "repo-1", 1))
+    repo_1 = github3.repos.Repository(
+        github_repo_metadata(
+            "auser", test_repo_data_one["name"], test_repo_data_one["id"]
+        ),
+        mock_api.session,
+    )
     repo_1.hooks = MagicMock(return_value=[])
     repo_1.file_contents = MagicMock(return_value=None)
+    # # Mock hook creation to retun the hook id '12345'
+    hook_instance = MagicMock()
+    hook_instance.id = 12345
+    repo_1.create_hook = MagicMock(return_value=hook_instance)
 
-    repo_2 = github3.repos.Repository(fixtures.REPO("auser", "repo-2", 2))
+    repo_2 = github3.repos.Repository(
+        github_repo_metadata(
+            "auser", test_repo_data_two["name"], test_repo_data_two["id"]
+        ),
+        mock_api.session,
+    )
+
     repo_2.hooks = MagicMock(return_value=[])
+    repo_2.create_hook = MagicMock(return_value=hook_instance)
 
-    def mock_metadata_contents(path, ref):
-        data = json.dumps(
-            dict(
-                upload_type="dataset",
-                license="mit-license",
-                creators=[
-                    dict(name="Smith, Joe", affiliation="CERN"),
-                    dict(name="Smith, Sam", affiliation="NASA"),
-                ],
-            )
-        )
-        return MagicMock(decoded=b(data))
+    file_path = "test.py"
 
-    repo_2.file_contents = MagicMock(side_effect=mock_metadata_contents)
+    def mock_file_content():
+        # File contents mocking
+        owner = "auser"
+        repo = test_repo_data_two["name"]
+        ref = ""
 
-    repo_3 = github3.repos.Repository(fixtures.REPO("auser", "arepo", 3))
+        # Dummy data to be encoded as the file contents
+        data = "dummy".encode("ascii")
+        return github_file_contents(owner, repo, file_path, ref, data)
+
+    file_data = mock_file_content()
+
+    def mock_file_contents(path, ref=None):
+        if path == file_path:
+            # Mock github3.contents.Content with file_data
+            return MagicMock(decoded=file_data)
+        return None
+
+    repo_2.file_contents = MagicMock(side_effect=mock_file_contents)
+
+    repo_3 = github3.repos.Repository(
+        fixtures.github_repo_metadata(
+            "auser", test_repo_data_three["name"], test_repo_data_three["id"]
+        ),
+        mock_api.session,
+    )
     repo_3.hooks = MagicMock(return_value=[])
     repo_3.file_contents = MagicMock(return_value=None)
 
@@ -383,8 +387,63 @@ def github_api(app, db, tester_id, remote_token):
 
     with patch("invenio_github.api.GitHubAPI.api", new=mock_api):
         with patch("invenio_github.api.GitHubAPI._sync_hooks"):
-            gh = GitHubAPI(user_id=tester_id)
-            with db.session.begin_nested():
-                gh.init_account()
-            db.session.expire(remote_token.remote_account)
             yield mock_api
+
+
+@pytest.fixture()
+def resource_type_type(app):
+    """Resource type vocabulary type."""
+    return vocabulary_service.create_type(system_identity, "resourcetypes", "rsrct")
+
+
+@pytest.fixture()
+def resource_type_v(app, resource_type_type):
+    """Resource type vocabulary record."""
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "software",
+            "icon": "table",
+            "props": {
+                "csl": "softaware",
+                "datacite_general": "Software",
+                "datacite_type": "",
+                "openaire_resourceType": "21",
+                "openaire_type": "software",
+                "eurepo": "info:eu-repo/semantics/other",
+                "schema.org": "https://schema.org/Dataset",
+                "subtype": "",
+                "type": "software",
+            },
+            "title": {"en": "Software"},
+            "tags": ["depositable", "linkable"],
+            "type": "resourcetypes",
+        },
+    )
+
+    Vocabulary.index.refresh()
+    return vocab
+
+
+@pytest.fixture()
+def relation_type(app):
+    """Relation type vocabulary type."""
+    return vocabulary_service.create_type(system_identity, "relationtypes", "rlt")
+
+
+@pytest.fixture()
+def relation_type_v(app, relation_type):
+    """Relation type vocabulary record."""
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "issupplementto",
+            "props": {"datacite": "isSupplementTo"},
+            "title": {"en": "Is supplement to"},
+            "type": "relationtypes",
+        },
+    )
+
+    Vocabulary.index.refresh()
+
+    return vocab
