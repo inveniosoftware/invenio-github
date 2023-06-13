@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2014, 2015, 2016 CERN.
+# Copyright (C) 2023 CERN.
 #
 # Invenio is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,18 +24,25 @@
 
 from __future__ import absolute_import
 
-from datetime import datetime
-
+from flask import current_app
 from invenio_db import db
 from invenio_webhooks.models import Receiver
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm.exc import NoResultFound
+
+from invenio_github.models import Release, ReleaseStatus, Repository
+from invenio_github.proxies import current_github
+from invenio_github.tasks import process_release
 
 from .errors import (
+    InvalidSenderError,
     ReleaseAlreadyReceivedError,
     RepositoryAccessError,
     RepositoryDisabledError,
+    RepositoryNotFoundError,
 )
-from .models import Release, Repository
-from .tasks import process_release
+
+state = {}
 
 
 class GitHubReceiver(Receiver):
@@ -52,35 +59,108 @@ class GitHubReceiver(Receiver):
             the rest of the processing to a Celery task which will be mainly
             accessing the GitHub API.
         """
-        repo_id = event.payload["repository"]["id"]
+        try:
+            self._handle_event(event)
+        except Exception as e:
+            # Event failed to be processed and error was not handled yet
+            if not event.response or event.response_code < 400:
+                event.response = {"status": 500, "message": str(e)}
+                event.response_code = 500
+            # Other cases were already handled (e.g. response/response_code were set by the event handler)
 
-        # Ping event - update the ping timestamp of the repository
-        if "hook_id" in event.payload and "zen" in event.payload:
-            repository = Repository.query.filter_by(github_id=repo_id).one()
-            repository.ping = datetime.utcnow()
-            db.session.commit()
-            return
-
-        # Release event
+    def _handle_event(self, event):
+        """Handles an incoming github event."""
         action = event.payload.get("action")
         is_draft_release = event.payload.get("release", {}).get("draft")
-        is_release_event = (
+
+        # Draft releases do not create releases on invenio
+        is_create_release_event = (
             action in ("published", "released", "created") and not is_draft_release
         )
-        if is_release_event:
-            try:
-                release = Release.create(event)
-                db.session.commit()
 
-                # FIXME: If we want to skip the processing, we should do it
-                # here (eg. We're in the middle of a migration).
-                # if current_app.config['GITHUB_PROCESS_RELEASES']:
-                process_release.delay(
-                    release.release_id, verify_sender=self.verify_sender
+        if is_create_release_event:
+            self._handle_create_release(event)
+        else:
+            # TODO other events (e.g. ping, draft release) are discarded
+            pass
+
+    def _handle_create_release(self, event):
+        """Creates a release in invenio."""
+
+        def _create_release(event):
+            """Creates a release object."""
+            # TODO maybe can be moved to another layer
+            # Check if the release has already been received
+            release_id = event.payload["release"]["id"]
+            existing_release = Release.query.filter_by(
+                release_id=release_id,
+            ).first()
+
+            if existing_release:
+                raise ReleaseAlreadyReceivedError(release=existing_release)
+
+            # Create the Release
+            repo_id = event.payload["repository"]["id"]
+            repo_name = event.payload["repository"]["name"]
+            try:
+                repo = Repository.get(repo_id, repo_name)
+            except NoResultFound:
+                raise RepositoryNotFoundError(repo_name)
+
+            if repo.enabled:
+                release_object = Release(
+                    release_id=release_id,
+                    tag=event.payload["release"]["tag_name"],
+                    repository=repo,
+                    event=event,
+                    status=ReleaseStatus.RECEIVED,
                 )
-            except (ReleaseAlreadyReceivedError, RepositoryDisabledError) as e:
-                event.response_code = 409
-                event.response = dict(message=str(e), status=409)
-            except RepositoryAccessError as e:
-                event.response = 403
-                event.response = dict(message=str(e), status=403)
+                db.session.add(release_object)
+                return release_object
+            else:
+                raise RepositoryDisabledError(repo=repo)
+
+        def _verify_sender(event):
+            """Validates the sender of the release."""
+            api = GitHubAPI(user_id=self.event.user_id)
+
+            return (
+                event.payload["repository"]["full_name"]
+                in api.account.extra_data["repos"]
+            )
+
+        try:
+            # Create a release
+            # runs db.session.add(release)
+            release = _create_release(event)
+
+            # TODO verify_sender is always set to 'False', even in legacy zenodo.
+            if self.verify_sender and not _verify_sender(event):
+                release.release_object.status = ReleaseStatus.FAILED
+                raise InvalidSenderError(
+                    event=release.event.id, user=release.event.user_id
+                )
+
+            # Process the release
+            async_mode = current_app.config.get("GITHUB_ASYNC_MODE", True)
+            if async_mode:
+                # Since 'process_release' is executed asynchronously, we commit the current state of session
+                db.session.commit()
+                process_release.delay(release.release_id)
+            else:
+                release_api = current_github.release_api_class(release)
+                release_api.process_release()
+        except (
+            ReleaseAlreadyReceivedError,
+            RepositoryDisabledError,
+            SQLAlchemyError,
+        ) as e:
+            # SQLAlchemyError is risen when two or more events arrive at the same time. The one(s) that lose the race condition will try to commit to db and fail.
+            event.response_code = 409
+            event.response = dict(message=str(e), status=409)
+        except (RepositoryAccessError, InvalidSenderError) as e:
+            event.response_code = 403
+            event.response = dict(message=str(e), status=403)
+        except RepositoryNotFoundError as e:
+            event.response_code = 404
+            event.response = dict(message=str(e), status=404)

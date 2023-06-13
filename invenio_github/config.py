@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2016 CERN.
+# Copyright (C) 2023 CERN.
 #
 # Invenio is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -71,15 +71,6 @@ GITHUB_METADATA_FILE = ".invenio.json"
 GITHUB_CITATION_FILE = "CITATION.cff"
 """File with citation metadata stored in GitHub repository."""
 
-GITHUB_DEPOSIT_CLASS = "invenio_deposit.api:Deposit"
-"""Deposit class that implements a `publish` method."""
-
-GITHUB_RECORD_SERIALIZER = None
-"""Serializer to use to display record metadata."""
-
-GITHUB_PID_FETCHER = "recid"
-"""PID Fetcher for Release records."""
-
 GITHUB_TEMPLATE_INDEX = "invenio_github/settings/index.html"
 """Repositories list template."""
 
@@ -89,12 +80,14 @@ GITHUB_TEMPLATE_VIEW = "invenio_github/settings/view.html"
 GITHUB_ERROR_HANDLERS = None
 """Definition of the way specific exceptions are handled."""
 
+GITHUB_ASYNC_MODE = True
+"""Async mode."""
+
 # Copy the default GitHub OAuth application configuration, and update
 # handlers and scope.
 GITHUB_REMOTE_APP = deepcopy(REMOTE_APP)
 """OAuth Client configuration."""
 GITHUB_REMOTE_APP["disconnect_handler"] = "invenio_github.handlers:disconnect"
-GITHUB_REMOTE_APP["signup_handler"]["setup"] = "invenio_github.handlers:account_setup"
 GITHUB_REMOTE_APP["params"]["request_token_params"][
     "scope"
 ] = "user,admin:repo_hook,read:org"

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2016 CERN.
+# Copyright (C) 2023 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -61,14 +61,6 @@ class InvenioGitHub(object):
             (obj_or_import_string(error_cls), obj_or_import_string(handler))
             for error_cls, handler in error_handlers
         ]
-
-    @cached_property
-    def record_serializer(self):
-        """Github Release API class."""
-        imp = current_app.config["GITHUB_RECORD_SERIALIZER"]
-        if isinstance(imp, string_types):
-            return import_string(imp)
-        return imp
 
     def init_app(self, app):
         """Flask application initialization."""
