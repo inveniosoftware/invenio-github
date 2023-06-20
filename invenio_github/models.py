@@ -150,10 +150,6 @@ class Repository(db.Model, Timestamp):
     user_id = db.Column(db.Integer, db.ForeignKey(User.id), nullable=True)
     """Reference user that can manage this repository."""
 
-    # TODO probably useless. Check for what it's used
-    ping = db.Column(db.DateTime, nullable=True)
-    """Last ping of the repository."""
-
     hook = db.Column(db.Integer)
     """Hook identifier."""
 
