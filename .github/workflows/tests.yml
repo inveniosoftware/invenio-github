@@ -15,21 +15,21 @@ on:
     branches: master
   schedule:
     # * is a special character in YAML so you have to quote this string
-    - cron:  '0 3 * * 6'
+    - cron: "0 3 * * 6"
   workflow_dispatch:
     inputs:
       reason:
-        description: 'Reason'
+        description: "Reason"
         required: false
-        default: 'Manual trigger'
+        default: "Manual trigger"
 
 jobs:
   Tests:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-          python-version: [3.7, 3.8, 3.9]
-          requirements-level: [pypi]
+        python-version: [3.7, 3.8, 3.9]
+        requirements-level: [pypi]
 
     env:
       EXTRAS: "tests"
@@ -47,6 +47,7 @@ jobs:
         run: |
           pip install wheel requirements-builder
           requirements-builder -e "$EXTRAS" ${{ matrix.requirements-file }} --level=${{ matrix.requirements-level }} setup.py > .${{ matrix.requirements-level }}-${{ matrix.python-version }}-requirements.txt
+          cat .${{ matrix.requirements-level }}-${{ matrix.python-version }}-requirements.txt
 
       - name: Cache pip
         uses: actions/cache@v2
@@ -56,9 +57,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -r .${{matrix.requirements-level}}-${{ matrix.python-version }}-requirements.txt -c constraints-${{matrix.requirements-level}}.txt
-          pip install .[$EXTRAS]
+          pip install -r .${{ matrix.requirements-level }}-${{ matrix.python-version }}-requirements.txt -c constraints-${{ matrix.requirements-level }}.txt
+          pip install ".[$EXTRAS]"
           pip freeze
           docker --version
           docker-compose --version
-
