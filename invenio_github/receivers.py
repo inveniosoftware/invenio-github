@@ -48,8 +48,6 @@ state = {}
 class GitHubReceiver(Receiver):
     """Handle incoming notification from GitHub on a new release."""
 
-    verify_sender = False
-
     def run(self, event):
         """Process an event.
 
@@ -120,26 +118,17 @@ class GitHubReceiver(Receiver):
             else:
                 raise RepositoryDisabledError(repo=repo)
 
-        def _verify_sender(event):
-            """Validates the sender of the release."""
-            api = GitHubAPI(user_id=self.event.user_id)
-
-            return (
-                event.payload["repository"]["full_name"]
-                in api.account.extra_data["repos"]
-            )
-
         try:
+            event_release_id = event.payload["release"]["id"]
+            if event_release_id in state:
+                raise ReleaseAlreadyReceivedError()
+
+            # Lock event release to avoid concurrent processing
+            state.update({event_release_id: event})
+
             # Create a release
             # runs db.session.add(release)
             release = _create_release(event)
-
-            # TODO verify_sender is always set to 'False', even in legacy zenodo.
-            if self.verify_sender and not _verify_sender(event):
-                release.release_object.status = ReleaseStatus.FAILED
-                raise InvalidSenderError(
-                    event=release.event.id, user=release.event.user_id
-                )
 
             # Process the release
             async_mode = current_app.config.get("GITHUB_ASYNC_MODE", True)
@@ -150,6 +139,9 @@ class GitHubReceiver(Receiver):
             else:
                 release_api = current_github.release_api_class(release)
                 release_api.process_release()
+
+            # Unlock the event release
+            del state[event_release_id]
         except (
             ReleaseAlreadyReceivedError,
             RepositoryDisabledError,
