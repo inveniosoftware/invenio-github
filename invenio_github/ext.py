@@ -24,8 +24,6 @@
 
 """Invenio module that adds GitHub integration to the platform."""
 
-from __future__ import absolute_import, print_function
-
 from flask import current_app
 from six import string_types
 from sqlalchemy import event

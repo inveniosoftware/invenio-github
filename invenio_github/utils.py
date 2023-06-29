@@ -23,7 +23,6 @@ from datetime import datetime
 
 import dateutil.parser
 import pytz
-import requests
 import six
 from werkzeug.utils import import_string
 
@@ -44,52 +43,6 @@ def parse_timestamp(x):
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=pytz.utc)
     return dt
-
-
-def get_owner(gh, owner):
-    """Get owner of repository as a creator."""
-    try:
-        u = gh.user(owner)
-        name = u.name or u.login
-        company = u.company or ""
-        return [dict(name=name, affiliation=company)]
-    except Exception:
-        return None
-
-
-def get_contributors(gh, repo_id):
-    """Get list of contributors to a repository."""
-    try:
-        contributors_iter = gh.repository_with_id(repo_id).contributors()
-        contributors = list(contributors_iter)
-        if contributors_iter.last_status == 200:
-
-            def get_author(contributor):
-                r = requests.get(contributor["url"])
-                if r.status_code == 200:
-                    data = r.json()
-                    return dict(
-                        name=(
-                            data["name"]
-                            if "name" in data and data["name"]
-                            else data["login"]
-                        ),
-                        affiliation=data.get("company") or "",
-                    )
-
-            # Sort according to number of contributions
-            contributors = sorted(
-                contributors, key=lambda x: x.as_dict()["contributions"], reverse=True
-            )
-            contributors = [
-                get_author(x.as_dict())
-                for x in contributors[:30]
-                if x.as_dict()["type"] == "User"
-            ]
-            contributors = filter(lambda x: x is not None, contributors)
-            return contributors
-    except Exception:
-        return None
 
 
 def obj_or_import_string(value, default=None):

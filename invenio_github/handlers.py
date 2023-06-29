@@ -22,8 +22,6 @@
 
 """Implement OAuth client handler."""
 
-from __future__ import absolute_import
-
 from flask import current_app, redirect, url_for
 from flask_login import current_user
 from invenio_db import db
@@ -75,14 +73,7 @@ def disconnect(remote):
         # Keep repositories with hooks to pass to the celery task later on
         repos_with_hooks = [(r.github_id, r.hook) for r in db_repos if r.hook]
         for repo in db_repos:
-            try:
-                Repository.disable(
-                    user_id=user_id, github_id=repo.github_id, name=repo.name
-                )
-            except NoResultFound:
-                # If the repository doesn't exist, no action is necessary
-                pass
-
+            Repository.disable(repo)
         # Commit any changes before running the ascynhronous task
         db.session.commit()
 
@@ -90,5 +81,6 @@ def disconnect(remote):
         disconnect_github.delay(token.access_token, repos_with_hooks)
         # Delete the RemoteAccount (along with the associated RemoteToken)
         token.remote_account.delete()
+        db.session.commit()
 
     return redirect(url_for("invenio_oauthclient_settings.index"))

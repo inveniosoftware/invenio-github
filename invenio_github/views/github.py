@@ -22,8 +22,6 @@
 
 """GitHub blueprint for Invenio platform."""
 
-from __future__ import absolute_import
-
 from functools import wraps
 
 from flask import Blueprint, abort, current_app, render_template

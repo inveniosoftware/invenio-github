@@ -24,8 +24,6 @@
 
 """Models for GitHub integration."""
 
-from __future__ import absolute_import
-
 import uuid
 from enum import Enum
 
@@ -178,10 +176,9 @@ class Repository(db.Model, Timestamp):
                  multiple repositories with the specified GitHub id and/or name
                  exist.
         """
-        # TODO check how many cases we have where github_id returns multiple results
         repo = cls.query.filter(
             (Repository.github_id == github_id) | (Repository.name == name)
-        ).one()
+        ).one_or_none()
         return repo
 
     @classmethod

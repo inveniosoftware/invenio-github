@@ -22,8 +22,6 @@
 
 """Test GitHub hook."""
 
-from __future__ import absolute_import
-
 import json
 
 # from invenio_rdm_records.proxies import current_rdm_records_service
@@ -43,9 +41,8 @@ def test_webhook_post(app, db, tester_id, remote_token, github_api):
     tag = "v1.0"
 
     # Create a repository
-    try:
-        repo = Repository.get(github_id=repo_id, name=repo_name)
-    except NoResultFound:
+    repo = Repository.get(github_id=repo_id, name=repo_name)
+    if not repo:
         repo = Repository.create(tester_id, repo_id, repo_name)
 
     # Enable repository webhook.
@@ -82,9 +79,8 @@ def test_webhook_post_fail(app, tester_id, remote_token, github_api):
     hook = 1234
 
     # Create a repository
-    try:
-        repo = Repository.get(github_id=repo_id, name=repo_name)
-    except NoResultFound:
+    repo = Repository.get(github_id=repo_id, name=repo_name)
+    if not repo:
         repo = Repository.create(tester_id, repo_id, repo_name)
 
     # Enable repository webhook.
