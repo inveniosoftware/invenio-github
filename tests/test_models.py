@@ -22,8 +22,6 @@
 
 """Test cases for badge creation."""
 
-from __future__ import absolute_import
-
 from invenio_github.models import Repository
 
 

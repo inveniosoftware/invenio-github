@@ -22,10 +22,7 @@
 
 """Task for managing GitHub integration."""
 
-from __future__ import absolute_import
-
 import datetime
-import json
 
 import github3
 from celery import shared_task
@@ -33,7 +30,6 @@ from flask import current_app, g
 from invenio_db import db
 from invenio_oauthclient.models import RemoteAccount
 from invenio_oauthclient.proxies import current_oauthclient
-from invenio_rest.errors import RESTException
 
 from invenio_github.errors import CustomGitHubMetadataError, RepositoryAccessError
 from invenio_github.models import Release, ReleaseStatus
@@ -48,23 +44,19 @@ def _get_err_obj(msg):
     return err
 
 
-def release_rest_exception_handler(release, ex):
-    """Handler for RestException."""
-    release.release_object.errors = json.loads(ex.get_body())
-
-
 def release_gh_metadata_handler(release, ex):
     """Handler for CustomGithubMetadataError."""
     release.release_object.errors = {"errors": ex.message}
+    db.session.commit()
 
 
 def release_default_exception_handler(release, ex):
     """Default handler."""
     release.release_object.errors = _get_err_obj("Unknown error occured.")
+    db.session.commit()
 
 
 DEFAULT_ERROR_HANDLERS = [
-    (RESTException, release_rest_exception_handler),
     (CustomGitHubMetadataError, release_gh_metadata_handler),
     (Exception, release_default_exception_handler),
 ]

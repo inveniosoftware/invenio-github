@@ -26,25 +26,15 @@
 
 from __future__ import absolute_import, print_function
 
-import json
 from collections import namedtuple
-from datetime import datetime
 
 import pytest
-from invenio_access.permissions import system_identity
 from invenio_app.factory import create_api
-from invenio_oauth2server.models import Token
 from invenio_oauthclient.contrib.github import REMOTE_APP as GITHUB_REMOTE_APP
 from invenio_oauthclient.contrib.github import REMOTE_REST_APP as GITHUB_REMOTE_REST_APP
 from invenio_oauthclient.models import RemoteToken
 from invenio_oauthclient.proxies import current_oauthclient
-from invenio_records.api import Record
-from invenio_vocabularies.proxies import current_service as vocabulary_service
-from invenio_vocabularies.records.api import Vocabulary
 from mock import MagicMock, patch
-from six import b
-
-from invenio_github.models import Release, ReleaseStatus, Repository
 
 from .fixtures import (
     TestGithubRelease,
@@ -70,11 +60,9 @@ def app_config(app_config):
             consumer_key="changeme",
             consumer_secret="changeme",
         ),
-        GITHUB_ASYNC_MODE=False,
         GITHUB_SHARED_SECRET="changeme",
         GITHUB_INSECURE_SSL=False,
         GITHUB_METADATA_FILE=".invenio.json",
-        GITHUB_CITATION_FILE="citation.cff",
         GITHUB_WEBHOOK_RECEIVER_URL="http://localhost:5000/api/receivers/github/events/?access_token={token}",
         GITHUB_WEBHOOK_RECEIVER_ID="github",
         GITHUB_RELEASE_CLASS=TestGithubRelease,
@@ -123,20 +111,18 @@ RunningApp = namedtuple(
         "app",
         "location",
         "cache",
-        "resource_type_v",
-        "relation_type_v",
     ],
 )
 
 
 @pytest.fixture()
-def running_app(app, location, cache, resource_type_v, relation_type_v):
+def running_app(app, location, cache):
     """This fixture provides an app with the typically needed db data loaded.
 
     All of these fixtures are often needed together, so collecting them
     under a semantic umbrella makes sense.
     """
-    return RunningApp(app, location, cache, resource_type_v, relation_type_v)
+    return RunningApp(app, location, cache)
 
 
 @pytest.fixture()
@@ -196,89 +182,6 @@ def unlinked_user(app, db):
 def tester_id(test_user):
     """Returns tester id."""
     return test_user.id
-
-
-@pytest.fixture()
-def deposit_token(running_app, db, tester_id):
-    """Fixture that create an access token."""
-    token = Token.create_personal(
-        "deposit-personal-{0}".format(tester_id),
-        tester_id,
-        scopes=["deposit:write", "deposit:actions"],
-        is_internal=True,
-    ).access_token
-    db.session.commit()
-    return token
-
-
-@pytest.fixture()
-def access_token(running_app, db, tester_id):
-    """Fixture that create an access token."""
-    token = Token.create_personal(
-        "test-personal-{0}".format(tester_id),
-        tester_id,
-        scopes=["webhooks:event"],
-        is_internal=True,
-    ).access_token
-    db.session.commit()
-    return token
-
-
-@pytest.fixture()
-def access_token_no_scope(running_app, db, tester_id):
-    """Fixture that create an access token without scope."""
-    token = Token.create_personal(
-        "test-personal-{0}".format(tester_id),
-        tester_id,
-        scopes=[""],
-        is_internal=True,
-    ).access_token
-    db.session.commit()
-    return token
-
-
-@pytest.fixture()
-def minimal_record(running_app, db, tester_id):
-    """Minimal record metadata that is compliant with the JSON schema."""
-    metadata = {
-        "doi": "test/1",
-        "recid": 1,
-        "resource_type": {"type": "software"},
-        "publication_date": datetime.utcnow().date().isoformat(),
-        "title": "Test title",
-        "creators": [
-            dict(name="Doe, John", affiliation="Atlantis"),
-            dict(name="Smith, Jane", affiliation="Atlantis"),
-        ],
-        "description": "Test description",
-        "access_right": "open",
-    }
-    record = Record.create(metadata)
-    return record
-
-
-@pytest.fixture()
-def repository_model(running_app, db, tester_id):
-    """Github repository fixture."""
-    repository = Repository(github_id=1, name="testuser/testrepo", user_id=tester_id)
-    db.session.add(repository)
-    db.session.commit()
-    return repository
-
-
-@pytest.fixture()
-def release_model(running_app, db, repository_model, minimal_record):
-    """Github release fixture."""
-    release = Release(
-        release_id=1,
-        tag="v1.0",
-        repository=repository_model,
-        status=ReleaseStatus.PUBLISHED,
-        recordmetadata=minimal_record.model,
-    )
-    db.session.add(release)
-    db.session.commit()
-    return release
 
 
 @pytest.fixture()
@@ -388,62 +291,3 @@ def github_api(
     with patch("invenio_github.api.GitHubAPI.api", new=mock_api):
         with patch("invenio_github.api.GitHubAPI._sync_hooks"):
             yield mock_api
-
-
-@pytest.fixture()
-def resource_type_type(app):
-    """Resource type vocabulary type."""
-    return vocabulary_service.create_type(system_identity, "resourcetypes", "rsrct")
-
-
-@pytest.fixture()
-def resource_type_v(app, resource_type_type):
-    """Resource type vocabulary record."""
-    vocab = vocabulary_service.create(
-        system_identity,
-        {
-            "id": "software",
-            "icon": "table",
-            "props": {
-                "csl": "softaware",
-                "datacite_general": "Software",
-                "datacite_type": "",
-                "openaire_resourceType": "21",
-                "openaire_type": "software",
-                "eurepo": "info:eu-repo/semantics/other",
-                "schema.org": "https://schema.org/Dataset",
-                "subtype": "",
-                "type": "software",
-            },
-            "title": {"en": "Software"},
-            "tags": ["depositable", "linkable"],
-            "type": "resourcetypes",
-        },
-    )
-
-    Vocabulary.index.refresh()
-    return vocab
-
-
-@pytest.fixture()
-def relation_type(app):
-    """Relation type vocabulary type."""
-    return vocabulary_service.create_type(system_identity, "relationtypes", "rlt")
-
-
-@pytest.fixture()
-def relation_type_v(app, relation_type):
-    """Relation type vocabulary record."""
-    vocab = vocabulary_service.create(
-        system_identity,
-        {
-            "id": "issupplementto",
-            "props": {"datacite": "isSupplementTo"},
-            "title": {"en": "Is supplement to"},
-            "type": "relationtypes",
-        },
-    )
-
-    Vocabulary.index.refresh()
-
-    return vocab

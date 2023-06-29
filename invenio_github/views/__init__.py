@@ -21,5 +21,3 @@
 # or submit itself to any jurisdiction.
 
 """Implement views for GitHub integration."""
-
-from __future__ import absolute_import

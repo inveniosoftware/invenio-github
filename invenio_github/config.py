@@ -65,12 +65,6 @@ GITHUB_REFRESH_TIMEDELTA = timedelta(days=1)
 GITHUB_RELEASE_CLASS = "invenio_github.api:GitHubRelease"
 """GitHubRelease class to be used for release handling."""
 
-GITHUB_METADATA_FILE = ".invenio.json"
-"""File with extra metadata stored in GitHub repository."""
-
-GITHUB_CITATION_FILE = "CITATION.cff"
-"""File with citation metadata stored in GitHub repository."""
-
 GITHUB_TEMPLATE_INDEX = "invenio_github/settings/index.html"
 """Repositories list template."""
 
@@ -80,14 +74,10 @@ GITHUB_TEMPLATE_VIEW = "invenio_github/settings/view.html"
 GITHUB_ERROR_HANDLERS = None
 """Definition of the way specific exceptions are handled."""
 
-GITHUB_ASYNC_MODE = True
-"""Async mode."""
+GITHUB_MAX_CONTRIBUTORS_NUMBER = 30
+"""Max number of contributors of a release to be retrieved from Github."""
 
-# Copy the default GitHub OAuth application configuration, and update
-# handlers and scope.
-GITHUB_REMOTE_APP = deepcopy(REMOTE_APP)
+# Copy the default GitHub OAuth application configuration, and update disconnect handlers and scope.
 """OAuth Client configuration."""
-GITHUB_REMOTE_APP["disconnect_handler"] = "invenio_github.handlers:disconnect"
-GITHUB_REMOTE_APP["params"]["request_token_params"][
-    "scope"
-] = "user,admin:repo_hook,read:org"
+REMOTE_APP["disconnect_handler"] = "invenio_github.handlers:disconnect"
+REMOTE_APP["params"]["request_token_params"]["scope"] = "user,admin:repo_hook,read:org"

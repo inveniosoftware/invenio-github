@@ -45,8 +45,9 @@ from .errors import (
     RemoteAccountDataNotSet,
     RemoteAccountNotFound,
     RepositoryAccessError,
+    RepositoryNotFoundError,
 )
-from .models import Repository
+from .models import ReleaseStatus, Repository
 from .tasks import sync_hooks as sync_hooks_task
 from .utils import iso_utcnow, parse_timestamp, utcnow
 
@@ -233,9 +234,8 @@ class GitHubAPI(object):
 
         # If hook on GitHub exists, get or create corresponding db object and
         # enable the hook. Otherwise remove the old hook information.
-        try:
-            repo = Repository.get(repo_id, gh_repo.full_name)
-        except NoResultFound:
+        repo = Repository.get(repo_id, gh_repo.full_name)
+        if not repo:
             repo = Repository.create(self.user_id, repo_id, gh_repo.full_name)
 
         if hook:
@@ -256,9 +256,8 @@ class GitHubAPI(object):
     def create_hook(self, repo_id, repo_name):
         """Create repository hook."""
         # Get or create the repo and check access permissions
-        try:
-            repo = Repository.get(github_id=repo_id, name=repo_name)
-        except NoResultFound:
+        repo = Repository.get(github_id=repo_id, name=repo_name)
+        if not repo:
             repo = Repository.create(self.user_id, repo_id, repo_name)
 
         check_repo_access_permissions(
@@ -300,6 +299,9 @@ class GitHubAPI(object):
     def remove_hook(self, repo_id, name):
         """Remove repository hook."""
         repo = Repository.get(github_id=repo_id, name=name)
+
+        if not repo:
+            raise RepositoryNotFoundError(repo_id)
 
         check_repo_access_permissions(
             repo, self.user_id, repo_id=repo_id, repo_name=name
@@ -370,15 +372,14 @@ class GitHubAPI(object):
 
         Checks for access permission.
         """
-        # Might raise a ResultNotFound
-        repo_instance = Repository.get(name=repo_name)
+        repo = Repository.get(name=repo_name)
+        if not repo:
+            raise RepositoryNotFoundError(repo_name)
 
         # Might raise a RepositoryAccessError
-        check_repo_access_permissions(
-            repo_instance, self.user_id, repo_instance.github_id, repo_name
-        )
+        check_repo_access_permissions(repo, self.user_id, repo.github_id, repo_name)
 
-        return repo_instance
+        return repo
 
     @classmethod
     def _dev_api(cls):
@@ -415,10 +416,6 @@ class GitHubRelease(object):
         """Constructor."""
         self.release_object = release
 
-    def resolve_record(self):
-        """Resolves a record from the release. To be implemented by the API class implementation."""
-        raise NotImplementedError
-
     @cached_property
     def record(self):
         """Release record."""
@@ -440,12 +437,12 @@ class GitHubRelease(object):
         return self.event.payload
 
     @cached_property
-    def release(self):
+    def release_payload(self):
         """Return release metadata."""
         return self.payload["release"]
 
     @cached_property
-    def repository(self):
+    def repository_payload(self):
         """Return repository metadata."""
         return self.payload["repository"]
 
@@ -463,15 +460,15 @@ class GitHubRelease(object):
     @cached_property
     def release_file_name(self):
         """Returns release zipball file name."""
-        tag_name = self.release["tag_name"]
-        repo_name = self.repository["full_name"]
+        tag_name = self.release_payload["tag_name"]
+        repo_name = self.repository_payload["full_name"]
         filename = f"{repo_name}-{tag_name}.zip"
         return filename
 
     @cached_property
     def release_zipball_url(self):
         """Returns the release zipball url."""
-        return self.release["zipball_url"]
+        return self.release_payload["zipball_url"]
 
     @cached_property
     def user_identity(self):
@@ -500,9 +497,12 @@ class GitHubRelease(object):
                     key=lambda x: x.as_dict()["contributions"],
                     reverse=True,
                 )
+                max_contributors = current_app.config.get(
+                    "GITHUB_MAX_CONTRIBUTORS_NUMBER", 30
+                )
                 contributors = [
                     get_author(x.as_dict())
-                    for x in contributors[:30]
+                    for x in contributors[:max_contributors]
                     if x.as_dict()["type"] == "User"
                 ]
                 contributors = filter(lambda x: x is not None, contributors)
@@ -510,17 +510,66 @@ class GitHubRelease(object):
         except Exception:
             return None
 
+    # Helper functions
+
+    def is_first_release(self):
+        """Checks whether the current release is the first release of the repository."""
+        latest_release = self.repository_object.latest_release(ReleaseStatus.PUBLISHED)
+        return True if not latest_release else False
+
+    def test_zipball(self):
+        """Extract files to download from GitHub payload."""
+        zipball_url = self.release_payload["zipball_url"]
+
+        # Execute a HEAD request to the zipball url to test the url.
+        response = self.gh.api.session.head(zipball_url, allow_redirects=True)
+
+        # In case where there is a tag and branch with the same name, we might
+        # get back a "300 Mutliple Choices" response, which requires fetching
+        # an "alternate" link.
+        if response.status_code == 300:
+            zipball_url = response.links.get("alternate", {}).get("url")
+            if zipball_url:
+                response = self.gh.api.session.head(zipball_url, allow_redirects=True)
+                # Another edge-case, is when the access token we have does not
+                # have the scopes/permissions to access public links. In that
+                # rare case we fallback to a non-authenticated request.
+                if response.status_code == 404:
+                    response = requests.head(zipball_url, allow_redirects=True)
+                    # If this response is successful we want to use the finally
+                    # resolved URL to fetch the ZIP from.
+                    if response.status_code == 200:
+                        zipball_url = response.url
+
+        assert (
+            response.status_code == 200
+        ), f"Could not retrieve archive from GitHub: {zipball_url}"
+
+    # High level API
+
+    # TODO split maybe
+    def release_failed(self):
+        """Set release status to FAILED."""
+        self.release_object.status = ReleaseStatus.FAILED
+
+    def release_processing(self):
+        """Set release status to PROCESSING."""
+        self.release_object.status = ReleaseStatus.PROCESSING
+
+    def release_published(self):
+        """Set release status to PUBLISHED."""
+        self.release_object.status = ReleaseStatus.PUBLISHED
+
     def retrieve_remote_file(self, file_name):
         """Retrieves a file from the repository, for the current release, using the github client.
 
         :param file_name: the name of the file to be retrieved from the repository.
         :returns: the file contents or None, if the file if not fetched.
         """
-        gh_repo_owner = self.repository["owner"]["login"]
-        gh_repo_name = self.repository["name"]
-        gh_tag_name = self.release["tag_name"]
+        gh_repo_owner = self.repository_payload["owner"]["login"]
+        gh_repo_name = self.repository_payload["name"]
+        gh_tag_name = self.release_payload["tag_name"]
         try:
-            # TODO stream?
             content = self.gh.api.repository(gh_repo_owner, gh_repo_name).file_contents(
                 path=file_name, ref=gh_tag_name
             )
@@ -536,15 +585,14 @@ class GitHubRelease(object):
         with session.get(self.release_zipball_url, stream=True) as s:
             yield s.raw
 
-    @cached_property
-    def status(self):
-        """Get the release status."""
-        return self.release_object.status
-
     def publish(self):
         """Publish a GitHub release."""
         raise NotImplementedError
 
     def process_release(self):
         """Processes a github release."""
+        raise NotImplementedError
+
+    def resolve_record(self):
+        """Resolves a record from the release. To be implemented by the API class implementation."""
         raise NotImplementedError

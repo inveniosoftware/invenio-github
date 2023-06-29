@@ -22,16 +22,10 @@
 
 """Task for managing GitHub integration."""
 
-from __future__ import absolute_import
-
-from flask import current_app
 from invenio_db import db
 from invenio_webhooks.models import Receiver
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm.exc import NoResultFound
 
 from invenio_github.models import Release, ReleaseStatus, Repository
-from invenio_github.proxies import current_github
 from invenio_github.tasks import process_release
 
 from .errors import (
@@ -84,12 +78,15 @@ class GitHubReceiver(Receiver):
 
     def _handle_create_release(self, event):
         """Creates a release in invenio."""
-
-        def _create_release(event):
-            """Creates a release object."""
-            # TODO maybe can be moved to another layer
-            # Check if the release has already been received
+        try:
             release_id = event.payload["release"]["id"]
+            if release_id in state:
+                raise ReleaseAlreadyReceivedError()
+
+            # Lock event release to avoid concurrent processing
+            state.update({release_id: event})
+
+            # Check if the release already exists
             existing_release = Release.query.filter_by(
                 release_id=release_id,
             ).first()
@@ -100,54 +97,30 @@ class GitHubReceiver(Receiver):
             # Create the Release
             repo_id = event.payload["repository"]["id"]
             repo_name = event.payload["repository"]["name"]
-            try:
-                repo = Repository.get(repo_id, repo_name)
-            except NoResultFound:
+            repo = Repository.get(repo_id, repo_name)
+            if not repo:
                 raise RepositoryNotFoundError(repo_name)
 
             if repo.enabled:
-                release_object = Release(
+                release = Release(
                     release_id=release_id,
                     tag=event.payload["release"]["tag_name"],
                     repository=repo,
                     event=event,
                     status=ReleaseStatus.RECEIVED,
                 )
-                db.session.add(release_object)
-                return release_object
+                db.session.add(release)
             else:
                 raise RepositoryDisabledError(repo=repo)
 
-        try:
-            event_release_id = event.payload["release"]["id"]
-            if event_release_id in state:
-                raise ReleaseAlreadyReceivedError()
-
-            # Lock event release to avoid concurrent processing
-            state.update({event_release_id: event})
-
-            # Create a release
-            # runs db.session.add(release)
-            release = _create_release(event)
-
             # Process the release
-            async_mode = current_app.config.get("GITHUB_ASYNC_MODE", True)
-            if async_mode:
-                # Since 'process_release' is executed asynchronously, we commit the current state of session
-                db.session.commit()
-                process_release.delay(release.release_id)
-            else:
-                release_api = current_github.release_api_class(release)
-                release_api.process_release()
+            # Since 'process_release' is executed asynchronously, we commit the current state of session
+            db.session.commit()
+            process_release.delay(release.release_id)
 
             # Unlock the event release
-            del state[event_release_id]
-        except (
-            ReleaseAlreadyReceivedError,
-            RepositoryDisabledError,
-            SQLAlchemyError,
-        ) as e:
-            # SQLAlchemyError is risen when two or more events arrive at the same time. The one(s) that lose the race condition will try to commit to db and fail.
+            del state[release_id]
+        except (ReleaseAlreadyReceivedError, RepositoryDisabledError) as e:
             event.response_code = 409
             event.response = dict(message=str(e), status=409)
         except (RepositoryAccessError, InvalidSenderError) as e:
