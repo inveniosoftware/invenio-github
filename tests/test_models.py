@@ -25,7 +25,6 @@
 from invenio_github.models import Repository
 
 
-# TODO this tests a very specific behavior of latest_release(). If we remove the check from latest_release() then we can remove this test as well
 def test_repository_unbound(app):
     """Test create_badge method."""
     assert Repository(name="org/repo", github_id=1).latest_release() is None

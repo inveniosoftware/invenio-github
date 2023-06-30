@@ -81,7 +81,6 @@ class InvenioGitHub(object):
             @event.listens_for(RemoteAccount, "before_delete")
             def receive_before_delete(mapper, connection, target):
                 """Listen for the 'before_delete' event."""
-                # TODO remove hooks
 
     def init_config(self, app):
         """Initialize configuration."""

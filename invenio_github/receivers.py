@@ -73,7 +73,6 @@ class GitHubReceiver(Receiver):
         if is_create_release_event:
             self._handle_create_release(event)
         else:
-            # TODO other events (e.g. ping, draft release) are discarded
             pass
 
     def _handle_create_release(self, event):
