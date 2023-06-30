@@ -510,7 +510,7 @@ class GitHubRelease(object):
                     if x.as_dict()["type"] == "User"
                 ]
                 contributors = filter(lambda x: x is not None, contributors)
-                return contributors
+                return list(contributors)
         except Exception:
             return None
 
