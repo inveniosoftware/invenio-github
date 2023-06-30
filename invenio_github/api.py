@@ -31,6 +31,7 @@ import github3
 import humanize
 import requests
 from flask import current_app
+from invenio_access.permissions import authenticated_user
 from invenio_access.utils import get_identity
 from invenio_db import db
 from invenio_oauth2server.models import Token as ProviderToken
@@ -473,7 +474,10 @@ class GitHubRelease(object):
     @cached_property
     def user_identity(self):
         """Generates release owner's user identity."""
-        return get_identity(self.repository_object.user)
+        identity = get_identity(self.repository_object.user)
+        identity.provides.add(authenticated_user)
+        identity.user = self.repository_object.user
+        return identity
 
     @cached_property
     def contributors(self):

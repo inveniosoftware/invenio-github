@@ -24,8 +24,6 @@ from time import sleep
 
 from invenio_oauthclient.models import RemoteAccount
 
-# TODO perhaps this test can be moved to invenio-rdm-records as it's testing the record itself
-# from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_webhooks.models import Event
 from mock import patch
 
