@@ -25,6 +25,10 @@
 Changes
 =======
 
+Version v1.0.0b1 (released 2023-07-03)
+
+- Initial beta release.
+
 Version v1.0.0a28 (released 2022-10-24)
 
 - Initial public release.
