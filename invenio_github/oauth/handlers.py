@@ -26,16 +26,13 @@ from flask import current_app, redirect, url_for
 from flask_login import current_user
 from invenio_db import db
 from invenio_oauth2server.models import Token as ProviderToken
-from invenio_oauthclient.models import RemoteToken
-from invenio_oauthclient.utils import oauth_link_external_id, oauth_unlink_external_id
-from sqlalchemy.orm.exc import NoResultFound
+from invenio_oauthclient.utils import oauth_unlink_external_id
 
-from .api import GitHubAPI
-from .models import Repository
-from .tasks import disconnect_github
+from invenio_github.api import GitHubAPI
+from invenio_github.tasks import disconnect_github
 
 
-def account_post_init(remote, token=None):
+def account_setup_handler(remote, token, resp):
     """Perform post initialization."""
     try:
         gh = GitHubAPI(user_id=token.remote_account.user_id)
@@ -46,7 +43,7 @@ def account_post_init(remote, token=None):
         current_app.logger.warning(str(e), exc_info=True)
 
 
-def disconnect(remote):
+def disconnect_handler(remote):
     """Disconnect callback handler for GitHub."""
     # User must be authenticated
     if not current_user.is_authenticated:
@@ -59,8 +56,9 @@ def disconnect(remote):
     if external_ids:
         oauth_unlink_external_id(dict(id=external_ids[0], method=external_method))
 
-    user_id = int(current_user.get_id())
-    token = RemoteToken.get(user_id, remote.consumer_key)
+    github = GitHubAPI(user_id=current_user.id)
+    token = github.session_token
+
     if token:
         extra_data = token.remote_account.extra_data
 
@@ -68,17 +66,18 @@ def disconnect(remote):
         webhook_token_id = extra_data.get("tokens", {}).get("webhook")
         ProviderToken.query.filter_by(id=webhook_token_id).delete()
 
-        # Disable GitHub webhooks from our side
-        db_repos = Repository.query.filter_by(user_id=user_id).all()
-        # Keep repositories with hooks to pass to the celery task later on
-        repos_with_hooks = [(r.github_id, r.hook) for r in db_repos if r.hook]
-        for repo in db_repos:
-            Repository.disable(repo)
+        # Disable every GitHub webhooks from our side
+        repos = github.user_repositories
+        for repo in repos:
+            github.disable_repo(repo)
+
         # Commit any changes before running the ascynhronous task
         db.session.commit()
 
         # Send Celery task for webhooks removal and token revocation
+        repos_with_hooks = [(r.github_id, r.hook) for r in repos if r.hook]
         disconnect_github.delay(token.access_token, repos_with_hooks)
+
         # Delete the RemoteAccount (along with the associated RemoteToken)
         token.remote_account.delete()
         db.session.commit()

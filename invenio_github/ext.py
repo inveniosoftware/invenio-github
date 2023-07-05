@@ -26,12 +26,12 @@
 
 from flask import current_app
 from six import string_types
-from sqlalchemy import event
 from werkzeug.utils import cached_property, import_string
 
+from invenio_github.api import GitHubRelease
+from invenio_github.utils import obj_or_import_string
+
 from . import config
-from .api import GitHubRelease
-from .utils import obj_or_import_string
 
 
 class InvenioGitHub(object):
@@ -65,30 +65,8 @@ class InvenioGitHub(object):
         self.init_config(app)
         app.extensions["invenio-github"] = self
 
-        @app.before_first_request
-        def connect_signals():
-            """Connect OAuthClient signals."""
-            from invenio_oauthclient.models import RemoteAccount
-            from invenio_oauthclient.signals import account_setup_committed
-
-            from .api import GitHubAPI
-            from .handlers import account_post_init
-
-            account_setup_committed.connect(
-                account_post_init, sender=GitHubAPI.remote._get_current_object()
-            )
-
-            @event.listens_for(RemoteAccount, "before_delete")
-            def receive_before_delete(mapper, connection, target):
-                """Listen for the 'before_delete' event."""
-
     def init_config(self, app):
         """Initialize configuration."""
-        app.config.setdefault(
-            "GITHUB_BASE_TEMPLATE",
-            app.config.get("BASE_TEMPLATE", "invenio_github/base.html"),
-        )
-
         app.config.setdefault(
             "GITHUB_SETTINGS_TEMPLATE",
             app.config.get(
