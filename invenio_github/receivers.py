@@ -51,14 +51,7 @@ class GitHubReceiver(Receiver):
             the rest of the processing to a Celery task which will be mainly
             accessing the GitHub API.
         """
-        try:
-            self._handle_event(event)
-        except Exception as e:
-            # Event failed to be processed and error was not handled yet
-            if not event.response or event.response_code < 400:
-                event.response = {"status": 500, "message": str(e)}
-                event.response_code = 500
-            # Other cases were already handled (e.g. response/response_code were set by the event handler)
+        self._handle_event(event)
 
     def _handle_event(self, event):
         """Handles an incoming github event."""

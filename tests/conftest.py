@@ -62,6 +62,7 @@ def app_config(app_config):
         ),
         GITHUB_SHARED_SECRET="changeme",
         GITHUB_INSECURE_SSL=False,
+        GITHUB_INTEGRATION_ENABLED=True,
         GITHUB_METADATA_FILE=".invenio.json",
         GITHUB_WEBHOOK_RECEIVER_URL="http://localhost:5000/api/receivers/github/events/?access_token={token}",
         GITHUB_WEBHOOK_RECEIVER_ID="github",
@@ -204,7 +205,12 @@ def test_repo_data_three():
 
 @pytest.yield_fixture()
 def github_api(
-    running_app, db, test_repo_data_one, test_repo_data_two, test_repo_data_three
+    running_app,
+    db,
+    test_repo_data_one,
+    test_repo_data_two,
+    test_repo_data_three,
+    test_user,
 ):
     """Github API mock."""
     import github3

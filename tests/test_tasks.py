@@ -23,7 +23,6 @@
 from time import sleep
 
 from invenio_oauthclient.models import RemoteAccount
-
 from invenio_webhooks.models import Event
 from mock import patch
 

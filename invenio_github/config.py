@@ -22,10 +22,7 @@
 
 """Configuration for GitHub module."""
 
-from copy import deepcopy
 from datetime import timedelta
-
-from invenio_oauthclient.contrib.github import REMOTE_APP
 
 GITHUB_WEBHOOK_RECEIVER_ID = "github"
 """Local name of webhook receiver."""
@@ -77,7 +74,5 @@ GITHUB_ERROR_HANDLERS = None
 GITHUB_MAX_CONTRIBUTORS_NUMBER = 30
 """Max number of contributors of a release to be retrieved from Github."""
 
-# Copy the default GitHub OAuth application configuration, and update disconnect handlers and scope.
-"""OAuth Client configuration."""
-REMOTE_APP["disconnect_handler"] = "invenio_github.handlers:disconnect"
-REMOTE_APP["params"]["request_token_params"]["scope"] = "user,admin:repo_hook,read:org"
+GITHUB_INTEGRATION_ENABLED = False
+"""Enables the github integration at all."""

@@ -73,10 +73,8 @@ class GitHubAPI(object):
 
     @cached_property
     def access_token(self):
-        """Return OAuth access token."""
-        if self.user_id:
-            return RemoteToken.get(self.user_id, self.remote.consumer_key).access_token
-        return self.remote.get_request_token()[0]
+        """Return OAuth access token's vlaue."""
+        return RemoteToken.get(self.user_id, self.remote.consumer_key).access_token
 
     @property
     def session_token(self):
@@ -335,22 +333,35 @@ class GitHubAPI(object):
         return release_objects
 
     def get_user_repositories(self):
-        """Retrieves user repositories."""
-        token = self.session_token
-        if token:
-            extra_data = self.account.extra_data
-        repos = extra_data.get("repos", [])
+        """Retrieves user repositories, containing db repositories plus remote repositories."""
+        repos = self.user_remote_repositories
         if repos:
             # 'Enhance' our repos dict, from our database model
-            db_repos = Repository.query.filter(
-                Repository.github_id.in_([int(k) for k in repos.keys()]),
-            ).all()
+            db_repos = self.user_repositories
             for repo in db_repos:
                 repos[str(repo.github_id)]["instance"] = repo
                 repos[str(repo.github_id)]["latest"] = GitHubRelease(
                     repo.latest_release()
                 )
         return repos
+
+    @property
+    def user_repositories(self):
+        """Retrieve user repositories from the model."""
+        db_repos = Repository.query.filter(Repository.user_id == self.user_id).all()
+        return db_repos
+
+    @property
+    def user_remote_repositories(self):
+        """Retrieve user repositories from user's remote data."""
+        extra_data = self.account.extra_data
+        repos = extra_data.get("repos", [])
+        return repos
+
+    def disable_repo(self, repo):
+        """Disables all current user repositories."""
+        assert repo.user_id == self.user_id
+        Repository.disable(repo)
 
     def get_last_sync_time(self):
         """Retrieves the last sync delta time from github's client extra data.

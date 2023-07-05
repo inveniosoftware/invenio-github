@@ -26,7 +26,6 @@ import json
 
 # from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_webhooks.models import Event
-from sqlalchemy.orm.exc import NoResultFound
 
 from invenio_github.models import ReleaseStatus, Repository
 
