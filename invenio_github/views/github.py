@@ -168,7 +168,6 @@ def register_api_routes(blueprint):
             github.sync(async_hooks=False)
             db.session.commit()
         except Exception:
-            db.session.rollback()
             abort(400)
 
         return "", 200
@@ -184,7 +183,6 @@ def register_api_routes(blueprint):
             github.sync(async_hooks=False)
             db.session.commit()
         except Exception:
-            db.session.rollback()
             abort(400)
         return "", 200
 
@@ -214,7 +212,6 @@ def register_api_routes(blueprint):
             else:
                 abort(400)
         except Exception:
-            db.session.rollback()
             abort(400)
 
     @login_required
@@ -245,5 +242,4 @@ def register_api_routes(blueprint):
             else:
                 abort(400)
         except Exception:
-            db.session.rollback()
             abort(400)
