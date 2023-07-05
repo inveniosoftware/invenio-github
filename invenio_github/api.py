@@ -160,22 +160,18 @@ class GitHubAPI(object):
             consider the information on GitHub as valid, and we overwrite our
             own state based on this information.
         """
-        active_repos = {}
-        github_repos = {
-            repo.id: repo
-            for repo in self.api.repositories()
-            if repo.permissions["admin"]
-        }
-        for gh_repo_id, gh_repo in github_repos.items():
-            active_repos[gh_repo_id] = {
-                "id": gh_repo_id,
-                "full_name": gh_repo.full_name,
-                "description": gh_repo.description,
-                "default_branch": gh_repo.default_branch,
-            }
+        github_repos = {}
+        for repo in self.api.repositories():
+            if repo.permissions["admin"]:
+                github_repos[repo.id] = {
+                    "id": repo.id,
+                    "full_name": repo.full_name,
+                    "description": repo.description,
+                    "default_branch": repo.default_branch,
+                }
 
         if hooks:
-            self._sync_hooks(list(active_repos.keys()), asynchronous=async_hooks)
+            self._sync_hooks(list(github_repos.keys()), asynchronous=async_hooks)
 
         # Update changed names for repositories stored in DB
         db_repos = Repository.query.filter(
@@ -183,20 +179,22 @@ class GitHubAPI(object):
         )
 
         for repo in db_repos:
-            if gh_repo and repo.name != gh_repo.full_name:
-                repo.name = gh_repo.full_name
+            gh_repo = github_repos.get(repo.github_id)
+            if gh_repo and repo.name != gh_repo["full_name"]:
+                repo.name = gh_repo["full_name"]
                 db.session.add(repo)
 
         # Remove ownership from repositories that the user has no longer
         # 'admin' permissions, or have been deleted.
         Repository.query.filter(
             Repository.user_id == self.user_id,
+            ~Repository.github_id.in_(github_repos.keys()),
         ).update(dict(user_id=None, hook=None), synchronize_session=False)
 
         # Update repos and last sync
         self.account.extra_data.update(
             dict(
-                repos=active_repos,
+                repos=github_repos,
                 last_sync=iso_utcnow(),
             )
         )
