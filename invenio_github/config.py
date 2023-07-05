@@ -75,4 +75,4 @@ GITHUB_MAX_CONTRIBUTORS_NUMBER = 30
 """Max number of contributors of a release to be retrieved from Github."""
 
 GITHUB_INTEGRATION_ENABLED = False
-"""Enables the github integration at all."""
+"""Enables the github integration."""

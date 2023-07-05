@@ -36,8 +36,6 @@ from .errors import (
     RepositoryNotFoundError,
 )
 
-state = {}
-
 
 class GitHubReceiver(Receiver):
     """Handle incoming notification from GitHub on a new release."""
@@ -72,11 +70,6 @@ class GitHubReceiver(Receiver):
         """Creates a release in invenio."""
         try:
             release_id = event.payload["release"]["id"]
-            if release_id in state:
-                raise ReleaseAlreadyReceivedError()
-
-            # Lock event release to avoid concurrent processing
-            state.update({release_id: event})
 
             # Check if the release already exists
             existing_release = Release.query.filter_by(
@@ -110,8 +103,6 @@ class GitHubReceiver(Receiver):
             db.session.commit()
             process_release.delay(release.release_id)
 
-            # Unlock the event release
-            del state[release_id]
         except (ReleaseAlreadyReceivedError, RepositoryDisabledError) as e:
             event.response_code = 409
             event.response = dict(message=str(e), status=409)
