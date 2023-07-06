@@ -42,15 +42,17 @@ from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.local import LocalProxy
 from werkzeug.utils import cached_property
 
+from invenio_github.models import Release, ReleaseStatus, Repository
+from invenio_github.proxies import current_github
+from invenio_github.tasks import sync_hooks as sync_hooks_task
+from invenio_github.utils import iso_utcnow, parse_timestamp, utcnow
+
 from .errors import (
     RemoteAccountDataNotSet,
     RemoteAccountNotFound,
     RepositoryAccessError,
     RepositoryNotFoundError,
 )
-from .models import ReleaseStatus, Repository
-from .tasks import sync_hooks as sync_hooks_task
-from .utils import iso_utcnow, parse_timestamp, utcnow
 
 
 def check_repo_access_permissions(repo, user_id, repo_id, repo_name):
@@ -315,20 +317,20 @@ class GitHubAPI(object):
                 return True
         return False
 
-    def get_repository_releases(self, repo_name="", repo=None):
-        """Retrieve repository releases."""
-        if not (repo or repo_name):
-            raise ValueError("At least one of (repo, repo_name) is required")
+    def get_repository_releases(self, repo=None):
+        """Retrieve repository releases. Returns API release objects."""
+        if not (repo):
+            raise ValueError("Repo is required")
 
-        if not repo:
-            repo = Repository.get(name=repo_name)
-
-        check_repo_access_permissions(repo, self.user_id, repo.github_id, repo_name)
+        check_repo_access_permissions(repo, self.user_id, repo.github_id, repo.name)
 
         # Retrieve releases and sort them by creation date
-        release_objects = sorted(repo.releases.all(), key=lambda r: r.created)
+        release_instances = []
+        for release_object in repo.releases.order_by(Release.created):
+            release_instance = current_github.release_api_class(release_object)
+            release_instances.append(release_instance)
 
-        return release_objects
+        return release_instances
 
     def get_user_repositories(self):
         """Retrieves user repositories, containing db repositories plus remote repositories."""
@@ -608,4 +610,8 @@ class GitHubRelease(object):
 
     def resolve_record(self):
         """Resolves a record from the release. To be implemented by the API class implementation."""
+        raise NotImplementedError
+
+    def serialize_record(self):
+        """Serializes the release record."""
         raise NotImplementedError

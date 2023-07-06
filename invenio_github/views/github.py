@@ -123,7 +123,9 @@ def register_ui_routes(blueprint):
         return render_template(current_app.config["GITHUB_TEMPLATE_INDEX"], **ctx)
 
     @blueprint.route("/repository/<path:repo_name>")
+    @login_required
     @request_session_token()
+    @register_breadcrumb(blueprint, "breadcrumbs.settings.github.repo", _("Repository"))
     def get_repository(repo_name):
         """Displays one repository.
 
@@ -133,16 +135,12 @@ def register_ui_routes(blueprint):
         github = GitHubAPI(user_id=user_id)
 
         try:
-            # NOTE: Here we do not check for repository ownership, since it
-            # might have changed even though the user might have made releases
-            # in the past.
             repo = github.get_repository(repo_name)
             releases = github.get_repository_releases(repo=repo)
             return render_template(
                 current_app.config["GITHUB_TEMPLATE_VIEW"],
                 repo=repo,
                 releases=releases,
-                serializer=current_github.record_serializer,
             )
         except RepositoryAccessError as e:
             abort(403)
