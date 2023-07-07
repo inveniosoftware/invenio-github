@@ -84,7 +84,6 @@ def register_ui_routes(blueprint):
 
     @blueprint.route("/")
     @login_required
-    @request_session_token()
     @register_menu(  # TODO modify?
         blueprint,
         "settings.github",
@@ -106,19 +105,18 @@ def register_ui_routes(blueprint):
         """Display list of the user's repositories."""
         github = GitHubAPI(user_id=current_user.id)
         ctx = dict(connected=False)
+        if github.session_token:
+            # Generate the repositories view object
+            repos = github.get_user_repositories()
+            last_sync = github.get_last_sync_time()
 
-        # Generate the repositories view object
-        repos = github.get_user_repositories()
-        last_sync = github.get_last_sync_time()
-
-        ctx.update(
-            {
-                # TODO maybe can be refactored. e.g. have two templates and render the correct one.
-                "connected": True,
-                "repos": sorted(repos.items(), key=lambda x: x[1]["full_name"]),
-                "last_sync": last_sync,
-            }
-        )
+            ctx.update(
+                {
+                    "connected": True,
+                    "repos": sorted(repos.items(), key=lambda x: x[1]["full_name"]),
+                    "last_sync": last_sync,
+                }
+            )
 
         return render_template(current_app.config["GITHUB_TEMPLATE_INDEX"], **ctx)
 
@@ -142,9 +140,9 @@ def register_ui_routes(blueprint):
                 repo=repo,
                 releases=releases,
             )
-        except RepositoryAccessError as e:
+        except RepositoryAccessError:
             abort(403)
-        except NoResultFound as e:
+        except NoResultFound:
             abort(404)
 
 
@@ -152,6 +150,7 @@ def register_api_routes(blueprint):
     """Register API routes."""
 
     @login_required
+    @request_session_token()
     @blueprint.route("/user/github/repositories/sync", methods=["POST"])
     def sync_user_repositories():
         """Synchronizes user repos.
