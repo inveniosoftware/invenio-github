@@ -25,6 +25,7 @@
 """Invenio module that adds GitHub integration to the platform."""
 
 import json
+from abc import abstractmethod
 from contextlib import contextmanager
 from copy import deepcopy
 
@@ -56,10 +57,12 @@ from .errors import (
 )
 
 
-def check_repo_access_permissions(repo, user_id, repo_id, repo_name):
+def check_repo_access_permissions(repo, user_id):
     """Checks permissions from user on repo."""
     if repo and repo.user_id and repo.user_id != int(user_id):
-        raise RepositoryAccessError(user=user_id, repo=repo_name, repo_id=repo_id)
+        raise RepositoryAccessError(
+            user=user_id, repo=repo.name, repo_id=repo.github_id
+        )
 
 
 class GitHubAPI(object):
@@ -264,9 +267,7 @@ class GitHubAPI(object):
         if not repo:
             repo = Repository.create(self.user_id, repo_id, repo_name)
 
-        check_repo_access_permissions(
-            repo, self.user_id, repo_id=repo_id, repo_name=repo_name
-        )
+        check_repo_access_permissions(repo, self.user_id)
 
         # Create hook
         hook_config = dict(
@@ -307,9 +308,7 @@ class GitHubAPI(object):
         if not repo:
             raise RepositoryNotFoundError(repo_id)
 
-        check_repo_access_permissions(
-            repo, self.user_id, repo_id=repo_id, repo_name=name
-        )
+        check_repo_access_permissions(repo, self.user_id)
 
         ghrepo = self.api.repository_with_id(repo_id)
         if ghrepo:
@@ -322,9 +321,13 @@ class GitHubAPI(object):
                 return True
         return False
 
+    def repo_last_published_release(self, repo):
+        """Retrieves the repository last release."""
+        return repo.latest_release(ReleaseStatus.PUBLISHED)
+
     def get_repository_releases(self, repo):
         """Retrieve repository releases. Returns API release objects."""
-        check_repo_access_permissions(repo, self.user_id, repo.github_id, repo.name)
+        check_repo_access_permissions(repo, self.user_id)
 
         # Retrieve releases and sort them by creation date
         release_instances = []
@@ -339,9 +342,7 @@ class GitHubAPI(object):
         repos = deepcopy(self.user_available_repositories)
         if repos:
             # 'Enhance' our repos dict, from our database model
-            db_repos = self.user_enabled_repositories
-            for repo in db_repos:
-                # TODO here
+            for repo in self.user_enabled_repositories:
                 if str(repo.github_id) in repos:
                     release_instance = current_github.release_api_class(
                         repo.latest_release()
@@ -362,14 +363,14 @@ class GitHubAPI(object):
 
     def disable_repo(self, repo):
         """Disables an user repository if the user has permission to do so."""
-        check_repo_access_permissions(repo, self.user_id, repo.github_id, repo.name)
+        check_repo_access_permissions(repo, self.user_id)
 
         repo.hook = None
         repo.user_id = None
 
     def enable_repo(self, repo, hook):
         """Enables an user repository if the user has permission to do so."""
-        check_repo_access_permissions(repo, self.user_id, repo.github_id, repo.name)
+        check_repo_access_permissions(repo, self.user_id)
 
         repo.hook = hook
         repo.user_id = self.user_id
@@ -387,17 +388,17 @@ class GitHubAPI(object):
         extra_data = self.account.extra_data
         return extra_data["last_sync"]
 
-    def get_repository(self, repo_name):
+    def get_repository(self, repo_name=None, repo_github_id=None):
         """Retrieves one repository.
 
         Checks for access permission.
         """
-        repo = Repository.get(name=repo_name)
+        repo = Repository.get(name=repo_name, github_id=repo_github_id)
         if not repo:
             raise RepositoryNotFoundError(repo_name)
 
         # Might raise a RepositoryAccessError
-        check_repo_access_permissions(repo, self.user_id, repo.github_id, repo_name)
+        check_repo_access_permissions(repo, self.user_id)
 
         return repo
 
@@ -570,7 +571,6 @@ class GitHubRelease(object):
 
     # High level API
 
-    # TODO split maybe
     def release_failed(self):
         """Set release status to FAILED."""
         self.release_object.status = ReleaseStatus.FAILED
@@ -623,3 +623,20 @@ class GitHubRelease(object):
     def serialize_record(self):
         """Serializes the release record."""
         raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def badge_title(self):
+        """Stores a string to render in the record badge title (e.g. 'DOI')."""
+        return None
+
+    @property
+    @abstractmethod
+    def badge_value(self):
+        """Stores a string to render in the record badge value (e.g. '10.1234/invenio.1234')."""
+        return None
+
+    @property
+    def self_url(self):
+        """Release self url (e.g. github HTML url)."""
+        return self.release_payload.get("html_url")
