@@ -136,11 +136,17 @@ def register_ui_routes(blueprint):
 
         try:
             repo = github.get_repository(repo_name)
+            default_branch = (
+                github.account.extra_data.get("repos", [])
+                .get(str(repo.github_id), None)
+                .get("default_branch", None)
+            )
             releases = github.get_repository_releases(repo=repo)
             return render_template(
                 current_app.config["GITHUB_TEMPLATE_VIEW"],
                 repo=repo,
                 releases=releases,
+                default_branch=default_branch,
             )
         except RepositoryAccessError as e:
             abort(403)

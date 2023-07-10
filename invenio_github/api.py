@@ -385,10 +385,7 @@ class GitHubAPI(object):
             )
 
         extra_data = self.account.extra_data
-        last_sync = humanize.naturaltime(
-            (utcnow() - parse_timestamp(extra_data["last_sync"]))
-        )
-        return last_sync
+        return extra_data["last_sync"]
 
     def get_repository(self, repo_name):
         """Retrieves one repository.
