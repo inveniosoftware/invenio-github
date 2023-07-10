@@ -44,11 +44,11 @@ RELEASE_STATUS_TITLES = {
 }
 
 RELEASE_STATUS_ICON = {
-    "RECEIVED": "fa-spinner",
-    "PROCESSING": "fa-spinner",
-    "PUBLISHED": "fa-check",
-    "FAILED": "fa-times",
-    "DELETED": "fa-times",
+    "RECEIVED": "spinner icon",
+    "PROCESSING": "spinner icon",
+    "PUBLISHED": "check icon",
+    "FAILED": "times icon",
+    "DELETED": "times icon",
 }
 
 RELEASE_STATUS_COLOR = {

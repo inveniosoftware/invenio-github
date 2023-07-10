@@ -69,9 +69,7 @@ class InvenioGitHub(object):
         """Initialize configuration."""
         app.config.setdefault(
             "GITHUB_SETTINGS_TEMPLATE",
-            app.config.get(
-                "SETTINGS_TEMPLATE", "invenio_oauth2server/settings/base.html"
-            ),
+            app.config.get("SETTINGS_TEMPLATE", "invenio_github/settings/base.html"),
         )
 
         for k in dir(config):

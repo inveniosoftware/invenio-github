@@ -1,82 +1,65 @@
-{#
-# This file is part of Invenio.
-# Copyright (C) 2016 CERN.
-#
-# Invenio is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the
-# License, or (at your option) any later version.
-#
-# Invenio is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Invenio; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
+{# -*- coding: utf-8 -*-
+
+  This file is part of Invenio.
+  Copyright (C) 2023 CERN.
+
+  Invenio is free software; you can redistribute it and/or modify it
+  under the terms of the MIT License; see LICENSE file for more details.
 #}
-
 {%- macro panel_start(title, icon="", btn_text='', btn='', btn_icon='',
-                      btn_href='', btn_class='btn-default', btn_name='',
-                      btn2='', btn_icon2='', btn_href2='', btn_class2='btn-default',
-                      btn_name2='', id="", with_body=True, panel_extra_class="panel-default") %}
-{%- block panel_start scoped %}
-<div class="panel-group panel-bot-margin"{% if id %} id="{{id}}"{% endif %}>
-    <div class="panel {{panel_extra_class}}">
+  btn_href='', btn_class='', btn_id='', btn_name='',
+  id="", with_body=True, panel_extra_class="secondary") %}
+  {%- block panel_start scoped %}
+    <div class="ui segments" {% if id %}id="{{ id }}"{% endif %}>
+      <div class="ui segment {{ panel_extra_class }}">
         {%- block panel_heading scoped %}
-        <div class="panel-heading">
-            <strong>{%if icon %}<i class="{{icon}}"></i>{% endif %} {{title}}</strong>
-            {%- if btn and (btn_href or btn_text) -%}
-            <div class="pull-right" style="margin-left: 5px;">
-            {%- if btn_text %}
-                <small class="text-muted" style="padding-right: 10px;">(updated {{last_sync}})</small>
-            {%- endif %}
-            {%- if btn_href %}
-            <a class="pull-right btn btn-xs {{btn_class}}" href="{{btn_href}}">{% if btn_icon %}<i class="{{btn_icon}}"></i> {% endif %}{{btn}}</a>
-            {%- else %}
-            {%- if btn_name %}
-            <button name="{{btn_name}}" class="btn btn-xs {{btn_class}}">{% if btn_icon %}<i class="{{btn_icon}}"></i> {% endif %}{{btn}}</button>
-            {%- endif %}
-            {%- endif %}
+          <div class="ui equal width grid">
+            <div class="column">
+              <strong class="ui header">
+                {% if icon %}<i class="{{ icon }}"></i>{% endif %}
+                {{ title }}
+              </strong>
             </div>
-            {%- endif -%}
-            {%- if btn2 and btn_href2 -%}
-            <div class="pull-right" style="margin-left: 5px;">
-            {%- if btn_href2 %}
-            <a class="pull-right btn btn-xs {{btn_class2}}" href="{{btn_href2}}">{% if btn_icon2 %}<i class="{{btn_icon2}}"></i> {% endif %}{{btn2}}</a>
-            {%- else %}
-            {%- if btn_name2 %}
-            <button name="{{btn_name2}}" class="btn btn-xs {{btn_class2}}">{% if btn_icon2 %}<i class="{{btn_icon2}}"></i> {% endif %}{{btn2}}</button>
-            {%- endif %}
-            {%- endif %}
+            <div class="right floated right aligned column">
+              {%- if btn and (btn_href or btn_text) -%}
+                <div id="sync-result-message" class="ui label hidden"></div>
+                {%- if btn_text %}<small>{{ btn_text }}</small>{%- endif %}
+                {%- if btn_href %}
+                  <a class="ui basic tiny button {{ btn_class }}" href="{{ btn_href }}">
+                    {% if btn_icon %}<i class="{{ btn_icon }}"></i>{% endif %}
+                    {{ btn }}
+                  </a>
+                {%- elif btn_name and btn_id %}
+                  <button id="{{ btn_id }}" name="{{ btn_name }}" class="ui compact tiny button {{ btn_class }}">
+                    {% if btn_icon %}<i id="loaderIcon" class="{{ btn_icon }}"></i>{% endif %}
+                    {{ btn }}
+                  </button>
+                {%- endif %}
+              {%- endif -%}
             </div>
-            {%- endif -%}
-        </div>
+          </div>
         {%- endblock %}
-        {%- if with_body %}
-        <div class="panel-body">
-        {%- endif %}
-{%- endblock %}
+      </div>
+      {%- if with_body %}
+        <div class="ui segment">
+      {%- endif %}
+  {%- endblock %}
 {%- endmacro %}
-
 
 {%- macro panel_end(with_body=True) %}
-{%- block panel_end scoped %}
-        {%- if with_body %}
-        </div>
-        {%- endif %}
+  {%- block panel_end scoped %}
+    {%- if with_body %}</div>{%- endif %}
     </div>
-</div>
-{%- endblock %}
+  {%- endblock %}
 {%- endmacro %}
 
-{%- macro repo_switch(repo, repo_id, size='mini') %}
-{%- block repo_switch scoped %}
-  <i class="hook-status fa" data-repo-id="{{repo_id}}"></i>
-  {%- set inaccessible = (repo and repo.user_id and (repo.user_id != current_user.id)) %}
-  <span{%- if inaccessible %} data-toggle="tooltip" data-placement="top" title="{{_('This repository is managed by another user of your GitHub organization.')}}"{%- endif %}>
-  <input type="checkbox"{{' disabled' if inaccessible}}{{ ' checked' if repo and repo.enabled }} data-size="{{size}}" data-animate="true" data-repo-id="{{repo_id}}">
-  </span>
-{%- endblock %}
+{%- macro repo_switch(repo, repo_id) %}
+  {%- block repo_switch scoped %}
+    {%- set inaccessible = (repo and repo.user_id and (repo.user_id != current_user.id)) %}
+    <div class="ui toggle checkbox"
+         {% if inaccessible %} data-tooltip="{{ _('This repository is managed by another user of your GitHub organization.') }}" {% endif %}>
+      <input type="checkbox" {{' disabled' if inaccessible}}{{ ' checked' if repo and repo.enabled }} data-repo-id="{{ repo_id }}" />
+      <label></label>
+    </div>
+  {%- endblock %}
 {%- endmacro %}
