@@ -200,7 +200,7 @@ def register_api_routes(blueprint):
         try:
             github = GitHubAPI(user_id=current_user.id)
 
-            repos = github.account.extra_data["repos"]
+            repos = github.account.extra_data.get("repos", [])
             create_success = github.create_hook(
                 repository_id, repos[repository_id]["full_name"]
             )

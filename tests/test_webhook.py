@@ -27,6 +27,7 @@ import json
 # from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_webhooks.models import Event
 
+from invenio_github.api import GitHubAPI
 from invenio_github.models import ReleaseStatus, Repository
 
 
@@ -39,15 +40,15 @@ def test_webhook_post(app, db, tester_id, remote_token, github_api):
     hook = 1234
     tag = "v1.0"
 
-    # Create a repository
     repo = Repository.get(github_id=repo_id, name=repo_name)
     if not repo:
         repo = Repository.create(tester_id, repo_id, repo_name)
 
-    # Enable repository webhook.
-    Repository.enable(repo, tester_id, hook)
+    api = GitHubAPI(tester_id)
 
-    # JSON payload parsing.
+    # Enable repository webhook.
+    api.enable_repo(repo, hook)
+
     payload = json.dumps(fixtures.PAYLOAD("auser", repo_name, repo_id, tag))
     headers = [("Content-Type", "application/json")]
     with app.test_request_context(headers=headers, data=payload):
@@ -82,8 +83,10 @@ def test_webhook_post_fail(app, tester_id, remote_token, github_api):
     if not repo:
         repo = Repository.create(tester_id, repo_id, repo_name)
 
+    api = GitHubAPI(tester_id)
+
     # Enable repository webhook.
-    Repository.enable(repo, tester_id, hook)
+    api.enable_repo(repo, hook)
 
     # Create an invalid payload (fake repo)
     fake_payload = json.dumps(
