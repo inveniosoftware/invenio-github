@@ -181,37 +181,6 @@ class Repository(db.Model, Timestamp):
         ).one_or_none()
         return repo
 
-    @classmethod
-    def enable(cls, repo, user_id, hook):
-        """Enable webhooks for a repository.
-
-        If the repository does not exist it will create one.
-
-        :param user_id: User identifier.
-        :param repo_id: GitHub repository identifier.
-        :param name: Fully qualified name of the repository.
-        :param hook: GitHub hook identifier (hook id).
-        """
-        repo.hook = hook
-        repo.user_id = user_id
-        db.session.add(repo)
-        return repo
-
-    @classmethod
-    def disable(cls, repo):
-        """Disable webhooks for a repository.
-
-        Disables the webhook from a repository if it exists in the DB.
-
-        :param user_id: User identifier.
-        :param repo_id: GitHub id of the repository.
-        :param name: Fully qualified name of the repository.
-        """
-        repo.hook = None
-        repo.user_id = None
-        db.session.add(repo)
-        return repo
-
     @property
     def enabled(self):
         """Return if the repository has webhooks enabled."""

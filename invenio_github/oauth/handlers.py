@@ -67,7 +67,7 @@ def disconnect_handler(remote):
         ProviderToken.query.filter_by(id=webhook_token_id).delete()
 
         # Disable every GitHub webhooks from our side
-        repos = github.user_repositories
+        repos = github.user_enabled_repositories
         for repo in repos:
             github.disable_repo(repo)
 

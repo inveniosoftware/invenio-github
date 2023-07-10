@@ -26,6 +26,7 @@
 
 import json
 from contextlib import contextmanager
+from copy import deepcopy
 
 import github3
 import humanize
@@ -75,8 +76,12 @@ class GitHubAPI(object):
 
     @cached_property
     def access_token(self):
-        """Return OAuth access token's vlaue."""
-        return RemoteToken.get(self.user_id, self.remote.consumer_key).access_token
+        """Return OAuth access token's value."""
+        token = RemoteToken.get(self.user_id, self.remote.consumer_key)
+        if not token:
+            # The token is not yet in DB, it is retrieved from the request session.
+            return self.remote.get_request_token()[0]
+        return token.access_token
 
     @property
     def session_token(self):
@@ -238,9 +243,9 @@ class GitHubAPI(object):
             repo = Repository.create(self.user_id, repo_id, gh_repo.full_name)
 
         if hook:
-            Repository.enable(repo, self.user_id, hook.id)
+            self.enable_repo(repo, hook.id)
         else:
-            Repository.disable(repo)
+            self.disable_repo(repo)
 
     def check_sync(self):
         """Check if sync is required based on last sync date."""
@@ -290,7 +295,7 @@ class GitHubAPI(object):
             else:
                 hook.edit(config=hook_config, events=["release"])
 
-            Repository.enable(repo, self.user_id, hook.id)
+            self.enable_repo(repo, hook.id)
             return True
 
         return False
@@ -313,15 +318,12 @@ class GitHubAPI(object):
             )
             hook = next(hooks, None)
             if not hook or hook.delete():
-                Repository.disable(repo)
+                self.disable_repo(repo)
                 return True
         return False
 
-    def get_repository_releases(self, repo=None):
+    def get_repository_releases(self, repo):
         """Retrieve repository releases. Returns API release objects."""
-        if not (repo):
-            raise ValueError("Repo is required")
-
         check_repo_access_permissions(repo, self.user_id, repo.github_id, repo.name)
 
         # Retrieve releases and sort them by creation date
@@ -334,34 +336,43 @@ class GitHubAPI(object):
 
     def get_user_repositories(self):
         """Retrieves user repositories, containing db repositories plus remote repositories."""
-        repos = self.user_remote_repositories
+        repos = deepcopy(self.user_available_repositories)
         if repos:
             # 'Enhance' our repos dict, from our database model
-            db_repos = self.user_repositories
+            db_repos = self.user_enabled_repositories
             for repo in db_repos:
-                repos[str(repo.github_id)]["instance"] = repo
-                repos[str(repo.github_id)]["latest"] = GitHubRelease(
-                    repo.latest_release()
-                )
+                # TODO here
+                if str(repo.github_id) in repos:
+                    release_instance = current_github.release_api_class(
+                        repo.latest_release()
+                    )
+                    repos[str(repo.github_id)]["instance"] = repo
+                    repos[str(repo.github_id)]["latest"] = release_instance
         return repos
 
     @property
-    def user_repositories(self):
+    def user_enabled_repositories(self):
         """Retrieve user repositories from the model."""
-        db_repos = Repository.query.filter(Repository.user_id == self.user_id).all()
-        return db_repos
+        return Repository.query.filter(Repository.user_id == self.user_id)
 
     @property
-    def user_remote_repositories(self):
+    def user_available_repositories(self):
         """Retrieve user repositories from user's remote data."""
-        extra_data = self.account.extra_data
-        repos = extra_data.get("repos", [])
-        return repos
+        return self.account.extra_data.get("repos", [])
 
     def disable_repo(self, repo):
-        """Disables all current user repositories."""
-        assert repo.user_id == self.user_id
-        Repository.disable(repo)
+        """Disables an user repository if the user has permission to do so."""
+        check_repo_access_permissions(repo, self.user_id, repo.github_id, repo.name)
+
+        repo.hook = None
+        repo.user_id = None
+
+    def enable_repo(self, repo, hook):
+        """Enables an user repository if the user has permission to do so."""
+        check_repo_access_permissions(repo, self.user_id, repo.github_id, repo.name)
+
+        repo.hook = hook
+        repo.user_id = self.user_id
 
     def get_last_sync_time(self):
         """Retrieves the last sync delta time from github's client extra data.

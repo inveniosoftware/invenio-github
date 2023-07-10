@@ -53,9 +53,8 @@ def test_real_process_release_task(
     repo_name = "repo-1"
     repo_id = 1
 
-    # Create the repository that will make the release
     repo = Repository.create(tester_id, repo_id, repo_name)
-    Repository.enable(repo, tester_id, hook=1234)
+    api.enable_repo(repo, 12345)
     event = Event(
         receiver_id="github",
         user_id=tester_id,
