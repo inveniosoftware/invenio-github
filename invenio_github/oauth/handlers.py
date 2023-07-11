@@ -56,7 +56,7 @@ def disconnect_handler(remote):
     if external_ids:
         oauth_unlink_external_id(dict(id=external_ids[0], method=external_method))
 
-    github = GitHubAPI(user_id=current_user.id)
+    github = GitHubAPI(user_id=int(current_user.id))
     token = github.session_token
 
     if token:
@@ -67,15 +67,17 @@ def disconnect_handler(remote):
         ProviderToken.query.filter_by(id=webhook_token_id).delete()
 
         # Disable every GitHub webhooks from our side
-        repos = github.user_enabled_repositories
+        repos = github.user_enabled_repositories.all()
+        repos_with_hooks = []
         for repo in repos:
+            if repo.hook:
+                repos_with_hooks.append((repo.github_id, repo.hook))
             github.disable_repo(repo)
 
         # Commit any changes before running the ascynhronous task
         db.session.commit()
 
         # Send Celery task for webhooks removal and token revocation
-        repos_with_hooks = [(r.github_id, r.hook) for r in repos if r.hook]
         disconnect_github.delay(token.access_token, repos_with_hooks)
 
         # Delete the RemoteAccount (along with the associated RemoteToken)
