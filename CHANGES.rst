@@ -25,6 +25,12 @@
 Changes
 =======
 
+Version v1.0.0b2 (released 2023-07-17)
+
+- global: restrain extension behind feature flag
+- api: add record serialization
+- handlers: fix hooks serialization
+
 Version v1.0.0b1 (released 2023-07-03)
 
 - Initial beta release.
