@@ -23,29 +23,36 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
 
-include *.rst
-include *.sh
+exclude .dockerignore
+exclude .editorconfig
+exclude .tx/config
+exclude pytest.ini
 include *.txt
-include .dockerignore
-include .editorconfig
-include .tx/config
+include MAINTAINERS
+include *.rst
+include babel.ini
 include .lgtm
 include LICENSE
-include MAINTAINERS
-include babel.ini
-include docs/requirements.txt
-include pytest.ini
+include .prettierrc
+include *.yml
+include run-js-linter.sh
+include run-tests.sh
+include run-i18n-tests.sh
+prune docs/_build
+prune docs/_build
+prune tests
+recursive-include .github/workflows *.yml
 recursive-include docs *.bat
 recursive-include docs *.py
 recursive-include docs *.rst
+recursive-include docs *.txt
 recursive-include docs Makefile
-recursive-include examples *.py
-recursive-include invenio_github *.css
 recursive-include invenio_github *.html
 recursive-include invenio_github *.js
-recursive-include invenio_github *.png
-recursive-include invenio_github *.po *.pot *.mo
-recursive-include invenio_github *.scss
-recursive-include invenio_github *.ttf
-recursive-include tests *.py
+recursive-include invenio_github *.json
+recursive-include invenio_github *.less
+recursive-include invenio_github *.mo
+recursive-include invenio_github *.po
+recursive-include invenio_github *.pot
+recursive-include invenio_github *.py
 include .git-blame-ignore-revs
