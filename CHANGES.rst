@@ -25,6 +25,11 @@
 Changes
 =======
 
+Version v1.0.0b5 (released 2023-07-17)
+
+- setup: enable tests
+- setup: update Manifest.in
+
 Version v1.0.0b4 (released 2023-07-17)
 
 - alembic: add webhook dependency in alembic recipes
