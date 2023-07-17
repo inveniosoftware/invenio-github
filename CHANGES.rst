@@ -25,6 +25,10 @@
 Changes
 =======
 
+Version v1.0.0b4 (released 2023-07-17)
+
+- alembic: add webhook dependency in alembic recipes
+
 Version v1.0.0b3 (released 2023-07-17)
 
 - alembic: add alembic recipes
