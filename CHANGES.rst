@@ -25,6 +25,10 @@
 Changes
 =======
 
+Version v1.0.0b3 (released 2023-07-17)
+
+- alembic: add alembic recipes
+
 Version v1.0.0b2 (released 2023-07-17)
 
 - global: restrain extension behind feature flag
