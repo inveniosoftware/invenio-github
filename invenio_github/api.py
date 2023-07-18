@@ -323,7 +323,9 @@ class GitHubAPI(object):
 
     def repo_last_published_release(self, repo):
         """Retrieves the repository last release."""
-        return repo.latest_release(ReleaseStatus.PUBLISHED)
+        release_object = repo.latest_release(ReleaseStatus.PUBLISHED)
+        release_instance = current_github.release_api_class(release_object)
+        return release_instance
 
     def get_repository_releases(self, repo):
         """Retrieve repository releases. Returns API release objects."""
@@ -634,9 +636,9 @@ class GitHubRelease(object):
     @abstractmethod
     def badge_value(self):
         """Stores a string to render in the record badge value (e.g. '10.1234/invenio.1234')."""
-        return None
+        raise NotImplementedError
 
     @property
-    def self_url(self):
+    def record_url(self):
         """Release self url (e.g. github HTML url)."""
-        return self.release_payload.get("html_url")
+        raise NotImplementedError

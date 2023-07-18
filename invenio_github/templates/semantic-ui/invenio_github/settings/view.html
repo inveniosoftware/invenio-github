@@ -8,17 +8,14 @@
 #}
 
 {%- import "invenio_github/settings/helpers.html" as helpers with context %}
+{%- from "invenio_github/helpers.html" import doi_badge with context -%}
+
 {%- extends config.GITHUB_SETTINGS_TEMPLATE %}
 
 {%- block settings_content %}
   {%- set github_rel_url = 'https://github.com/{0}/releases/new'.format(repo.name) %}
-  {%- set latest_success_pid = None %}
-  {%- set latest_published = repo.latest_release(status='D') %}
   {% set active = true %}
-  {%- if latest_published %}
-    {%- set latest_success_pid = latest_published.release_id %}
-  {%- endif %}
-  {%- block repo_details_header %}
+  {%- block repo_details_header scoped %}
   <div class="repositories-list">
     <div class="ui grid">
       <div class="eleven wide column">
@@ -26,6 +23,12 @@
           <i class="github icon"></i>
           {{ repo.name }}
         </h1>
+          {%- if latest_release.record %}
+            {%- set id_doi = latest_release.record.pids.get('doi', {}).get('identifier') %}
+          {%- endif %}
+          {%- if id_doi %}
+            <p>{{ doi_badge(id_doi, doi_url=latest_release.record_url, github_id=repo.github_id) }}</p>
+          {%- endif %}
       </div>
       <div class="four wide right aligned column">
         <div id="repo-switch-message" class="ui label hidden"></div>
@@ -134,6 +137,18 @@
                               {{ release.release_object.tag }} &nbsp; {%- if release.record %}{{ release.record.data["metadata"]["title"] }}{%- endif %}
                             </h5>
                           </a>
+                          <br>
+                          {%- if release.record %}
+                            {%- set release_doi = release.record.pids.get('doi', {}).get('identifier') %}
+                          {%- endif %}
+                          {%- if release_doi %}
+                            <p>
+                              <a href={{release.record_url}}>
+                                <i class="barcode icon"></i>
+                                DOI: {{release_doi}}
+                              </a>
+                            </p>
+                          {%- endif %}
                           <br>
                           <p>
                             <a href="{{ release.event.payload.release.html_url if release.event else 'https://github.com/{0}/releases/tag/{1}'.format(repo.name, release.model.tag) }}">
