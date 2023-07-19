@@ -24,7 +24,7 @@
 
 from functools import wraps
 
-from flask import Blueprint, abort, current_app, render_template
+from flask import Blueprint, abort, current_app, render_template, request
 from flask_breadcrumbs import register_breadcrumb
 from flask_login import current_user, login_required
 from flask_menu import register_menu
@@ -67,7 +67,8 @@ def create_ui_blueprint(app):
         url_prefix="/account/settings/github",
     )
     if app.config.get("GITHUB_INTEGRATION_ENABLED", False):
-        register_ui_routes(blueprint)
+        with app.app_context():  # Todo: Temporary fix, it should be removed when inveniosoftware/invenio-theme#355 is merged
+            register_ui_routes(blueprint)
     return blueprint
 
 
@@ -87,18 +88,14 @@ def register_ui_routes(blueprint):
     @register_menu(  # TODO modify?
         blueprint,
         "settings.github",
-        # TODO substitute github for icon + 'Github'
-        _("Github"),
-        # _(
-        #     "%(icon)s GitHub",
-        #     icon=make_lazy_string(
-        #         lambda: '<i class="{icon}"></i>'.format(
-        #             icon=current_theme_icons.github
-        #         )  # TODO confirm if icon gets picked
-        #     ),
-        # ),
-        order=10,  # TODO confirm
-        # active_when=lambda: request.endpoint.startswith("invenio_github."),
+        _(
+            "%(icon)s GitHub",
+            icon=make_lazy_string(
+                lambda: f'<i class="{current_theme_icons.github}"></i>'
+            ),
+        ),
+        order=10,
+        active_when=lambda: request.endpoint.startswith("invenio_github."),
     )
     @register_breadcrumb(blueprint, "breadcrumbs.settings.github", _("GitHub"))
     def get_repositories():

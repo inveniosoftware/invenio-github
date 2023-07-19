@@ -8,34 +8,52 @@
 #}
 {%- from "invenio_github/helpers.html" import doi_badge with context -%}
 {%- set release = repo.get('latest') %}
+
 {%- block repository_item %}
-  <div class="ui grid">
-    <div class="ten wide column">
-      <div class="ui basic segment">
-        <h4>
-          <a href="https://github.com/{{ repo.full_name }}" data-tooltip="{{ _('Go to GitHub.') }}">
-            <i class="github icon"></i>
-          </a>
-          <a href="{{ url_for('.get_repository', repo_name=repo.full_name) }}">{{ repo.full_name }}</a>
-        </h4>
-        {%- if release.record %}
-          {%- set id_doi = release.record.pids.get('doi', {}).get('identifier') %}
-        {%- endif %}
-        {%- if id_doi %}
-          <p>
-            {{ doi_badge(id_doi, doi_url=release.record_url, github_id=repo_id) }}
-          </p>
-        {%- endif %}
+  <div class="ui grid repository-item">
+    <div class="thirteen wide computer thirteen wide tablet twelve wide mobile column">
+      <div class="flex column-mobile column-tablet justify-space-between">
+        <div class="flex align-items-center justify-space-between wrap mt-5 mb-5 rel-mr-1">
+          <div class="flex align-items-center mb-5 mt-5">
+            <a
+              href="https://github.com/{{ repo.full_name }}"
+              data-tooltip="{{ _('Go to GitHub.') }}"
+              aria-label="{{ _('Visit repository on GitHub:') }} {{ repo.full_name }}"
+              target="_blank"
+            >
+              <i class="github icon" aria-hidden="true"></i>
+            </a>
+
+            <a
+              href="{{ url_for('.get_repository', repo_name=repo.full_name) }}"
+              class="rel-mr-1"
+            >
+              <b>{{ repo.full_name }}</b>
+            </a>
+          </div>
+
+          {%- if release and release.record %}
+            {%- set release_record_doi = release.record.pids.get('doi', {}).get('identifier') %}
+            {%- set conceptid_doi_url = release.record.links.parent_doi %}
+          {%- endif %}
+
+          {%- if release_record_doi %}
+            {{ doi_badge(release_record_doi, doi_url=conceptid_doi_url, github_id=repo_id) }}
+          {%- endif %}
+        </div>
+
+
+        <div>
+          <div class="repo-switch-message ui tiny compact icon message pt-10 pb-10 rel-pr-1 rel-pl-1 mt-5 mb-5 hidden">
+            <i class="icon" aria-hidden="true"></i>
+            <p role="alert" class="content m-0"></p>
+          </div>
+        </div>
       </div>
     </div>
-    <div class="four wide column">
-      <div id="repo-switch-message" class="ui label hidden"></div>
-    </div>
-    <div class="two wide column">
+
+    <div class="three wide computer three wide tablet four wide mobile middle aligned right aligned column">
       {{ helpers.repo_switch(repo.instance, repo_id) }}
     </div>
   </div>
-  {%- if not loop.last %}
-    <div class="ui divider"></div>
-  {%- endif %}
 {%- endblock %}
