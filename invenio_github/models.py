@@ -44,19 +44,19 @@ RELEASE_STATUS_TITLES = {
 }
 
 RELEASE_STATUS_ICON = {
-    "RECEIVED": "spinner icon",
-    "PROCESSING": "spinner icon",
+    "RECEIVED": "spinner loading icon",
+    "PROCESSING": "spinner loading icon",
     "PUBLISHED": "check icon",
     "FAILED": "times icon",
     "DELETED": "times icon",
 }
 
 RELEASE_STATUS_COLOR = {
-    "RECEIVED": "default",
-    "PROCESSING": "default",
-    "PUBLISHED": "success",
-    "FAILED": "danger",
-    "DELETED": "danger",
+    "RECEIVED": "warning",
+    "PROCESSING": "warning",
+    "PUBLISHED": "positive",
+    "FAILED": "negative",
+    "DELETED": "negative",
 }
 
 

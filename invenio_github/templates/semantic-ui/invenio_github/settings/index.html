@@ -14,151 +14,162 @@
 {%- block settings_content %}
   {%- if connected %}
     {%- block repositories_get_started %}
-      {{ helpers.panel_start(_('GitHub Repositories') ,
-        with_body=False,
-        icon="github icon",
-        btn=_('Sync now ...'),
-        btn_icon='sync alternate icon',
-        btn_id='sync_repos',
-        btn_name='sync-repos',
-        btn_text=_('(updated {})').format(last_sync|naturaltime),
-        id="github-view",
-      ) }}
+      {{
+        helpers.panel_start(
+          _('GitHub Repositories'),
+          icon="github icon",
+          btn_text=_('Sync now'),
+          btn_loading_text=_('Syncing'),
+          btn_icon='sync alternate icon',
+          btn_id='sync_repos',
+          btn_name='sync-repos',
+          btn_help_text=_('(updated {})').format(last_sync|naturaltime),
+          loaded_message_id='sync-result-message',
+          id="github-view",
+        )
+      }}
+
       <div class="ui segment">
-        <div class="ui two column centered grid">
-          <div class="column">
-            <h1 class="ui center aligned header">
-              <i class="github icon"></i>{{ _("Get started") }}
-            </h1>
+        <div class="ui grid">
+          <div class="sixteen wide centered column">
+            <h3 class="ui large header mt-10">
+              <i class="github icon" aria-hidden="true"></i>{{ _("Get started") }}
+            </h3>
           </div>
-          <div class="three column row">
+
+          <div class="three column stackable tablet-mobile row">
             <div class="column">
-              <h2>
-                <strong>1</strong> <small>{{ _("Flip the switch") }}</small>
-              </h2>
+              <h4 class="ui medium header">1 {{ _("Flip the switch") }}</h4>
               <div class="ui divider"></div>
-              {{ _('Select the repository you want to preserve, and toggle
-              the switch below to turn on automatic preservation of your software.') }}
-            </div>
-            <div class="column">
-              <h2>
-                <strong>2</strong> <small>{{ _("Create a release") }}</small>
-              </h2>
-              <div class="ui divider"></div>
-              {{ _('Go to GitHub and <a href="https://help.github.com/articles/creating-releases">create a release</a>. {}
-              will automatically download a .zip-ball of each new release and register a DOI.')
-              .format(config.THEME_SITENAME | default('System')) }}
-            </div>
-            <div class="column">
-              <h2>
-                <strong>3</strong> <small>{{ _("Get the badge") }}</small>
-              </h2>
-              <div class="ui divider"></div>
-              {{ _('After your first release, a DOI badge that you can include in GitHub
-              README will appear next to your repository below.') }}
-            </div>
-          </div>
-          <div class="three column row">
-            <div class="column centered">
-              <br />
-              <div class="ui toggle checkbox">
-                <input type="checkbox" checked>
-                <label></label>
+              <p>
+                {{ _('Select the repository you want to preserve, and toggle
+                the switch below to turn on automatic preservation of your software.') }}
+              </p>
+
+              <div class="text-align-center rel-mt-1">
+                <div class="ui toggle on-off checkbox">
+                  <input
+                    id="example-switch"
+                    name="example-switch"
+                    type="checkbox"
+                    checked
+                  >
+                  <label for="example-switch">
+                    <small class="text-muted ml-5">
+                      {{ _("(example)") }}
+                    </small>
+                  </label>
+                </div>
               </div>
             </div>
-            <div class="column"></div>
-            <div class="column centered">
-              <br>
-              {#- TODO remove hardcoding Zenodo stuff #}
-              <a href="https://doi.org/10.5281/zenodo.8475">
-                <img src="{{ url_for('invenio_formatter_badges.badge', title='doi', value='10.5281/zenodo.8475', ext='svg') }}" alt="10.5281/zenodo.8475">
-              </a>
-              <br>
-              <small>{{ _("(example)") }}</small>
+
+            <div class="column">
+              <h4 class="ui medium header">2 {{ _("Create a release") }}</h4>
+              <div class="ui divider"></div>
+              <p>
+                {{ _('Go to GitHub and <a href="https://help.github.com/articles/creating-releases" target="_blank">create a release <i class="small icon external" aria-hidden="true"></i></a>. {}
+                will automatically download a .zip-ball of each new release and register a DOI.')
+                .format(config.THEME_SITENAME | default('System')) }}
+              </p>
+            </div>
+
+            <div class="column">
+              <h4 class="ui medium header">3 {{ _("Get the badge") }}</h4>
+              <div class="ui divider"></div>
+              <p>
+                {{ _('After your first release, a DOI badge that you can include in GitHub
+                README will appear next to your repository below.') }}
+              </p>
+
+              <div class="flex align-items-center justify-center rel-mt-1">
+                {#- TODO remove hardcoding Zenodo stuff #}
+                <a href="https://doi.org/10.5281/zenodo.8475">
+                  <img
+                    src="{{ url_for('invenio_formatter_badges.badge', title='doi', value='10.5281/zenodo.8475', ext='svg') }}"
+                    alt="{{ _('Example DOI:') }} 10.5281/zenodo.8475"
+                    class="mt-5 mr-5"
+                  >
+                </a>
+                <small class="text-muted">
+                  {{ _("(example)") }}
+                </small>
+              </div>
             </div>
           </div>
         </div>
       </div>
-      {{ helpers.panel_end(with_body=False) }}
+      {{ helpers.panel_end() }}
     {%- endblock %}
 
     {%- if repos %}
       {%- block enabled_repositories %}
-        {%- for repo_id, repo in repos if repo.instance and repo.instance.hook %}
-          {%- if loop.first %}
-            {{ helpers.panel_start(_('Enabled Repositories') , with_body=False) }}
-            <div class="ui segment">
-          {%- endif %}
-          <div class="repositories-list">
-            {% include "invenio_github/settings/index_item.html" with context %}
-          </div>
-          {%- if loop.last %}
-            </div>
-            {{ helpers.panel_end(with_body=False) }}
-          {%- endif %}
-        {%- endfor %}
+        {{ helpers.panel_start(_('Enabled Repositories')) }}
+
+        <ul class="ui segments no-border no-border-radius-top no-style-list m-0 p-0">
+          {%- for repo_id, repo in repos if repo.instance and repo.instance.hook %}
+            <li class="ui segment {{ 'no-border-radius-top' if loop.last else 'no-border-radius' }} left-border positive m-0">
+              {% include "invenio_github/settings/index_item.html" with context %}
+            </li>
+          {%- endfor %}
+        </ul>
+
+        {{ helpers.panel_end() }}
       {%- endblock %}
     {% endif %}
 
     {%- block disabled_repositories %}
-      {{ helpers.panel_start(_('Repositories') , with_body=False) }}
-      <div class="ui segment">
-        {%- block repositories_tooltip %}
-          <p>
-            <small>
-              {{ _('If your organization\'s repositories do not show up in the list, please
-              ensure you have enabled <a href="https://help.github.com/articles/approving-third-party-applications-for-your-organization/">third-party
-              access</a> to the {} application. Private repositories are not supported.')
-              .format(config.THEME_SITENAME | default('Invenio')) }}
-            </small>
-          </p>
-        {%- endblock %}
-        {%- if not repos %}
-          <p>
-            {{_('You have no repositories on GitHub.
-            <br>
-            Go to <a href="https://github.com/new">GitHub</a> and create your first or
-            click Sync-button to synchronize latest changes from GitHub.')}}
-          </p>
-        {%- else %}
+      {{ helpers.panel_start(_('Repositories')) }}
+
+      {%- block repositories_tooltip %}
+        <p class="ui segment m-0">
+          <small>
+            {{ _('If your organization\'s repositories do not show up in the list, please
+            ensure you have enabled <a href="https://help.github.com/articles/approving-third-party-applications-for-your-organization/" target="_blank">third-party
+            access <i class="small icon external" aria-hidden="true"></i></a> to the {} application. Private repositories are not supported.')
+            .format(config.THEME_SITENAME | default('Invenio')) }}
+          </small>
+        </p>
+      {%- endblock %}
+
+      {%- if not repos %}
+        <p class="ui segment">
+          {{_('You have no repositories on GitHub.') }}
+          <br />
+          <br />
+          {{_('Go to <a href="https://github.com/new" target="_blank">GitHub <i class="small icon external" aria-hidden="true"></i></a> and create your first or
+          click Sync-button to synchronize latest changes from GitHub.')}}
+        </p>
+      {%- else %}
+        <ul class="ui segments no-border no-border-radius-top no-style-list m-0 p-0">
           {%- for repo_id, repo in repos if not repo.instance or not repo.instance.hook %}
-            {%- if loop.first %}
-              <div class="ui divider"></div>
-            {%- endif %}
-            <div class="repositories-list">
+            <li class="ui segment {{ 'no-border-radius-top' if loop.last else 'no-border-radius' }}">
               {% include "invenio_github/settings/index_item.html" with context %}
-            </div>
+            </li>
           {%- endfor %}
-        {% endif %}
-      </div>
-      {{ helpers.panel_end(with_body=False) }}
+        </ul>
+      {% endif %}
+
+      {{ helpers.panel_end() }}
     {%- endblock %}
 
   {#- If the user has not connected his GitHub account... #}
   {%- else %}
     {%- block connect_to_github %}
-      {{ helpers.panel_start(
-        _('GitHub'),
-        icon="github icon",
-      ) }}
-      <div class="ui one column grid">
-        <div class="row">
-          <div class="column centered">
-            <h1>{{ _('Software preservation made simple!') }}</h1>
-          </div>
-        </div>
-        <div class="row">
-          <div class="column centered">
-            <a class="ui basic button" href="{{ url_for('invenio_oauthclient.login', remote_app='github', next=url_for('invenio_github.get_repositories')) }}">
-              <i class="github icon"></i>
-              {{ _('Connect') }}
-            </a>
-          </div>
-        </div>
-        <div class="row">
-          <div class="column centered">
-            <p>{{ _('To get started, click "Connect" and we will get a list of your repositories from GitHub.') }}</p>
-          </div>
+      {{ helpers.panel_start(_('GitHub'), icon="github icon") }}
+      <div class="ui segment">
+        <div class="ui centered container">
+          <h2 class="ui huge header">{{ _('Software preservation made simple!') }}</h2>
+          <a
+            class="ui basic button rel-mt-1"
+            href="{{ url_for('invenio_oauthclient.login', remote_app='github', next=url_for('invenio_github.get_repositories')) }}"
+            aria-label="{{ _('Connect your GitHub account') }}"
+          >
+            <i class="github icon" aria-hidden="True"></i>
+            {{ _('Connect') }}
+          </a>
+          <p class="rel-mt-2">
+            {{ _('To get started, click "Connect" and we will get a list of your repositories from GitHub.') }}
+          </p>
         </div>
       </div>
       {{ helpers.panel_end() }}
