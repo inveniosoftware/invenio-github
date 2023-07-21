@@ -25,6 +25,10 @@
 Changes
 =======
 
+Version v1.0.0b6 (released 2023-07-21)
+
+- add github badges
+
 Version v1.0.0b5 (released 2023-07-17)
 
 - setup: enable tests
