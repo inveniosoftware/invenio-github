@@ -25,6 +25,10 @@
 Changes
 =======
 
+Version v1.0.0b7 (released 2023-07-24)
+
+- handlers: fix oauthclient import
+
 Version v1.0.0b6 (released 2023-07-21)
 
 - add github badges
