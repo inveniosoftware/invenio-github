@@ -25,6 +25,10 @@
 Changes
 =======
 
+Version v1.0.0 (released 2023-07-24)
+
+- inital public release
+
 Version v1.0.0b7 (released 2023-07-24)
 
 - handlers: fix oauthclient import
