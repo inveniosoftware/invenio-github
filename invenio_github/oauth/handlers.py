@@ -26,7 +26,7 @@ from flask import current_app, redirect, url_for
 from flask_login import current_user
 from invenio_db import db
 from invenio_oauth2server.models import Token as ProviderToken
-from invenio_oauthclient.utils import oauth_unlink_external_id
+from invenio_oauthclient import oauth_unlink_external_id
 
 from invenio_github.api import GitHubAPI
 from invenio_github.tasks import disconnect_github
