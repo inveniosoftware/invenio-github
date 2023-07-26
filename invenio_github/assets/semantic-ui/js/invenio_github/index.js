@@ -12,6 +12,28 @@ function addResultMessage(element, color, icon, message) {
   element.querySelector(".content").textContent = message;
 }
 
+// function from https://www.w3schools.com/js/js_cookies.asp
+function getCookie(cname) {
+  let name = cname + "=";
+  let decodedCookie = decodeURIComponent(document.cookie);
+  let ca = decodedCookie.split(";");
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) == " ") {
+      c = c.substring(1);
+    }
+    if (c.indexOf(name) == 0) {
+      return c.substring(name.length, c.length);
+    }
+  }
+  return "";
+}
+
+const REQUEST_HEADERS = {
+  "Content-Type": "application/json",
+  "X-CSRFToken": getCookie("csrftoken"),
+};
+
 const sync_button = document.getElementById("sync_repos");
 if (sync_button) {
   sync_button.addEventListener("click", function () {
@@ -23,9 +45,7 @@ if (sync_button) {
     const url = "/api/user/github/repositories/sync";
     const request = new Request(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: REQUEST_HEADERS,
     });
 
     buttonTextElem.innerHTML = loadingText;
@@ -39,13 +59,21 @@ if (sync_button) {
         loaderIcon.classList.remove("loading");
         buttonTextElem.innerHTML = buttonText;
         if (response.ok) {
-          addResultMessage(resultMessage, "positive", "checkmark", "Repositories synced successfully. Please reload the page."
+          addResultMessage(
+            resultMessage,
+            "positive",
+            "checkmark",
+            "Repositories synced successfully. Please reload the page."
           );
           setTimeout(function () {
             resultMessage.classList.add("hidden");
           }, 10000);
         } else {
-          addResultMessage(resultMessage,"negative", "cancel", `Request failed with status code: ${response.status}`
+          addResultMessage(
+            resultMessage,
+            "negative",
+            "cancel",
+            `Request failed with status code: ${response.status}`
           );
           setTimeout(function () {
             resultMessage.classList.add("hidden");
@@ -53,7 +81,12 @@ if (sync_button) {
         }
       } catch (error) {
         loaderIcon.classList.remove("loading");
-        addResultMessage(resultMessage, "negative", "cancel", `There has been a problem: ${error}`);
+        addResultMessage(
+          resultMessage,
+          "negative",
+          "cancel",
+          `There has been a problem: ${error}`
+        );
         setTimeout(function () {
           resultMessage.classList.add("hidden");
         }, 7000);
@@ -72,7 +105,9 @@ if (repositories) {
 }
 
 function sendEnableDisableRequest(checked, repo) {
-  const repo_id = repo.querySelector("input[data-repo-id]").getAttribute("data-repo-id");
+  const repo_id = repo
+    .querySelector("input[data-repo-id]")
+    .getAttribute("data-repo-id");
   const switchMessage = repo.querySelector(".repo-switch-message");
 
   let url;
@@ -86,9 +121,7 @@ function sendEnableDisableRequest(checked, repo) {
 
   const request = new Request(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: REQUEST_HEADERS,
   });
 
   sendRequest(request);
@@ -97,21 +130,33 @@ function sendEnableDisableRequest(checked, repo) {
     try {
       const response = await fetch(request);
       if (response.ok) {
-        addResultMessage(switchMessage, "positive", "checkmark", "Repository synced successfully. Please reload the page."
+        addResultMessage(
+          switchMessage,
+          "positive",
+          "checkmark",
+          "Repository synced successfully. Please reload the page."
         );
         setTimeout(function () {
           switchMessage.classList.add("hidden");
         }, 10000);
-      }
-      else {
-        addResultMessage(switchMessage, "negative", "cancel", `Request failed with status code: ${response.status}`
+      } else {
+        addResultMessage(
+          switchMessage,
+          "negative",
+          "cancel",
+          `Request failed with status code: ${response.status}`
         );
         setTimeout(function () {
           switchMessage.classList.add("hidden");
         }, 5000);
       }
     } catch (error) {
-      addResultMessage(switchMessage, "negative", "cancel", `There has been a problem: ${error}`);
+      addResultMessage(
+        switchMessage,
+        "negative",
+        "cancel",
+        `There has been a problem: ${error}`
+      );
       setTimeout(function () {
         switchMessage.classList.add("hidden");
       }, 7000);
@@ -119,47 +164,46 @@ function sendEnableDisableRequest(checked, repo) {
   }
 }
 
-
 // DOI badge modal
 $(".doi-badge-modal").modal({
   selector: {
-    close: ".close.button"
+    close: ".close.button",
   },
-  onShow: function() {
+  onShow: function () {
     const modalId = $(this).attr("id");
     const $modalTrigger = $(`#${modalId}-trigger`);
-    $modalTrigger.attr('aria-expanded', true);
+    $modalTrigger.attr("aria-expanded", true);
   },
-  onHide: function() {
+  onHide: function () {
     const modalId = $(this).attr("id");
     const $modalTrigger = $(`#${modalId}-trigger`);
-    $modalTrigger.attr('aria-expanded', false);
-  }
+    $modalTrigger.attr("aria-expanded", false);
+  },
 });
 
 $(".doi-modal-trigger").on("click", function (event) {
   const modalId = $(event.target).attr("aria-controls");
   $(`#${modalId}.doi-badge-modal`).modal("show");
-})
+});
 
 $(".doi-modal-trigger").on("keydown", function (event) {
-  if(event.key === "Enter") {
+  if (event.key === "Enter") {
     const modalId = $(event.target).attr("aria-controls");
     $(`#${modalId}.doi-badge-modal`).modal("show");
   }
-})
-
+});
 
 // ON OFF toggle a11y
 const $onOffToggle = $(".toggle.on-off");
 
-$onOffToggle && $onOffToggle.on("change", (event) => {
-  const target = $(event.target);
-  const $onOffToggleCheckedAriaLabel = target.data("checked-aria-label");
-  const $onOffToggleUnCheckedAriaLabel = target.data("unchecked-aria-label");
-  if (event.target.checked) {
-    target.attr("aria-label", $onOffToggleCheckedAriaLabel)
-  } else {
-    target.attr("aria-label", $onOffToggleUnCheckedAriaLabel)
-  }
-})
+$onOffToggle &&
+  $onOffToggle.on("change", (event) => {
+    const target = $(event.target);
+    const $onOffToggleCheckedAriaLabel = target.data("checked-aria-label");
+    const $onOffToggleUnCheckedAriaLabel = target.data("unchecked-aria-label");
+    if (event.target.checked) {
+      target.attr("aria-label", $onOffToggleCheckedAriaLabel);
+    } else {
+      target.attr("aria-label", $onOffToggleUnCheckedAriaLabel);
+    }
+  });
