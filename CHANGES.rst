@@ -25,6 +25,10 @@
 Changes
 =======
 
+Version v1.0.1 (released 2023-07-26)
+
+- ui: layout and styling improvements
+
 Version v1.0.0 (released 2023-07-24)
 
 - inital public release
