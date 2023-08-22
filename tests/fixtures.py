@@ -21,6 +21,11 @@
 # or submit itself to any jurisdiction.
 
 """Define fixtures for tests."""
+import os
+from base64 import b64encode
+from zipfile import ZipFile
+
+from six import BytesIO
 
 from invenio_github.api import GitHubRelease
 from invenio_github.models import ReleaseStatus
@@ -237,10 +242,6 @@ def github_repo_metadata(owner, repo, repo_id):
 
 def ZIPBALL():
     """Github repository ZIP fixture."""
-    from zipfile import ZipFile
-
-    from six import BytesIO
-
     memfile = BytesIO()
     zipfile = ZipFile(memfile, "w")
     zipfile.writestr("test.txt", "hello world")
@@ -461,9 +462,6 @@ def ORG(login):
 
 def github_file_contents(owner, repo, file_path, ref, data):
     """Github content fixture generator."""
-    import os
-    from base64 import b64encode
-
     c = dict(
         url="%s/%s" % (owner, repo),
         owner=owner,
