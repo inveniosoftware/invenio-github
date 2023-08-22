@@ -203,7 +203,7 @@ def test_repo_data_three():
     return {"name": "arepo", "id": 3}
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def github_api(
     running_app,
     db,
