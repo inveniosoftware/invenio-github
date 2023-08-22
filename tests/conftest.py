@@ -77,7 +77,7 @@ def app_config(app_config):
             github=GITHUB_REMOTE_REST_APP,
         ),
         SECRET_KEY="test_key",
-        SERVER_NAME="testserver",
+        SERVER_NAME="testserver.localdomain",
         SECURITY_PASSWORD_HASH="plaintext",
         SECURITY_PASSWORD_SCHEMES=["plaintext"],
         SECURITY_DEPRECATED_PASSWORD_SCHEMES=[],
