@@ -28,6 +28,7 @@ from __future__ import absolute_import, print_function
 
 from collections import namedtuple
 
+import github3
 import pytest
 from invenio_app.factory import create_api
 from invenio_oauthclient.contrib.github import REMOTE_APP as GITHUB_REMOTE_APP
@@ -37,6 +38,7 @@ from invenio_oauthclient.proxies import current_oauthclient
 from mock import MagicMock, patch
 
 from .fixtures import (
+    ZIPBALL,
     TestGithubRelease,
     github_file_contents,
     github_repo_metadata,
@@ -213,10 +215,6 @@ def github_api(
     test_user,
 ):
     """Github API mock."""
-    import github3
-
-    from . import fixtures
-
     mock_api = MagicMock()
     mock_api.session = MagicMock()
     mock_api.me.return_value = github3.users.User(
@@ -270,7 +268,7 @@ def github_api(
     repo_2.file_contents = MagicMock(side_effect=mock_file_contents)
 
     repo_3 = github3.repos.Repository(
-        fixtures.github_repo_metadata(
+        github_repo_metadata(
             "auser", test_repo_data_three["name"], test_repo_data_three["id"]
         ),
         mock_api.session,
@@ -292,7 +290,7 @@ def github_api(
     mock_api.repository.side_effect = mock_repo_by_name
     mock_api.markdown.side_effect = lambda x: x
     mock_api.session.head.return_value = MagicMock(status_code=200)
-    mock_api.session.get.return_value = MagicMock(raw=fixtures.ZIPBALL())
+    mock_api.session.get.return_value = MagicMock(raw=ZIPBALL())
 
     with patch("invenio_github.api.GitHubAPI.api", new=mock_api):
         with patch("invenio_github.api.GitHubAPI._sync_hooks"):
