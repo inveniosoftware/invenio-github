@@ -42,6 +42,7 @@ if (sync_button) {
     const buttonTextElem = document.getElementById("sync_repos_btn_text");
     const buttonText = buttonTextElem.innerHTML;
     const loadingText = sync_button.dataset.loadingText;
+
     const url = "/api/user/github/repositories/sync";
     const request = new Request(url, {
       method: "POST",
@@ -51,12 +52,22 @@ if (sync_button) {
     buttonTextElem.innerHTML = loadingText;
     loaderIcon.classList.add("loading");
 
+    function fetchWithTimeout (url, options, timeout = 7000) {
+      return Promise.race([
+        fetch(url, options),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), timeout)
+        )
+      ]);
+    }
+
     syncRepos(request);
 
     async function syncRepos(request) {
       try {
-        const response = await fetch(request);
+        const response = await fetchWithTimeout(request);
         loaderIcon.classList.remove("loading");
+        sync_button.classList.add("disabled");
         buttonTextElem.innerHTML = buttonText;
         if (response.ok) {
           addResultMessage(
@@ -65,6 +76,7 @@ if (sync_button) {
             "checkmark",
             "Repositories synced successfully. Please reload the page."
           );
+          sync_button.classList.remove("disabled");
           setTimeout(function () {
             resultMessage.classList.add("hidden");
           }, 10000);
@@ -78,18 +90,29 @@ if (sync_button) {
           setTimeout(function () {
             resultMessage.classList.add("hidden");
           }, 10000);
+          sync_button.classList.remove("disabled");
         }
       } catch (error) {
         loaderIcon.classList.remove("loading");
-        addResultMessage(
-          resultMessage,
-          "negative",
-          "cancel",
-          `There has been a problem: ${error}`
-        );
-        setTimeout(function () {
-          resultMessage.classList.add("hidden");
-        }, 7000);
+        if(error.message === "timeout"){
+          addResultMessage(
+            resultMessage,
+            "warning",
+            "hourglass",
+            "This action seems to take some time, refresh the page after several minutes to inspect the synchronisation."
+          );
+        }
+        else {
+          addResultMessage(
+            resultMessage,
+            "negative",
+            "cancel",
+            `There has been a problem: ${error}`
+          );
+           setTimeout(function () {
+            resultMessage.classList.add("hidden");
+          }, 7000);
+        }
       }
     }
   });

@@ -46,7 +46,7 @@ def get_pid_of_latest_release_or_404(**kwargs):
     repo = Repository.query.filter_by(**kwargs).first_or_404()
     release = repo.latest_release(ReleaseStatus.PUBLISHED)
     if release:
-        return GitHubRelease(release).pid
+        return GitHubRelease(release).record.pid
     abort(404)
 
 
