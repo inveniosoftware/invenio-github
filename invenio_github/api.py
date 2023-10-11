@@ -509,6 +509,7 @@ class GitHubRelease(object):
         ).contributors()
         contributors = list(contributors_iter)
         if contributors_iter.last_status == 200:
+
             def get_author(contributor):
                 r = requests.get(contributor["url"])
                 if r.status_code == 200:

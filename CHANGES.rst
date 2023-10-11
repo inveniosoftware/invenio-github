@@ -25,6 +25,10 @@
 Changes
 =======
 
+Version v1.0.4 (released 2023-10-11)
+
+- api: remove catch all block on contributors of release
+
 Version v1.0.3 (released 2023-10-11)
 
 - view: fix badge fetch by PID
