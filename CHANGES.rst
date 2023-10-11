@@ -25,6 +25,11 @@
 Changes
 =======
 
+Version v1.0.3 (released 2023-10-11)
+
+- view: fix badge fetch by PID
+- assets: fix timeout on long requests
+
 Version v1.0.2 (released 2023-07-26)
 
 - api: fix csrf errors on API
