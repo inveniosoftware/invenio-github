@@ -504,37 +504,33 @@ class GitHubRelease(object):
     @cached_property
     def contributors(self):
         """Get list of contributors to a repository."""
-        try:
-            contributors_iter = self.gh.api.repository_with_id(
-                self.repository_object.github_id
-            ).contributors()
-            contributors = list(contributors_iter)
-            if contributors_iter.last_status == 200:
+        contributors_iter = self.gh.api.repository_with_id(
+            self.repository_object.github_id
+        ).contributors()
+        contributors = list(contributors_iter)
+        if contributors_iter.last_status == 200:
+            def get_author(contributor):
+                r = requests.get(contributor["url"])
+                if r.status_code == 200:
+                    data = r.json()
+                    return data
 
-                def get_author(contributor):
-                    r = requests.get(contributor["url"])
-                    if r.status_code == 200:
-                        data = r.json()
-                        return data
-
-                # Sort according to number of contributions
-                contributors = sorted(
-                    contributors,
-                    key=lambda x: x.as_dict()["contributions"],
-                    reverse=True,
-                )
-                max_contributors = current_app.config.get(
-                    "GITHUB_MAX_CONTRIBUTORS_NUMBER", 30
-                )
-                contributors = [
-                    get_author(x.as_dict())
-                    for x in contributors[:max_contributors]
-                    if x.as_dict()["type"] == "User"
-                ]
-                contributors = filter(lambda x: x is not None, contributors)
-                return list(contributors)
-        except Exception:
-            return None
+            # Sort according to number of contributions
+            contributors = sorted(
+                contributors,
+                key=lambda x: x.as_dict()["contributions"],
+                reverse=True,
+            )
+            max_contributors = current_app.config.get(
+                "GITHUB_MAX_CONTRIBUTORS_NUMBER", 30
+            )
+            contributors = [
+                get_author(x.as_dict())
+                for x in contributors[:max_contributors]
+                if x.as_dict()["type"] == "User"
+            ]
+            contributors = filter(lambda x: x is not None, contributors)
+            return list(contributors)
 
     # Helper functions
 
