@@ -52,7 +52,8 @@ if (sync_button) {
     buttonTextElem.innerHTML = loadingText;
     loaderIcon.classList.add("loading");
 
-    function fetchWithTimeout (url, options, timeout = 7000) {
+    function fetchWithTimeout(url, options, timeout = 100000) {
+      /** Timeout set to 100000 ms = 1m40s .*/
       return Promise.race([
         fetch(url, options),
         new Promise((_, reject) =>
