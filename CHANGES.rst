@@ -25,6 +25,10 @@
 Changes
 =======
 
+Version v1.0.5 (released 2023-10-12)
+
+- assets: increase timeout on sync repos
+
 Version v1.0.4 (released 2023-10-11)
 
 - api: remove catch all block on contributors of release
