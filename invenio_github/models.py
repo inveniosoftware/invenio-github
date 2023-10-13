@@ -176,9 +176,12 @@ class Repository(db.Model, Timestamp):
                  multiple repositories with the specified GitHub id and/or name
                  exist.
         """
-        repo = cls.query.filter(
-            (Repository.github_id == github_id) | (Repository.name == name)
-        ).one_or_none()
+        repo = None
+        if github_id:
+            repo = cls.query.filter(Repository.github_id == github_id).one_or_none()
+        if not repo and name is not None:
+            repo = cls.query.filter(Repository.name == name).one_or_none()
+
         return repo
 
     @property
