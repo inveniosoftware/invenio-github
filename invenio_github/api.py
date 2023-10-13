@@ -57,9 +57,9 @@ from .errors import (
 )
 
 
-def check_repo_access_permissions(repo, user_id):
+def check_repo_access_permissions(repo, user_id=None):
     """Checks permissions from user on repo."""
-    if repo and repo.user_id and repo.user_id != int(user_id):
+    if user_id and repo and repo.user_id and repo.user_id != int(user_id):
         raise RepositoryAccessError(
             user=user_id, repo=repo.name, repo_id=repo.github_id
         )
