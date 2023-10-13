@@ -30,6 +30,7 @@ from flask_login import current_user
 
 from invenio_github.api import GitHubAPI, GitHubRelease
 from invenio_github.models import ReleaseStatus, Repository
+from invenio_github.proxies import current_github
 
 blueprint = Blueprint(
     "invenio_github_badge",
@@ -45,8 +46,9 @@ def get_pid_of_latest_release_or_404(**kwargs):
     """Return PID of the latest release."""
     repo = Repository.query.filter_by(**kwargs).first_or_404()
     release = repo.latest_release(ReleaseStatus.PUBLISHED)
+    release_instance = current_github.release_api_class(release)
     if release:
-        return GitHubRelease(release).record.pid
+        return release_instance.record.pid
     abort(404)
 
 
