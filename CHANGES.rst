@@ -25,6 +25,10 @@
 Changes
 =======
 
+Version v1.0.8 (released 2023-10-13)
+
+- api: fix permission check
+
 Version v1.0.7 (released 2023-10-13)
 
 - models: fix repositories fetching
