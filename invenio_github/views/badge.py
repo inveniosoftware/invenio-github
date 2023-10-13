@@ -76,7 +76,10 @@ def get_doi_url(pid):
 def index(repo_github_id):
     """Generate a badge for a specific GitHub repository."""
     try:
-        github_api = GitHubAPI(current_user.id)
+        if current_user.is_authenticated:
+            github_api = GitHubAPI(current_user.id)
+        else:
+            github_api = GitHubAPI()
         repo = github_api.get_repository(repo_github_id=repo_github_id)
         release = github_api.repo_last_published_release(repo)
         badge_url = url_for(
