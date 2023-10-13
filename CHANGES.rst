@@ -25,6 +25,10 @@
 Changes
 =======
 
+Version v1.0.7 (released 2023-10-13)
+
+- models: fix repositories fetching
+
 Version v1.0.6 (released 2023-10-13)
 
 - badge: fix config class
