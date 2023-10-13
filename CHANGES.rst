@@ -25,6 +25,10 @@
 Changes
 =======
 
+Version v1.0.6 (released 2023-10-13)
+
+- badge: fix config class
+
 Version v1.0.5 (released 2023-10-12)
 
 - assets: increase timeout on sync repos
