@@ -25,6 +25,10 @@
 Changes
 =======
 
+Version v1.0.10 (released 2023-10-14)
+
+- badge: fix expected pid object
+
 Version v1.0.9 (released 2023-10-14)
 
 - views: read correct record id
