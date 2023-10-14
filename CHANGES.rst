@@ -25,6 +25,10 @@
 Changes
 =======
 
+Version v1.0.9 (released 2023-10-14)
+
+- views: read correct record id
+
 Version v1.0.8 (released 2023-10-13)
 
 - api: fix permission check
