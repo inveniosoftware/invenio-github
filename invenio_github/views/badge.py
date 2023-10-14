@@ -48,7 +48,7 @@ def get_pid_of_latest_release_or_404(**kwargs):
     release = repo.latest_release(ReleaseStatus.PUBLISHED)
     release_instance = current_github.release_api_class(release)
     if release:
-        return release_instance.record.id
+        return release_instance.record._record.pid
     abort(404)
 
 
@@ -66,7 +66,7 @@ def get_badge_image_url(pid, ext="svg"):
 # Kept for backward compatibility
 def get_doi_url(pid):
     """Return the badge for a DOI."""
-    return "https://doi.org/{pid.pid_value}".format(pid=pid)
+    return "https://doi.org/{pid}".format(pid=pid.pid_value)
 
 
 #
