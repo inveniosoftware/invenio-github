@@ -54,6 +54,7 @@ from .errors import (
     RemoteAccountNotFound,
     RepositoryAccessError,
     RepositoryNotFoundError,
+    UnexpectedGithubResponse,
 )
 
 
@@ -505,35 +506,35 @@ class GitHubRelease(object):
 
     @cached_property
     def contributors(self):
-        """Get list of contributors to a repository."""
+        """Get list of contributors to a repository.
+
+        The list of contributors is fetched from Github API, filtered for type "User" and sorted by contributions.
+
+        :returns: a generator of objects that contains contributors information.
+        :raises UnexpectedGithubResponse: when Github API returns a status code other than 200.
+        """
+        max_contributors = current_app.config.get("GITHUB_MAX_CONTRIBUTORS_NUMBER", 30)
         contributors_iter = self.gh.api.repository_with_id(
             self.repository_object.github_id
-        ).contributors()
-        contributors = list(contributors_iter)
-        if contributors_iter.last_status == 200:
+        ).contributors(number=max_contributors)
 
-            def get_author(contributor):
-                r = requests.get(contributor["url"])
-                if r.status_code == 200:
-                    data = r.json()
-                    return data
-
-            # Sort according to number of contributions
-            contributors = sorted(
-                contributors,
-                key=lambda x: x.as_dict()["contributions"],
+        status = contributors_iter.last_status
+        if status == 200:
+            # Sort by contributions and filter only users.
+            sorted_contributors = sorted(
+                (c for c in contributors_iter if c.type == "User"),
+                key=lambda x: x.contributions,
                 reverse=True,
             )
-            max_contributors = current_app.config.get(
-                "GITHUB_MAX_CONTRIBUTORS_NUMBER", 30
+
+            # Expand contributors using `Contributor.refresh()`
+            contributors = [x.refresh().as_dict() for x in sorted_contributors]
+            return contributors
+        else:
+            # Contributors fetch failed
+            raise UnexpectedGithubResponse(
+                f"Github returned unexpected code: {status} for release {self.repository_object.github_id}"
             )
-            contributors = [
-                get_author(x.as_dict())
-                for x in contributors[:max_contributors]
-                if x.as_dict()["type"] == "User"
-            ]
-            contributors = filter(lambda x: x is not None, contributors)
-            return list(contributors)
 
     # Helper functions
 

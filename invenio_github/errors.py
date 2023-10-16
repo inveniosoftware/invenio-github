@@ -139,3 +139,13 @@ class ReleaseNotFound(GitHubError):
     def __init__(self, message=None):
         """Constructor."""
         super().__init__(message or self.message)
+
+
+class UnexpectedGithubResponse(GitHubError):
+    """Request to Github API returned an unexpected error."""
+
+    message = "Github API returned an unexpected error."
+
+    def __init__(self, message=None):
+        """Constructor."""
+        super().__init__(message or self.message)
