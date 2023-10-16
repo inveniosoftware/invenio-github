@@ -25,6 +25,10 @@
 Changes
 =======
 
+Version v1.0.11 (released 2023-10-16)
+
+- badge: fix expected DOI type
+
 Version v1.0.10 (released 2023-10-14)
 
 - badge: fix expected pid object
