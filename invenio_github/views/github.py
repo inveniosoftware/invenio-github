@@ -35,7 +35,6 @@ from speaklater import make_lazy_string
 from sqlalchemy.orm.exc import NoResultFound
 
 from invenio_github.api import GitHubAPI
-from invenio_github.proxies import current_github
 
 from ..errors import GithubTokenNotFound, RepositoryAccessError
 

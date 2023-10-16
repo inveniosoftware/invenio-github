@@ -16,10 +16,6 @@
   {%- set github_rel_url = 'https://github.com/{0}/releases/new'.format(repo.name) %}
   {% set active = true %}
 
-  {%- if latest_published %}
-    {%- set latest_success_pid = latest_published.release_id %}
-  {%- endif %}
-
   {%- block repo_details_header scoped %}
     <section class="repository-item" aria-label="{{ _('Header') }}">
       <div class="ui segment">
