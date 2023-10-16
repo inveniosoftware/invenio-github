@@ -323,8 +323,10 @@ class GitHubAPI(object):
 
     def repo_last_published_release(self, repo):
         """Retrieves the repository last release."""
+        release_instance = None
         release_object = repo.latest_release(ReleaseStatus.PUBLISHED)
-        release_instance = current_github.release_api_class(release_object)
+        if release_object:
+            release_instance = current_github.release_api_class(release_object)
         return release_instance
 
     def get_repository_releases(self, repo):

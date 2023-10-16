@@ -129,3 +129,13 @@ class RemoteAccountDataNotSet(GitHubError):
         """Constructor."""
         super().__init__(message or self.message)
         self.user = user
+
+
+class ReleaseNotFound(GitHubError):
+    """Release does not exist."""
+
+    message = "Release does not exist."
+
+    def __init__(self, message=None):
+        """Constructor."""
+        super().__init__(message or self.message)
