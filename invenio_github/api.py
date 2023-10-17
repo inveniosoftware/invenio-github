@@ -518,11 +518,13 @@ class GitHubRelease(object):
             self.repository_object.github_id
         ).contributors(number=max_contributors)
 
+        # Consume the iterator to materialize the request and have a `last_status``.
+        contributors = list(contributors_iter)
         status = contributors_iter.last_status
         if status == 200:
             # Sort by contributions and filter only users.
             sorted_contributors = sorted(
-                (c for c in contributors_iter if c.type == "User"),
+                (c for c in contributors if c.type == "User"),
                 key=lambda x: x.contributions,
                 reverse=True,
             )
