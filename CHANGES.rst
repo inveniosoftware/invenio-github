@@ -25,6 +25,11 @@
 Changes
 =======
 
+Version v1.0.12 (released 2023-10-17)
+
+- api: fetch contributors by authenticated api
+- view: fixed wrong accesses to event.payload
+
 Version v1.0.11 (released 2023-10-16)
 
 - badge: fix expected DOI type
