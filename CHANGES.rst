@@ -25,6 +25,10 @@
 Changes
 =======
 
+Version v1.0.13 (released 2023-10-17)
+
+- api: fix contributor iterator
+
 Version v1.0.12 (released 2023-10-17)
 
 - api: fetch contributors by authenticated api
