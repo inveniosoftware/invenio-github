@@ -76,3 +76,9 @@ GITHUB_MAX_CONTRIBUTORS_NUMBER = 30
 
 GITHUB_INTEGRATION_ENABLED = False
 """Enables the github integration."""
+
+GITHUB_CITATION_FILE = None
+"""Citation file name."""
+
+GITHUB_CITATION_METADATA_SCHEMA = None
+"""Citation metadata schema."""
