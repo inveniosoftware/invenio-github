@@ -52,7 +52,7 @@ def release_gh_metadata_handler(release, ex):
 
 def release_default_exception_handler(release, ex):
     """Default handler."""
-    release.release_object.errors = _get_err_obj(ex.message)
+    release.release_object.errors = _get_err_obj(str(ex))
     db.session.commit()
 
 
