@@ -25,6 +25,10 @@
 Changes
 =======
 
+Version v1.1.0 (released 2023-10-19)
+
+- config: added default configs for citation cff support.
+
 Version v1.0.13 (released 2023-10-17)
 
 - api: fix contributor iterator
