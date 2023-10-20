@@ -47,32 +47,31 @@ blueprint = Blueprint(
 #
 @blueprint.route("/<int:repo_github_id>.svg")
 def index(repo_github_id):
-    """Generate a badge for a specific GitHub repository."""
-    try:
-        if current_user.is_authenticated:
-            github_api = GitHubAPI(current_user.id)
-        else:
-            github_api = GitHubAPI()
-        repo = github_api.get_repository(repo_github_id=repo_github_id)
-        release = github_api.repo_last_published_release(repo)
-        if not release:
-            raise ReleaseNotFound("Repository does not have a published release.")
-        badge_url = url_for(
-            "invenio_formatter_badges.badge",
-            title=release.badge_title,
-            value=release.badge_value,
-            ext="svg",
-        )
-        return redirect(badge_url)
-    except Exception as e:
-        current_app.logger.error(str(e), exc_info=True)
+    """Generate a badge for a specific GitHub repository (by github ID)."""
+    repo = Repository.query.filter(Repository.github_id == repo_github_id).one_or_none()
+    if not repo:
         abort(404)
+
+    latest_release = repo.latest_release(ReleaseStatus.PUBLISHED)
+    if not latest_release:
+        abort(404)
+
+    release = current_github.release_api_class(latest_release)
+    # release.badge_title points to "DOI"
+    # release.badge_value points to the record "pids.doi.identifier"
+    badge_url = url_for(
+        "invenio_formatter_badges.badge",
+        title=release.badge_title,
+        value=release.badge_value,
+        ext="svg",
+    )
+    return redirect(badge_url)
 
 
 # Kept for backward compatibility
 @blueprint.route("/<int:user_id>/<path:repo_name>.svg")
 def index_old(user_id, repo_name):
-    """Generate a badge for a specific GitHub repository."""
+    """Generate a badge for a specific GitHub repository (by name)."""
     repo = Repository.query.filter(Repository.name == repo_name).one_or_none()
     if not repo:
         abort(404)
