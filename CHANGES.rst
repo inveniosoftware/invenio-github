@@ -25,6 +25,10 @@
 Changes
 =======
 
+Version v1.2.0 (released 2023-10-20)
+
+- badges: remove permission check for index view
+
 Version v1.1.1 (released 2023-10-20)
 
 - badges: remove user_id check from old endpoint
