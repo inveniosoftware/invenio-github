@@ -25,6 +25,11 @@
 Changes
 =======
 
+Version v1.1.1 (released 2023-10-20)
+
+- badges: remove user_id check from old endpoint
+- ui: fixed rendering of releases without event
+
 Version v1.1.0 (released 2023-10-19)
 
 - config: added default configs for citation cff support.
