@@ -132,10 +132,14 @@
             {% set release_status = release.release_object.status.title %}
             {% set release_status_color = release.release_object.status.color %}
             {% set release_status_icon_color = release_status_color %}
-            {% set release_name = release.event.payload.get("release", {}).get("name") %}
             {% set release_tag = release.release_object.tag %}
-            {% set release_url = release.event.payload.get("release", {}).get("html_url") or
-            'https://github.com/{0}/releases/tag/{1}'.format(repo.name, release_tag) %}
+            {% set release_url = 'https://github.com/{0}/releases/tag/{1}'.format(repo.name, release_tag) %}
+            {% set release_name = release_tag %}
+            <!-- Some older releases don't have an event -->
+            {% if release.event %}
+              {% set release_name = release.event.payload.get("release", {}).get("name", release_name) %}
+              {% set release_url = release.event.payload.get("release", {}).get("html_url", release_url) %}
+            {% endif %}
             {% if release_status_color == "warning" %}
               {% set release_status_icon_color = "warning-color" %}
             {% endif %}
