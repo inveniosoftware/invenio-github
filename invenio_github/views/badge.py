@@ -73,12 +73,15 @@ def index(repo_github_id):
 @blueprint.route("/<int:user_id>/<path:repo_name>.svg")
 def index_old(user_id, repo_name):
     """Generate a badge for a specific GitHub repository."""
-    github_api = GitHubAPI(user_id)
-    repo = github_api.get_repository(repo_name=repo_name)
-    release = github_api.repo_last_published_release(repo)
-    if not release:
+    repo = Repository.query.filter(Repository.name == repo_name).one_or_none()
+    if not repo:
         abort(404)
 
+    latest_release = repo.latest_release(ReleaseStatus.PUBLISHED)
+    if not latest_release:
+        abort(404)
+
+    release = current_github.release_api_class(latest_release)
     # release.badge_title points to "DOI"
     # release.badge_value points to the record "pids.doi.identifier"
     badge_url = url_for(
