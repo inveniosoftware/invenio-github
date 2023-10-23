@@ -46,7 +46,7 @@ def _get_err_obj(msg):
 
 def release_gh_metadata_handler(release, ex):
     """Handler for CustomGithubMetadataError."""
-    release.release_object.errors = {"errors": ex.message}
+    release.release_object.errors = _get_err_obj(str(ex))
     db.session.commit()
 
 
