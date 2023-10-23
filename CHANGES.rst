@@ -25,6 +25,11 @@
 Changes
 =======
 
+Version v1.2.1 (released 2023-10-23)
+
+- tasks: added sentry event id for custom errors.
+- release: fetch owner from remote.
+
 Version v1.2.0 (released 2023-10-20)
 
 - badges: remove permission check for index view
