@@ -538,6 +538,17 @@ class GitHubRelease(object):
                 f"Github returned unexpected code: {status} for release {self.repository_object.github_id}"
             )
 
+    @cached_property
+    def owner(self):
+        """Get owner of repository as a creator."""
+        try:
+            owner = self.gh.api.repository_with_id(
+                self.repository_object.github_id
+            ).owner
+            return owner
+        except Exception:
+            return None
+
     # Helper functions
 
     def is_first_release(self):
