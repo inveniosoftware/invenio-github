@@ -107,13 +107,13 @@ class GitHubAPI(object):
         - user is the owner of the repo
         - user has access to the repo in GitHub (stored in RemoteAccount.extra_data.repos)
         """
-        if self.user_id and repo:
+        if self.user_id and repo and repo.user_id:
             user_is_owner = repo.user_id == int(self.user_id)
             if user_is_owner:
                 return True
 
-        if self.account.extra_data:
-            user_has_remote_access = self.account.extra_data.get("repos", {}).get(
+        if self.account and self.account.extra_data:
+            user_has_remote_access = self.user_available_repositories.get(
                 str(repo.github_id)
             )
             if user_has_remote_access:
