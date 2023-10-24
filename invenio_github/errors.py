@@ -37,6 +37,7 @@ class RepositoryAccessError(GitHubError):
     def __init__(self, user=None, repo=None, repo_id=None, message=None):
         """Constructor."""
         super().__init__(message or self.message)
+        self.message = message
         self.user = user
         self.repo = repo
         self.repo_id = repo_id
