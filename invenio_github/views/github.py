@@ -36,7 +36,7 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from invenio_github.api import GitHubAPI
 
-from ..errors import GithubTokenNotFound, RepositoryAccessError
+from ..errors import GithubTokenNotFound, RepositoryAccessError, RepositoryNotFoundError
 
 
 def request_session_token():
@@ -146,7 +146,7 @@ def register_ui_routes(blueprint):
             )
         except RepositoryAccessError:
             abort(403)
-        except NoResultFound:
+        except (NoResultFound, RepositoryNotFoundError):
             abort(404)
 
 
@@ -203,15 +203,21 @@ def register_api_routes(blueprint):
         try:
             github = GitHubAPI(user_id=current_user.id)
 
-            repos = github.account.extra_data.get("repos", [])
+            repos = github.account.extra_data.get("repos", {})
+
+            if str(repository_id) not in repos:
+                abort(404)
+
             create_success = github.create_hook(
-                repository_id, repos[repository_id]["full_name"]
+                repository_id, repos[str(repository_id)]["full_name"]
             )
             db.session.commit()
             if create_success:
                 return "", 201
             else:
                 abort(400)
+        except RepositoryAccessError:
+            abort(403)
         except Exception:
             abort(400)
 
@@ -231,16 +237,24 @@ def register_api_routes(blueprint):
         try:
             github = GitHubAPI(user_id=current_user.id)
 
-            repos = github.account.extra_data.get("repos", [])
+            repos = github.account.extra_data.get("repos", {})
+
+            if str(repository_id) not in repos:
+                abort(404)
+
             remove_success = False
             if repos:
                 remove_success = github.remove_hook(
-                    repository_id, repos[repository_id]["full_name"]
+                    repository_id, repos[str(repository_id)]["full_name"]
                 )
                 db.session.commit()
             if remove_success:
                 return "", 204
             else:
                 abort(400)
+        except RepositoryNotFoundError:
+            abort(404)
+        except RepositoryAccessError:
+            abort(403)
         except Exception:
             abort(400)

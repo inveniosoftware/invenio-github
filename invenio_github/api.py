@@ -58,14 +58,6 @@ from .errors import (
 )
 
 
-def check_repo_access_permissions(repo, user_id=None):
-    """Checks permissions from user on repo."""
-    if user_id and repo and repo.user_id and repo.user_id != int(user_id):
-        raise RepositoryAccessError(
-            user=user_id, repo=repo.name, repo_id=repo.github_id
-        )
-
-
 class GitHubAPI(object):
     """Wrapper for GitHub API."""
 
@@ -106,6 +98,30 @@ class GitHubAPI(object):
         ]
     )
     """Return OAuth remote application."""
+
+    def check_repo_access_permissions(self, repo):
+        """Checks permissions from user on repo.
+
+        Repo has access if any of the following is True:
+
+        - user is the owner of the repo
+        - user has access to the repo in GitHub (stored in RemoteAccount.extra_data.repos)
+        """
+        if self.user_id and repo:
+            user_is_owner = repo.user_id == int(self.user_id)
+            if user_is_owner:
+                return True
+
+        if self.account.extra_data:
+            user_has_remote_access = self.account.extra_data.get("repos", {}).get(
+                str(repo.github_id)
+            )
+            if user_has_remote_access:
+                return True
+
+        raise RepositoryAccessError(
+            user=self.user_id, repo=repo.name, repo_id=repo.github_id
+        )
 
     @cached_property
     def account(self):
@@ -243,13 +259,14 @@ class GitHubAPI(object):
         # If hook on GitHub exists, get or create corresponding db object and
         # enable the hook. Otherwise remove the old hook information.
         repo = Repository.get(repo_id, gh_repo.full_name)
-        if not repo:
-            repo = Repository.create(self.user_id, repo_id, gh_repo.full_name)
 
         if hook:
+            if not repo:
+                repo = Repository.create(self.user_id, repo_id, gh_repo.full_name)
             self.enable_repo(repo, hook.id)
         else:
-            self.disable_repo(repo)
+            if repo:
+                self.disable_repo(repo)
 
     def check_sync(self):
         """Check if sync is required based on last sync date."""
@@ -263,13 +280,6 @@ class GitHubAPI(object):
 
     def create_hook(self, repo_id, repo_name):
         """Create repository hook."""
-        # Get or create the repo and check access permissions
-        repo = Repository.get(github_id=repo_id, name=repo_name)
-        if not repo:
-            repo = Repository.create(self.user_id, repo_id, repo_name)
-
-        check_repo_access_permissions(repo, self.user_id)
-
         # Create hook
         hook_config = dict(
             url=self.webhook_url,
@@ -297,8 +307,14 @@ class GitHubAPI(object):
             else:
                 hook.edit(config=hook_config, events=["release"])
 
-            self.enable_repo(repo, hook.id)
-            return True
+            if hook:
+                # Get or create the repo
+                repo = Repository.get(github_id=repo_id, name=repo_name)
+                if not repo:
+                    repo = Repository.create(self.user_id, repo_id, repo_name)
+
+                self.enable_repo(repo, hook.id)
+                return True
 
         return False
 
@@ -308,8 +324,6 @@ class GitHubAPI(object):
 
         if not repo:
             raise RepositoryNotFoundError(repo_id)
-
-        check_repo_access_permissions(repo, self.user_id)
 
         ghrepo = self.api.repository_with_id(repo_id)
         if ghrepo:
@@ -332,7 +346,7 @@ class GitHubAPI(object):
 
     def get_repository_releases(self, repo):
         """Retrieve repository releases. Returns API release objects."""
-        check_repo_access_permissions(repo, self.user_id)
+        self.check_repo_access_permissions(repo)
 
         # Retrieve releases and sort them by creation date
         release_instances = []
@@ -347,7 +361,12 @@ class GitHubAPI(object):
         repos = deepcopy(self.user_available_repositories)
         if repos:
             # 'Enhance' our repos dict, from our database model
-            for repo in self.user_enabled_repositories:
+            db_repos = Repository.query.filter(
+                Repository.github_id.in_(
+                    [int(k) for k in self.user_available_repositories.keys()]
+                )
+            )
+            for repo in db_repos:
                 if str(repo.github_id) in repos:
                     release_instance = current_github.release_api_class(
                         repo.latest_release()
@@ -364,18 +383,18 @@ class GitHubAPI(object):
     @property
     def user_available_repositories(self):
         """Retrieve user repositories from user's remote data."""
-        return self.account.extra_data.get("repos", [])
+        return self.account.extra_data.get("repos", {})
 
     def disable_repo(self, repo):
         """Disables an user repository if the user has permission to do so."""
-        check_repo_access_permissions(repo, self.user_id)
+        self.check_repo_access_permissions(repo)
 
         repo.hook = None
         repo.user_id = None
 
     def enable_repo(self, repo, hook):
         """Enables an user repository if the user has permission to do so."""
-        check_repo_access_permissions(repo, self.user_id)
+        self.check_repo_access_permissions(repo)
 
         repo.hook = hook
         repo.user_id = self.user_id
@@ -403,7 +422,7 @@ class GitHubAPI(object):
             raise RepositoryNotFoundError(repo_name)
 
         # Might raise a RepositoryAccessError
-        check_repo_access_permissions(repo, self.user_id)
+        self.check_repo_access_permissions(repo)
 
         return repo
 
