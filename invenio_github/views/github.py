@@ -148,6 +148,9 @@ def register_ui_routes(blueprint):
             abort(403)
         except (NoResultFound, RepositoryNotFoundError):
             abort(404)
+        except Exception as exc:
+            current_app.logger.exception(str(exc))
+            abort(400)
 
 
 def register_api_routes(blueprint):
@@ -168,7 +171,8 @@ def register_api_routes(blueprint):
             github = GitHubAPI(user_id=current_user.id)
             github.sync(async_hooks=False)
             db.session.commit()
-        except Exception:
+        except Exception as exc:
+            current_app.logger.exception(str(exc))
             abort(400)
 
         return "", 200
@@ -183,7 +187,8 @@ def register_api_routes(blueprint):
             github.init_account()
             github.sync(async_hooks=False)
             db.session.commit()
-        except Exception:
+        except Exception as exc:
+            current_app.logger.exception(str(exc))
             abort(400)
         return "", 200
 
@@ -206,7 +211,9 @@ def register_api_routes(blueprint):
             repos = github.account.extra_data.get("repos", {})
 
             if str(repository_id) not in repos:
-                abort(404)
+                raise RepositoryNotFoundError(
+                    repository_id, "Failed to enable repository."
+                )
 
             create_success = github.create_hook(
                 repository_id, repos[str(repository_id)]["full_name"]
@@ -215,10 +222,15 @@ def register_api_routes(blueprint):
             if create_success:
                 return "", 201
             else:
-                abort(400)
+                raise Exception(
+                    "Failed to enable repository, hook creation not successful."
+                )
         except RepositoryAccessError:
             abort(403)
-        except Exception:
+        except RepositoryNotFoundError:
+            abort(404)
+        except Exception as exc:
+            current_app.logger.exception(str(exc))
             abort(400)
 
     @login_required
@@ -240,7 +252,9 @@ def register_api_routes(blueprint):
             repos = github.account.extra_data.get("repos", {})
 
             if str(repository_id) not in repos:
-                abort(404)
+                raise RepositoryNotFoundError(
+                    repository_id, "Failed to disable repository."
+                )
 
             remove_success = False
             if repos:
@@ -251,10 +265,13 @@ def register_api_routes(blueprint):
             if remove_success:
                 return "", 204
             else:
-                abort(400)
+                raise Exception(
+                    "Failed to disable repository, hook removal not successful."
+                )
         except RepositoryNotFoundError:
             abort(404)
         except RepositoryAccessError:
             abort(403)
-        except Exception:
+        except Exception as exc:
+            current_app.logger.exception(str(exc))
             abort(400)
