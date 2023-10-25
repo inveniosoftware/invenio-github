@@ -25,6 +25,11 @@
 Changes
 =======
 
+Version v1.3.0 (released 2023-10-25)
+
+- api: change permission calculation
+
+
 Version v1.2.1 (released 2023-10-23)
 
 - tasks: added sentry event id for custom errors.
