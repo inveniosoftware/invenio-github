@@ -639,7 +639,8 @@ class GitHubRelease(object):
     def fetch_zipball_file(self):
         """Fetch release zipball file using the current github session."""
         session = self.gh.api.session
-        with session.get(self.release_zipball_url, stream=True) as s:
+        timeout = current_app.config.get("GITHUB_ZIPBALL_TIMEOUT", 300)
+        with session.get(self.release_zipball_url, stream=True, timeout=timeout) as s:
             yield s.raw
 
     def publish(self):

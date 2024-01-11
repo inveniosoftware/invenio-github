@@ -82,3 +82,6 @@ GITHUB_CITATION_FILE = None
 
 GITHUB_CITATION_METADATA_SCHEMA = None
 """Citation metadata schema."""
+
+GITHUB_ZIPBALL_TIMEOUT = 300
+"""Timeout for the zipball download, in seconds."""
