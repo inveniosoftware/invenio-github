@@ -1,6 +1,6 @@
 ..
     This file is part of Invenio.
-    Copyright (C) 2016-2023 CERN.
+    Copyright (C) 2016-2024 CERN.
 
     Invenio is free software; you can redistribute it
     and/or modify it under the terms of the GNU General Public License as
@@ -24,6 +24,10 @@
 
 Changes
 =======
+
+Version v1.4.0 (released 2024-01-24)
+
+- api: added session timeout to fetch zipball
 
 Version v1.3.1 (released 2023-11-13)
 
