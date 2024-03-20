@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2014, 2015, 2016 CERN.
+# Copyright (C) 2024 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,14 +25,9 @@
 
 from functools import wraps
 
-from flask import Blueprint, abort, current_app, render_template, request
-from flask_breadcrumbs import register_breadcrumb
+from flask import Blueprint, abort, current_app, render_template
 from flask_login import current_user, login_required
-from flask_menu import register_menu
 from invenio_db import db
-from invenio_i18n import gettext as _
-from invenio_theme.proxies import current_theme_icons
-from speaklater import make_lazy_string
 from sqlalchemy.orm.exc import NoResultFound
 
 from invenio_github.api import GitHubAPI
@@ -84,19 +80,6 @@ def register_ui_routes(blueprint):
 
     @blueprint.route("/")
     @login_required
-    @register_menu(  # TODO modify?
-        blueprint,
-        "settings.github",
-        _(
-            "%(icon)s GitHub",
-            icon=make_lazy_string(
-                lambda: f'<i class="{current_theme_icons.github}"></i>'
-            ),
-        ),
-        order=10,
-        active_when=lambda: request.endpoint.startswith("invenio_github."),
-    )
-    @register_breadcrumb(blueprint, "breadcrumbs.settings.github", _("GitHub"))
     def get_repositories():
         """Display list of the user's repositories."""
         github = GitHubAPI(user_id=current_user.id)
@@ -119,7 +102,6 @@ def register_ui_routes(blueprint):
     @blueprint.route("/repository/<path:repo_name>")
     @login_required
     @request_session_token()
-    @register_breadcrumb(blueprint, "breadcrumbs.settings.github.repo", _("Repository"))
     def get_repository(repo_name):
         """Displays one repository.
 

@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2023 CERN.
+# Copyright (C) 2024 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -24,7 +25,11 @@
 
 """Invenio module that adds GitHub integration to the platform."""
 
-from flask import current_app
+from flask import current_app, request
+from flask_menu import current_menu
+from invenio_i18n import LazyString
+from invenio_i18n import gettext as _
+from invenio_theme.proxies import current_theme_icons
 from six import string_types
 from werkzeug.utils import cached_property, import_string
 
@@ -75,3 +80,21 @@ class InvenioGitHub(object):
         for k in dir(config):
             if k.startswith("GITHUB_"):
                 app.config.setdefault(k, getattr(config, k))
+
+
+def finalize_app(app):
+    """Finalize app."""
+    init_menu(app)
+
+
+def init_menu(app):
+    """Init menu."""
+    current_menu.submenu("settings.github").register(
+        endpoint="invenio_github.get_repositories",
+        text=_(
+            "%(icon)s GitHub",
+            icon=LazyString(lambda: f'<i class="{current_theme_icons.github}"></i>'),
+        ),
+        order=10,
+        active_when=lambda: request.endpoint.startswith("invenio_github."),
+    )
