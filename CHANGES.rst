@@ -25,6 +25,13 @@
 Changes
 =======
 
+Version v1.5.0 (released 2024-03-23)
+
+- Changed uritemplate-py dependency to uritemplate
+- i18n: fix transifex config
+- i18n: add transifex workflows
+- global: move to finalize_app
+
 Version v1.4.0 (released 2024-01-24)
 
 - api: added session timeout to fetch zipball
