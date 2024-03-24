@@ -89,12 +89,15 @@ def finalize_app(app):
 
 def init_menu(app):
     """Init menu."""
-    current_menu.submenu("settings.github").register(
-        endpoint="invenio_github.get_repositories",
-        text=_(
-            "%(icon)s GitHub",
-            icon=LazyString(lambda: f'<i class="{current_theme_icons.github}"></i>'),
-        ),
-        order=10,
-        active_when=lambda: request.endpoint.startswith("invenio_github."),
-    )
+    if app.config.get("GITHUB_INTEGRATION_ENABLED", False):
+        current_menu.submenu("settings.github").register(
+            endpoint="invenio_github.get_repositories",
+            text=_(
+                "%(icon)s GitHub",
+                icon=LazyString(
+                    lambda: f'<i class="{current_theme_icons.github}"></i>'
+                ),
+            ),
+            order=10,
+            active_when=lambda: request.endpoint.startswith("invenio_github."),
+        )
