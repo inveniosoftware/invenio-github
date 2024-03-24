@@ -25,6 +25,10 @@
 Changes
 =======
 
+Version v1.5.1 (released 2024-03-24)
+
+- init: register menu only if GH integration is enabled (bugfix)
+
 Version v1.5.0 (released 2024-03-23)
 
 - Changed uritemplate-py dependency to uritemplate
