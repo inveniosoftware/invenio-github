@@ -28,6 +28,7 @@ import json
 from abc import abstractmethod
 from contextlib import contextmanager
 from copy import deepcopy
+from urllib.parse import urlparse
 
 import github3
 import humanize
@@ -245,6 +246,22 @@ class GitHubAPI(object):
             db.session.commit()
             sync_hooks_task.delay(self.user_id, repos)
 
+    def _valid_webhook(self, url):
+        """Check if webhook url is valid.
+
+        The webhook url is valid if it has the same host as the configured webhook url.
+
+        :param str url: The webhook url to be checked.
+        :returns: True if the webhook url is valid, False otherwise.
+        """
+        if not url:
+            return False
+        configured_host = urlparse(self.webhook_url).netloc
+        url_host = urlparse(url).netloc
+        if not (configured_host and url_host):
+            return False
+        return configured_host == url_host
+
     def sync_repo_hook(self, repo_id):
         """Sync a GitHub repo's hook with the locally stored repo."""
         # Get the hook that we may have set in the past
@@ -252,7 +269,7 @@ class GitHubAPI(object):
         hooks = (
             hook
             for hook in gh_repo.hooks()
-            if hook.config.get("url", "") == self.webhook_url
+            if self._valid_webhook(hook.config.get("url", ""))
         )
         hook = next(hooks, None)
 
@@ -263,7 +280,8 @@ class GitHubAPI(object):
         if hook:
             if not repo:
                 repo = Repository.create(self.user_id, repo_id, gh_repo.full_name)
-            self.enable_repo(repo, hook.id)
+            if not repo.enabled:
+                self.enable_repo(repo, hook.id)
         else:
             if repo:
                 self.disable_repo(repo)
@@ -328,7 +346,9 @@ class GitHubAPI(object):
         ghrepo = self.api.repository_with_id(repo_id)
         if ghrepo:
             hooks = (
-                h for h in ghrepo.hooks() if h.config.get("url", "") == self.webhook_url
+                h
+                for h in ghrepo.hooks()
+                if self._valid_webhook(h.config.get("url", ""))
             )
             hook = next(hooks, None)
             if not hook or hook.delete():
