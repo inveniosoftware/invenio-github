@@ -25,6 +25,10 @@
 Changes
 =======
 
+Version v1.5.2 (released 2024-08-15)
+
+- api: fix repository sync by organization users
+
 Version v1.5.1 (released 2024-03-24)
 
 - init: register menu only if GH integration is enabled (bugfix)
