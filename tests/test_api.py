@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2023 CERN.
+# Copyright (C) 2023-2024 CERN.
 #
 # Invenio-Github is free software; you can redistribute it and/or modify
 # it under the terms of the MIT License; see LICENSE file for more details.
@@ -78,3 +78,43 @@ def test_release_api(app, test_user, github_api):
 
         assert valid_remote_file_contents is not None
         assert valid_remote_file_contents.decoded["name"] == "test.py"
+
+
+def test_test_zipball(app, test_user, github_api):
+    api = GitHubAPI(test_user.id)
+    api.init_account()
+    repo_id = 2
+    repo_name = "repo-2"
+
+    # Create a repo hook
+    hook_created = api.create_hook(repo_id=repo_id, repo_name=repo_name)
+    assert hook_created
+
+    headers = [("Content-Type", "application/json")]
+
+    payload = github_payload_fixture(
+        "auser", repo_name, repo_id, tag="v1.0-tag-and-branch"
+    )
+    with app.test_request_context(headers=headers, data=json.dumps(payload)):
+        event = Event.create(
+            receiver_id="github",
+            user_id=test_user.id,
+        )
+        release = Release(
+            release_id=payload["release"]["id"],
+            tag=event.payload["release"]["tag_name"],
+            repository_id=repo_id,
+            event=event,
+            status=ReleaseStatus.RECEIVED,
+        )
+        # Idea is to test the public interface of GithubRelease
+        gh = GitHubRelease(release)
+
+        # Call the method fixing the zipball URL
+        gh.test_zipball()
+
+        # Check that the zipball URL is the alternate URL specific for tags
+        assert (
+            gh.release_zipball_url
+            == "https://github.com/auser/repo-2/zipball/refs/tags/v1.0-tag-and-branch"
+        )

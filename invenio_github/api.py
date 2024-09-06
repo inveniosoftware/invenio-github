@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2023 CERN.
+# Copyright (C) 2023-2024 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -622,6 +622,9 @@ class GitHubRelease(object):
         assert (
             response.status_code == 200
         ), f"Could not retrieve archive from GitHub: {zipball_url}"
+
+        # Overwrite the original URL with the newly found more specific URL.
+        self.release_payload["zipball_url"] = zipball_url
 
     # High level API
 
