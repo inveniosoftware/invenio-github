@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2023 CERN.
+# Copyright (C) 2024 KTH Royal Institute of Technology.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -24,6 +25,8 @@
 
 """Invenio-GitHub errors."""
 
+from invenio_i18n import gettext as _
+
 
 class GitHubError(Exception):
     """General GitHub error."""
@@ -32,7 +35,7 @@ class GitHubError(Exception):
 class RepositoryAccessError(GitHubError):
     """Repository access permissions error."""
 
-    message = "The user cannot access the github repository"
+    message = _("The user cannot access the github repository")
 
     def __init__(self, user=None, repo=None, repo_id=None, message=None):
         """Constructor."""
@@ -46,7 +49,7 @@ class RepositoryAccessError(GitHubError):
 class RepositoryDisabledError(GitHubError):
     """Repository access permissions error."""
 
-    message = "This repository is not enabled for webhooks."
+    message = _("This repository is not enabled for webhooks.")
 
     def __init__(self, repo=None, message=None):
         """Constructor."""
@@ -57,7 +60,7 @@ class RepositoryDisabledError(GitHubError):
 class RepositoryNotFoundError(GitHubError):
     """Repository not found error."""
 
-    message = "The repository does not exist."
+    message = _("The repository does not exist.")
 
     def __init__(self, repo=None, message=None):
         """Constructor."""
@@ -68,7 +71,7 @@ class RepositoryNotFoundError(GitHubError):
 class InvalidSenderError(GitHubError):
     """Invalid release sender error."""
 
-    message = "Invalid sender for event"
+    message = _("Invalid sender for event")
 
     def __init__(self, event=None, user=None, message=None):
         """Constructor."""
@@ -80,7 +83,7 @@ class InvalidSenderError(GitHubError):
 class ReleaseAlreadyReceivedError(GitHubError):
     """Invalid release sender error."""
 
-    message = "The release has already been received."
+    message = _("The release has already been received.")
 
     def __init__(self, release=None, message=None):
         """Constructor."""
@@ -91,7 +94,7 @@ class ReleaseAlreadyReceivedError(GitHubError):
 class CustomGitHubMetadataError(GitHubError):
     """Invalid Custom GitHub Metadata file."""
 
-    message = "The metadata file is not valid JSON."
+    message = _("The metadata file is not valid JSON.")
 
     def __init__(self, file=None, message=None):
         """Constructor."""
@@ -102,7 +105,7 @@ class CustomGitHubMetadataError(GitHubError):
 class GithubTokenNotFound(GitHubError):
     """Oauth session token was not found."""
 
-    message = "The oauth session token was not found."
+    message = _("The oauth session token was not found.")
 
     def __init__(self, user=None, message=None):
         """Constructor."""
@@ -113,7 +116,7 @@ class GithubTokenNotFound(GitHubError):
 class RemoteAccountNotFound(GitHubError):
     """Remote account for the user is not setup."""
 
-    message = "RemoteAccount not found for user"
+    message = _("RemoteAccount not found for user")
 
     def __init__(self, user=None, message=None):
         """Constructor."""
@@ -124,7 +127,7 @@ class RemoteAccountNotFound(GitHubError):
 class RemoteAccountDataNotSet(GitHubError):
     """Remote account extra data for the user is not set."""
 
-    message = "RemoteAccount extra data not set for user."
+    message = _("RemoteAccount extra data not set for user.")
 
     def __init__(self, user=None, message=None):
         """Constructor."""
@@ -135,7 +138,7 @@ class RemoteAccountDataNotSet(GitHubError):
 class ReleaseNotFound(GitHubError):
     """Release does not exist."""
 
-    message = "Release does not exist."
+    message = _("Release does not exist.")
 
     def __init__(self, message=None):
         """Constructor."""
@@ -145,7 +148,7 @@ class ReleaseNotFound(GitHubError):
 class UnexpectedGithubResponse(GitHubError):
     """Request to Github API returned an unexpected error."""
 
-    message = "Github API returned an unexpected error."
+    message = _("Github API returned an unexpected error.")
 
     def __init__(self, message=None):
         """Constructor."""

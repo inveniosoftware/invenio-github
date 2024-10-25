@@ -3,6 +3,7 @@
 # This file is part of Invenio.
 # Copyright (C) 2014, 2015, 2016 CERN.
 # Copyright (C) 2024 Graz University of Technology.
+# Copyright (C) 2024 KTH Royal Institute of Technology.
 #
 # Invenio is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,6 +29,7 @@ from functools import wraps
 from flask import Blueprint, abort, current_app, render_template
 from flask_login import current_user, login_required
 from invenio_db import db
+from invenio_i18n import gettext as _
 from sqlalchemy.orm.exc import NoResultFound
 
 from invenio_github.api import GitHubAPI
@@ -45,7 +47,9 @@ def request_session_token():
             token = github.session_token
             if token:
                 return f(*args, **kwargs)
-            raise GithubTokenNotFound(current_user, "Github session token is requested")
+            raise GithubTokenNotFound(
+                current_user, _("Github session token is requested")
+            )
 
         return inner
 
@@ -194,7 +198,7 @@ def register_api_routes(blueprint):
 
             if str(repository_id) not in repos:
                 raise RepositoryNotFoundError(
-                    repository_id, "Failed to enable repository."
+                    repository_id, _("Failed to enable repository.")
                 )
 
             create_success = github.create_hook(
@@ -205,7 +209,7 @@ def register_api_routes(blueprint):
                 return "", 201
             else:
                 raise Exception(
-                    "Failed to enable repository, hook creation not successful."
+                    _("Failed to enable repository, hook creation not successful.")
                 )
         except RepositoryAccessError:
             abort(403)
@@ -235,7 +239,7 @@ def register_api_routes(blueprint):
 
             if str(repository_id) not in repos:
                 raise RepositoryNotFoundError(
-                    repository_id, "Failed to disable repository."
+                    repository_id, _("Failed to disable repository.")
                 )
 
             remove_success = False
@@ -248,7 +252,7 @@ def register_api_routes(blueprint):
                 return "", 204
             else:
                 raise Exception(
-                    "Failed to disable repository, hook removal not successful."
+                    _("Failed to disable repository, hook removal not successful.")
                 )
         except RepositoryNotFoundError:
             abort(404)
