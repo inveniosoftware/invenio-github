@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2023 CERN.
+# Copyright (C) 2024 KTH Royal Institute of Technology.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -37,6 +38,7 @@ from flask import current_app
 from invenio_access.permissions import authenticated_user
 from invenio_access.utils import get_identity
 from invenio_db import db
+from invenio_i18n import gettext as _
 from invenio_oauth2server.models import Token as ProviderToken
 from invenio_oauthclient.handlers import token_getter
 from invenio_oauthclient.models import RemoteAccount, RemoteToken
@@ -134,7 +136,7 @@ class GitHubAPI(object):
         """Return the url to be used by a GitHub webhook."""
         if not self.account.extra_data.get("tokens", {}).get("webhook"):
             raise RemoteAccountDataNotSet(
-                self.user_id, "Webhook data not found for user tokens (remote data)."
+                self.user_id, _("Webhook data not found for user tokens (remote data).")
             )
 
         webhook_token = ProviderToken.query.filter_by(
@@ -145,13 +147,13 @@ class GitHubAPI(object):
             if wh_url:
                 return wh_url.format(token=webhook_token.access_token)
             else:
-                raise RuntimeError("You must set GITHUB_WEBHOOK_RECEIVER_URL.")
+                raise RuntimeError(_("You must set GITHUB_WEBHOOK_RECEIVER_URL."))
 
     def init_account(self):
         """Setup a new GitHub account."""
         if not self.account:
             raise RemoteAccountNotFound(
-                self.user_id, "Remote account was not found for user."
+                self.user_id, _("Remote account was not found for user.")
             )
 
         ghuser = self.api.me()
@@ -426,7 +428,7 @@ class GitHubAPI(object):
         """
         if not self.account.extra_data.get("last_sync"):
             raise RemoteAccountDataNotSet(
-                self.user_id, "Last sync data is not set for user (remote data)."
+                self.user_id, _("Last sync data is not set for user (remote data).")
             )
 
         extra_data = self.account.extra_data
@@ -574,7 +576,9 @@ class GitHubRelease(object):
         else:
             # Contributors fetch failed
             raise UnexpectedGithubResponse(
-                f"Github returned unexpected code: {status} for release {self.repository_object.github_id}"
+                _(
+                    "Github returned unexpected code: {status} for release {repo_id}"
+                ).format(status=status, repo_id=self.repository_object.github_id)
             )
 
     @cached_property
