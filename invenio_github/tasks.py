@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2023 CERN.
+# Copyright (C) 2024 KTH Royal Institute of Technology.
 #
 # Invenio is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,6 +29,7 @@ import github3
 from celery import shared_task
 from flask import current_app, g
 from invenio_db import db
+from invenio_i18n import gettext as _
 from invenio_oauthclient.models import RemoteAccount
 from invenio_oauthclient.proxies import current_oauthclient
 
@@ -82,7 +84,7 @@ def disconnect_github(access_token, repo_hooks):
                     hook = ghrepo.hook(repo_hook)
                     if hook and hook.delete():
                         current_app.logger.info(
-                            "Deleted hook from github repository.",
+                            _("Deleted hook from github repository."),
                             extra={"hook": hook.id, "repo": ghrepo.full_name},
                         )
             # If we finished our clean-up successfully, we can revoke the token
