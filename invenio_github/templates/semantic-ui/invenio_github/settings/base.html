@@ -2,24 +2,12 @@
 
   This file is part of Invenio.
   Copyright (C) 2023 CERN.
-  Copyright (C) 2024 KTH Royal Institute of Technology.
 
   Invenio is free software; you can redistribute it and/or modify it
   under the terms of the MIT License; see LICENSE file for more details.
 #}
 {%- extends "invenio_github/base.html" %}
-{# We place the translations before any content in page_body loads.#}
-{% block translations %}
-<script type="text/javascript">
-  window.gh_translations = {
-    "repositories_synced": "{{ _('Repositories synced successfully. Please reload the page.') }}",
-    "request_failed": "{{ _('Request failed with status code:') }}",
-    "timeout_message": "{{ _('This action seems to take some time, refresh the page after several minutes to inspect the synchronisation.') }}",
-    "problem_occurred": "{{ _('There has been a problem:') }}",
-    "repo_sync_success": "{{ _('Repository synced successfully. Please reload the page.') }}",
-  };
-</script>
-{% endblock %}
+
 {%- block page_body %}
 {%- block settings_content %}
 {%- endblock settings_content %}
