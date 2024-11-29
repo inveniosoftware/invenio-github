@@ -26,6 +26,11 @@
 Changes
 =======
 
+Version 2.0.0 (release 2024-12-12)
+
+- comp: make compatible to flask-sqlalchemy>=3.1
+- setup: bump major dependencies
+
 Version 1.5.4 (released 2024-12-12)
 
 - fix: publish with translations
