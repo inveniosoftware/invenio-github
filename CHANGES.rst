@@ -26,6 +26,10 @@
 Changes
 =======
 
+Version 1.5.4 (released 2024-12-12)
+
+- fix: publish with translations
+
 Version 1.5.3 (release 2024-11-29)
 
 - setup: change to reusable workflows
