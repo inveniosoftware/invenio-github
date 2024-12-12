@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2023 CERN.
+# Copyright (C) 2024 Graz University of Technology.
 #
 # Invenio-Github is free software; you can redistribute it and/or modify
 # it under the terms of the MIT License; see LICENSE file for more details.
@@ -21,7 +22,7 @@ def test_alembic(base_app, database):
     base_app.config["ALEMBIC_CONTEXT"] = alembic_test_context()
 
     # Check that this package's SQLAlchemy models have been properly registered
-    tables = [x.name for x in db.get_tables_for_bind()]
+    tables = [x for x in db.metadata.tables]
     assert "github_repositories" in tables
     assert "github_releases" in tables
 
