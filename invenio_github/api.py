@@ -576,9 +576,8 @@ class GitHubRelease(object):
         else:
             # Contributors fetch failed
             raise UnexpectedGithubResponse(
-                _(
-                    "Github returned unexpected code: {status} for release {repo_id}"
-                ).format(status=status, repo_id=self.repository_object.github_id)
+                _("Github returned unexpected code: %(status)s for release %(repo_id)s")
+                % {"status": status, "repo_id": self.repository_object.github_id}
             )
 
     @cached_property
