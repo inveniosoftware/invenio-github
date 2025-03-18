@@ -2,6 +2,7 @@
     This file is part of Invenio.
     Copyright (C) 2016-2024 CERN.
     Copyright (C) 2024 Graz University of Technology.
+    Copyright (C) 2025 KTH Royal Institute of Technology.
 
     Invenio is free software; you can redistribute it
     and/or modify it under the terms of the GNU General Public License as
@@ -25,6 +26,10 @@
 
 Changes
 =======
+
+Version 1.5.5 (released 2025-03-18)
+
+- i18n: mark missing strings for translations
 
 Version 1.5.4 (released 2024-12-12)
 
