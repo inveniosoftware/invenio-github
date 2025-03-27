@@ -1,24 +1,89 @@
 # Translations template for invenio-github.
-# Copyright (C) 2024 CERN
+# Copyright (C) 2025 CERN
 # This file is distributed under the same license as the invenio-github
 # project.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2024.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: invenio-github 1.5.1\n"
+"Project-Id-Version: invenio-github 1.5.5\n"
 "Report-Msgid-Bugs-To: info@inveniosoftware.org\n"
-"POT-Creation-Date: 2024-08-06 08:48+0000\n"
+"POT-Creation-Date: 2025-03-27 15:09+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.15.0\n"
+"Generated-By: Babel 2.17.0\n"
 
-#: invenio_github/ext.py:97
+#: invenio_github/api.py:139
+msgid "Webhook data not found for user tokens (remote data)."
+msgstr ""
+
+#: invenio_github/api.py:150
+msgid "You must set GITHUB_WEBHOOK_RECEIVER_URL."
+msgstr ""
+
+#: invenio_github/api.py:156
+msgid "Remote account was not found for user."
+msgstr ""
+
+#: invenio_github/api.py:431
+msgid "Last sync data is not set for user (remote data)."
+msgstr ""
+
+#: invenio_github/api.py:579
+#, python-format
+msgid "Github returned unexpected code: %(status)s for release %(repo_id)s"
+msgstr ""
+
+#: invenio_github/errors.py:38
+msgid "The user cannot access the github repository"
+msgstr ""
+
+#: invenio_github/errors.py:52
+msgid "This repository is not enabled for webhooks."
+msgstr ""
+
+#: invenio_github/errors.py:63
+msgid "The repository does not exist."
+msgstr ""
+
+#: invenio_github/errors.py:74
+msgid "Invalid sender for event"
+msgstr ""
+
+#: invenio_github/errors.py:86
+msgid "The release has already been received."
+msgstr ""
+
+#: invenio_github/errors.py:97
+msgid "The metadata file is not valid JSON."
+msgstr ""
+
+#: invenio_github/errors.py:108
+msgid "The oauth session token was not found."
+msgstr ""
+
+#: invenio_github/errors.py:119
+msgid "RemoteAccount not found for user"
+msgstr ""
+
+#: invenio_github/errors.py:130
+msgid "RemoteAccount extra data not set for user."
+msgstr ""
+
+#: invenio_github/errors.py:141
+msgid "Release does not exist."
+msgstr ""
+
+#: invenio_github/errors.py:151
+msgid "Github API returned an unexpected error."
+msgstr ""
+
+#: invenio_github/ext.py:96
 #, python-format
 msgid "%(icon)s GitHub"
 msgstr ""
@@ -42,6 +107,10 @@ msgstr ""
 
 #: invenio_github/models.py:43
 msgid "Deleted"
+msgstr ""
+
+#: invenio_github/tasks.py:87
+msgid "Deleted hook from github repository."
 msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/helpers.html:32
@@ -88,6 +157,7 @@ msgid "Syncing"
 msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:26
+#, python-brace-format
 msgid "(updated {})"
 msgstr ""
 
@@ -118,6 +188,7 @@ msgid "Create a release"
 msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:70
+#, python-brace-format
 msgid ""
 "Go to GitHub and <a href=\"https://help.github.com/articles/creating-"
 "releases\" target=\"_blank\">create a release <i class=\"small icon "
@@ -150,6 +221,7 @@ msgid "Repositories"
 msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:126
+#, python-brace-format
 msgid ""
 "If your organization's repositories do not show up in the list, please\n"
 "            ensure you have enabled <a "
@@ -234,6 +306,7 @@ msgid ""
 msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:109
+#, python-brace-format
 msgid ""
 "Go to GitHub and create a release. {}\n"
 "                  will automatically download a .zip-ball of each new "
@@ -276,5 +349,25 @@ msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:266
 msgid "GitHub Payload"
+msgstr ""
+
+#: invenio_github/views/github.py:51
+msgid "Github session token is requested"
+msgstr ""
+
+#: invenio_github/views/github.py:201
+msgid "Failed to enable repository."
+msgstr ""
+
+#: invenio_github/views/github.py:212
+msgid "Failed to enable repository, hook creation not successful."
+msgstr ""
+
+#: invenio_github/views/github.py:242
+msgid "Failed to disable repository."
+msgstr ""
+
+#: invenio_github/views/github.py:255
+msgid "Failed to disable repository, hook removal not successful."
 msgstr ""
 
