@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2023 CERN.
+# Copyright (C) 2025 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -95,6 +96,7 @@ def app_config(app_config):
             R="Remote",
         ),
         FILES_REST_DEFAULT_STORAGE_CLASS="L",
+        THEME_FRONTPAGE=False,
     )
     app_config["OAUTHCLIENT_REMOTE_APPS"]["github"]["params"]["request_token_params"][
         "scope"
