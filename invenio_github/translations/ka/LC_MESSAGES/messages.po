@@ -4,15 +4,6 @@
 # project.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
 # 
-# Translators:
-# Alexander Gruber <alexander.gruber@tugraz.at>, 2021
-# c960a0736ea0fb7507bb1c3555e7d33f_88b575f <3cef15c38ce2563e884ec389656c9161_1006830>, 2024
-# Alizee Pace <alizee.pace@gmail.com>, 2024
-# Mojib Wali <mojib.wali@tugraz.at>, 2024
-# Frank Berkemeier, 2024
-# Sarah Wiechers, 2025
-# Adienne Karsten-Welker, 2025
-# 
 #, fuzzy
 msgid ""
 msgstr ""
@@ -20,117 +11,112 @@ msgstr ""
 "Report-Msgid-Bugs-To: info@inveniosoftware.org\n"
 "POT-Creation-Date: 2025-03-27 15:09+0000\n"
 "PO-Revision-Date: 2016-08-18 09:25+0000\n"
-"Last-Translator: Adienne Karsten-Welker, 2025\n"
-"Language-Team: German (https://app.transifex.com/inveniosoftware/teams/23537/de/)\n"
+"Language-Team: Georgian (https://app.transifex.com/inveniosoftware/teams/23537/ka/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
-"Language: de\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Language: ka\n"
+"Plural-Forms: nplurals=2; plural=(n!=1);\n"
 
 #: invenio_github/api.py:139
 msgid "Webhook data not found for user tokens (remote data)."
-msgstr "Webhook-Daten wurden für Benutzertoken (Remote-Daten) nicht gefunden."
+msgstr ""
 
 #: invenio_github/api.py:150
 msgid "You must set GITHUB_WEBHOOK_RECEIVER_URL."
-msgstr "Sie müssen GITHUB_WEBHOOK_RECEIVER_URL festlegen."
+msgstr ""
 
 #: invenio_github/api.py:156
 msgid "Remote account was not found for user."
-msgstr "Remote-Account für Benutzer*in wurde nicht gefunden."
+msgstr ""
 
 #: invenio_github/api.py:431
 msgid "Last sync data is not set for user (remote data)."
 msgstr ""
-"Letzte Synchronisationsdaten sind nicht für Benutzer*in festgelegt (Remote-"
-"Daten)."
 
 #: invenio_github/api.py:579
 #, python-format
 msgid "Github returned unexpected code: %(status)s for release %(repo_id)s"
 msgstr ""
-"GitHub hat unerwarteten Code zurückgegeben: %(status)s für Release "
-"%(repo_id)s"
 
 #: invenio_github/errors.py:38
 msgid "The user cannot access the github repository"
-msgstr "Benutzer*in kann nicht auf das GitHub-Repository zugreifen"
+msgstr ""
 
 #: invenio_github/errors.py:52
 msgid "This repository is not enabled for webhooks."
-msgstr "Dieses Repository ist nicht für Webhooks aktiviert."
+msgstr ""
 
 #: invenio_github/errors.py:63
 msgid "The repository does not exist."
-msgstr "Das Repository existiert nicht."
+msgstr ""
 
 #: invenio_github/errors.py:74
 msgid "Invalid sender for event"
-msgstr "Ungültiger Absender für Ereignis"
+msgstr ""
 
 #: invenio_github/errors.py:86
 msgid "The release has already been received."
-msgstr "Der Release wurde bereits empfangen."
+msgstr ""
 
 #: invenio_github/errors.py:97
 msgid "The metadata file is not valid JSON."
-msgstr "Die Metadatendatei ist kein gültiges JSON."
+msgstr ""
 
 #: invenio_github/errors.py:108
 msgid "The oauth session token was not found."
-msgstr "Das OAuth-Sitzungstoken wurde nicht gefunden."
+msgstr ""
 
 #: invenio_github/errors.py:119
 msgid "RemoteAccount not found for user"
-msgstr "Remotekonto für Benutzer*in wurde nicht gefunden"
+msgstr ""
 
 #: invenio_github/errors.py:130
 msgid "RemoteAccount extra data not set for user."
-msgstr "Remotekonto-Extradaten sind nicht für Benutzer*in festgelegt."
+msgstr ""
 
 #: invenio_github/errors.py:141
 msgid "Release does not exist."
-msgstr "Release existiert nicht."
+msgstr ""
 
 #: invenio_github/errors.py:151
 msgid "Github API returned an unexpected error."
-msgstr "GitHub-API gab einen unerwarteten Fehler zurück."
+msgstr ""
 
 #: invenio_github/ext.py:96
 #, python-format
 msgid "%(icon)s GitHub"
-msgstr "%(icon)s GitHub"
+msgstr ""
 
 #: invenio_github/models.py:39
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:268
 msgid "Received"
-msgstr "Empfangen"
+msgstr ""
 
 #: invenio_github/models.py:40
 msgid "Processing"
-msgstr "Verarbeitet"
+msgstr ""
 
 #: invenio_github/models.py:41
 msgid "Published"
-msgstr "Veröffentlicht"
+msgstr ""
 
 #: invenio_github/models.py:42
 msgid "Failed"
-msgstr "Fehlgeschlagen"
+msgstr ""
 
 #: invenio_github/models.py:43
 msgid "Deleted"
-msgstr "Gelöscht"
+msgstr ""
 
 #: invenio_github/tasks.py:87
 msgid "Deleted hook from github repository."
-msgstr "Hook aus GitHub-Repository gelöscht."
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/helpers.html:32
 msgid "DOI Badge"
-msgstr "DOI-Abzeichen"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/helpers.html:37
 msgid ""
@@ -138,78 +124,69 @@ msgid ""
 "want a DOI badge for a specific release, please follow the DOI link for one "
 "of the specific releases and grab badge from the archived record."
 msgstr ""
-"Das DOI-Abzeichen verweist auf die neueste veröffentlichte Version Ihres "
-"Repositorys. Falls Sie ein DOI-Abzeichen für eine bestimmte Version "
-"benötigen, folgen Sie bitte dem DOI-Link auf diese Version. Dort finden Sie "
-"das DOI-Abzeichen des archivierten Eintrags."
 
 #: invenio_github/templates/semantic-ui/invenio_github/helpers.html:42
 msgid "DOI"
-msgstr "DOI"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/helpers.html:50
 msgid "Close"
-msgstr "Schließen"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/helpers.html:122
 msgid ""
 "This repository is managed by another user of your GitHub organization."
 msgstr ""
-"Dieses Repository wird von einer*einem anderen Benutzer*in Ihrer GitHub-"
-"Organisation verwaltet."
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/helpers.html:128
 msgid "Disable"
-msgstr "Deaktivieren"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/helpers.html:129
 msgid "Enable"
-msgstr "Aktivieren"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:19
 msgid "GitHub Repositories"
-msgstr "GitHub-Repositorys"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:21
 msgid "Sync now"
-msgstr "Jetzt synchronisieren"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:22
 msgid "Syncing"
-msgstr "Synchronisation"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:26
 #, python-brace-format
 msgid "(updated {})"
-msgstr "(aktualisiert {})"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:36
 msgid "Get started"
-msgstr "Loslegen"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:42
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:90
 msgid "Flip the switch"
-msgstr "Schalter umlegen"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:45
 msgid ""
 "Select the repository you want to preserve, and toggle\n"
 "                the switch below to turn on automatic preservation of your software."
 msgstr ""
-"Wählen Sie das Repository aus, das bestehen bleiben soll, und aktivieren Sie"
-" den unten stehenden Schalter, um die automatische Archivierung Ihrer "
-"Software zu aktivieren."
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:59
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:94
 msgid "(example)"
-msgstr "(Beispiel)"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:67
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:106
 msgid "Create a release"
-msgstr "Release erstellen"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:70
 #, python-brace-format
@@ -217,33 +194,29 @@ msgid ""
 "Go to GitHub and <a href=\"https://help.github.com/articles/creating-releases\" target=\"_blank\">create a release <i class=\"small icon external\" aria-hidden=\"true\"></i></a>. {}\n"
 "                will automatically download a .zip-ball of each new release and register a DOI."
 msgstr ""
-"Gehen Sie zu GitHub und <a href=\"https://help.github.com/articles/creating-releases\" target=\"_blank\">erstellen Sie ein Release <i class=\"small icon external\" aria-hidden=\"true\"></i></a>. {}\n"
-"                wird automatisch ein .zip-Archiv für jeden neuen Release herunterladen und einen DOI registrieren."
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:77
 msgid "Get the badge"
-msgstr "Abzeichen erhalten"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:80
 msgid ""
 "After your first release, a DOI badge that you can include in GitHub\n"
 "                README will appear next to your repository below."
 msgstr ""
-"Nach Ihrem ersten Release wird ein DOI-Abzeichen angezeigt, das Sie in Ihre "
-"GitHub-README-Datei einbinden können."
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:89
 msgid "Example DOI:"
-msgstr "Beispiel-DOI:"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:106
 msgid "Enabled Repositories"
-msgstr "Aktivierte Repositorys"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:121
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:31
 msgid "Repositories"
-msgstr "Repositorys"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:126
 #, python-brace-format
@@ -252,91 +225,77 @@ msgid ""
 "            ensure you have enabled <a href=\"https://help.github.com/articles/approving-third-party-applications-for-your-organization/\" target=\"_blank\">third-party\n"
 "            access <i class=\"small icon external\" aria-hidden=\"true\"></i></a> to the {} application. Private repositories are not supported."
 msgstr ""
-"Wenn Ihre Repositorys nicht in der Liste angezeigt werden, stellen Sie bitte"
-" sicher, dass Sie <a href=\"https://help.github.com/articles/approving-"
-"third-party-applications-for-your-organization/\" "
-"target=\"_blank\">Drittanbieter-Zugriff <i class=\"small icon external\" "
-"aria-hidden=\"true\"></i></a> für die {} Anwendung aktiviert haben. Private "
-"Repositorys werden nicht unterstützt."
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:136
 msgid "You have no repositories on GitHub."
-msgstr "Sie haben keine Repositorys auf GitHub."
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:139
 msgid ""
 "Go to <a href=\"https://github.com/new\" target=\"_blank\">GitHub <i class=\"small icon external\" aria-hidden=\"true\"></i></a> and create your first or\n"
 "          click Sync-button to synchronize latest changes from GitHub."
 msgstr ""
-"Gehen Sie zu <a href=\"https://github.com/new\" target=\"_blank\">GitHub <i "
-"class=\"small icon external\" aria-hidden=\"true\"></i></a> und erstellen "
-"Sie Ihr erstes Repository oder klicken Sie auf den Sync-Button, um die "
-"neuesten Änderungen von GitHub zu synchronisieren."
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:158
 msgid "GitHub"
-msgstr "GitHub"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:161
 msgid "Software preservation made simple!"
-msgstr "Software-Erhaltung einfach gemacht!"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:165
 msgid "Connect your GitHub account"
-msgstr "Verbinden Sie Ihr GitHub-Konto"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:168
 msgid "Connect"
-msgstr "Verbinden"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:171
 msgid ""
 "To get started, click \"Connect\" and we will get a list of your "
 "repositories from GitHub."
 msgstr ""
-"Um zu beginnen, klicken Sie auf \"Verbinden\", damit die Liste Ihrer GitHub-"
-"Repositorys abgerufen werden kann."
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index_item.html:20
 msgid "Go to GitHub."
-msgstr "Gehen Sie zu GitHub."
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index_item.html:21
 msgid "Visit repository on GitHub:"
-msgstr "Besuchen Sie das Repository auf GitHub:"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:20
 msgid "Header"
-msgstr "Kopfzeile"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:29
 msgid "Go back to all repositories"
-msgstr "Zurück zu allen Repositorys"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:60
 msgid "Releases"
-msgstr "Releases"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:61
 msgid "Create release"
-msgstr "Release erstellen"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:72
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:86
 msgid "Get started!"
-msgstr "Loslegen!"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:73
 msgid "Go to GitHub and make your first release."
-msgstr "Gehen Sie zu GitHub und erstellen Sie Ihren ersten Release."
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:93
 msgid ""
 "Toggle the switch below to turn on/off automatic preservation of your "
 "repository."
 msgstr ""
-"Schalten Sie hier die automatische Beibehaltung Ihres Repositorys ein bzw. "
-"aus."
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:109
 #, python-brace-format
@@ -344,66 +303,59 @@ msgid ""
 "Go to GitHub and create a release. {}\n"
 "                  will automatically download a .zip-ball of each new release and register a DOI."
 msgstr ""
-"Gehen Sie zu GitHub und erstellen Sie einen Release. {}\n"
-"                  wird automatisch ein .zip-Archiv für jeden neuen Release herunterladen und einen DOI registrieren."
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:177
 msgid "See release on GitHub"
-msgstr "Veröffentlichung auf GitHub ansehen"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:206
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:234
 msgid "Citation File"
-msgstr "Zitations-Datei"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:211
 msgid "Payload"
-msgstr "Payload"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:220
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:289
 msgid "Errors"
-msgstr "Fehler"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:236
 msgid "Create CITATION.cff"
-msgstr "CITATION.cff erstellen"
+msgstr ""
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:240
 msgid ""
 "files are plain text files with human-\n"
 "                                  and machine-readable citation information for software. Code developers can include them in their repositories to let others know how to correctly cite their software."
 msgstr ""
-"Dateien sind Textdateien mit menschen- und maschinenlesbarer Zitations-"
-"Information. Software-Entwickler*innen können sie in ihre Repositorys "
-"einbinden, um kenntlich zu machen, wie die Software korrekt zitiert werden "
-"kann."
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:243
 msgid "An example of the CITATION.cff for this release can be found below:"
 msgstr ""
-"Ein Beispiel der CITATION.cff für diese Veröffentlichung finden Sie unten:"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:266
 msgid "GitHub Payload"
-msgstr "GitHub Payload"
+msgstr ""
 
 #: invenio_github/views/github.py:51
 msgid "Github session token is requested"
-msgstr "GitHub-Sitzungstoken wurde angefordert"
+msgstr ""
 
 #: invenio_github/views/github.py:201
 msgid "Failed to enable repository."
-msgstr "Konnte Repository nicht aktivieren."
+msgstr ""
 
 #: invenio_github/views/github.py:212
 msgid "Failed to enable repository, hook creation not successful."
-msgstr "Konnte Repository nicht aktivieren, Hook-Erstellung nicht erfolgreich"
+msgstr ""
 
 #: invenio_github/views/github.py:242
 msgid "Failed to disable repository."
-msgstr "Konnte Repository nicht deaktivieren."
+msgstr ""
 
 #: invenio_github/views/github.py:255
 msgid "Failed to disable repository, hook removal not successful."
-msgstr "Konnte Repository nicht deaktivieren, Hook-Löschung nicht erfolgreich"
+msgstr ""
