@@ -1,7 +1,7 @@
 ..
     This file is part of Invenio.
     Copyright (C) 2016-2024 CERN.
-    Copyright (C) 2024 Graz University of Technology.
+    Copyright (C) 2024-2025 Graz University of Technology.
 
     Invenio is free software; you can redistribute it
     and/or modify it under the terms of the GNU General Public License as
@@ -25,6 +25,13 @@
 
 Changes
 =======
+
+Version 3.0.0 (release 2025-06-03)
+
+- setup: bump major dependencies
+- fix: setuptools require underscores instead of dashes
+- i18n: update string formatting for compatibility
+- i18n: mark strings for translation
 
 Version 2.0.0 (release 2024-12-12)
 
