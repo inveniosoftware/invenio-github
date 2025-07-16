@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2023 CERN.
+# Copyright (C) 2023-2024 CERN.
 # Copyright (C) 2025 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it
@@ -232,7 +232,7 @@ def github_api(
     )
     repo_1.hooks = MagicMock(return_value=[])
     repo_1.file_contents = MagicMock(return_value=None)
-    # # Mock hook creation to retun the hook id '12345'
+    # Mock hook creation to retun the hook id '12345'
     hook_instance = MagicMock()
     hook_instance.id = 12345
     repo_1.create_hook = MagicMock(return_value=hook_instance)
@@ -288,10 +288,21 @@ def github_api(
     def mock_repo_by_name(owner, name):
         return repos_by_name.get("/".join((owner, name)))
 
+    def mock_head_status_by_repo_url(url, **kwargs):
+        url_specific_refs_tags = (
+            "https://github.com/auser/repo-2/zipball/refs/tags/v1.0-tag-and-branch"
+        )
+        if url.endswith("v1.0-tag-and-branch") and url != url_specific_refs_tags:
+            return MagicMock(
+                status_code=300, links={"alternate": {"url": url_specific_refs_tags}}
+            )
+        else:
+            return MagicMock(status_code=200, url=url)
+
     mock_api.repository_with_id.side_effect = mock_repo_with_id
     mock_api.repository.side_effect = mock_repo_by_name
     mock_api.markdown.side_effect = lambda x: x
-    mock_api.session.head.return_value = MagicMock(status_code=200)
+    mock_api.session.head.side_effect = mock_head_status_by_repo_url
     mock_api.session.get.return_value = MagicMock(raw=ZIPBALL())
 
     with patch("invenio_github.api.GitHubAPI.api", new=mock_api):

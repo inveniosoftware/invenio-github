@@ -153,3 +153,13 @@ class UnexpectedGithubResponse(GitHubError):
     def __init__(self, message=None):
         """Constructor."""
         super().__init__(message or self.message)
+
+
+class ReleaseZipballFetchError(GitHubError):
+    """Error fetching release zipball file."""
+
+    message = _("Error fetching release zipball file.")
+
+    def __init__(self, message=None):
+        """Constructor."""
+        super().__init__(message or self.message)

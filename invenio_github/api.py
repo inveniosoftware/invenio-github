@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2023 CERN.
+# Copyright (C) 2023-2024 CERN.
 # Copyright (C) 2024 KTH Royal Institute of Technology.
 #
 # Invenio is free software; you can redistribute it
@@ -32,7 +32,6 @@ from copy import deepcopy
 from urllib.parse import urlparse
 
 import github3
-import humanize
 import requests
 from flask import current_app
 from invenio_access.permissions import authenticated_user
@@ -53,6 +52,7 @@ from invenio_github.tasks import sync_hooks as sync_hooks_task
 from invenio_github.utils import iso_utcnow, parse_timestamp, utcnow
 
 from .errors import (
+    ReleaseZipballFetchError,
     RemoteAccountDataNotSet,
     RemoteAccountNotFound,
     RepositoryAccessError,
@@ -219,7 +219,7 @@ class GitHubAPI(object):
         Repository.query.filter(
             Repository.user_id == self.user_id,
             ~Repository.github_id.in_(github_repos.keys()),
-        ).update(dict(user_id=None, hook=None), synchronize_session=False)
+        ).update({"user_id": None, "hook": None}, synchronize_session=False)
 
         # Update repos and last sync
         self.account.extra_data.update(
@@ -482,6 +482,7 @@ class GitHubRelease(object):
     def __init__(self, release):
         """Constructor."""
         self.release_object = release
+        self._resolved_zipball_url = None
 
     @cached_property
     def record(self):
@@ -534,7 +535,7 @@ class GitHubRelease(object):
 
     @cached_property
     def release_zipball_url(self):
-        """Returns the release zipball url."""
+        """Returns the release zipball URL."""
         return self.release_payload["zipball_url"]
 
     @cached_property
@@ -599,32 +600,58 @@ class GitHubRelease(object):
         return True if not latest_release else False
 
     def test_zipball(self):
-        """Extract files to download from GitHub payload."""
-        zipball_url = self.release_payload["zipball_url"]
+        """Test if the zipball URL is accessible and return the resolved URL."""
+        return self.resolve_zipball_url()
 
-        # Execute a HEAD request to the zipball url to test the url.
-        response = self.gh.api.session.head(zipball_url, allow_redirects=True)
+    def resolve_zipball_url(self, cache=True):
+        """Resolve the zipball URL.
 
-        # In case where there is a tag and branch with the same name, we might
-        # get back a "300 Mutliple Choices" response, which requires fetching
-        # an "alternate" link.
+        This method will try to resolve the zipball URL by making a HEAD request,
+        handling the following edge cases:
+
+        - In the case of a 300 Multiple Choices response, which can happen when a tag
+          and branch have the same name, it will try to fetch an "alternate" link.
+        - If the access token does not have the required scopes/permissions to access
+          public links, it will fallback to a non-authenticated request.
+        """
+        if self._resolved_zipball_url and cache:
+            return self._resolved_zipball_url
+
+        url = self.release_zipball_url
+
+        # Execute a HEAD request to the zipball url to test if it is accessible.
+        response = self.gh.api.session.head(url, allow_redirects=True)
+
+        # In case where there is a tag and branch with the same name, we might get back
+        # a "300 Multiple Choices" response, which requires fetching an "alternate"
+        # link.
         if response.status_code == 300:
-            zipball_url = response.links.get("alternate", {}).get("url")
-            if zipball_url:
-                response = self.gh.api.session.head(zipball_url, allow_redirects=True)
-                # Another edge-case, is when the access token we have does not
-                # have the scopes/permissions to access public links. In that
-                # rare case we fallback to a non-authenticated request.
-                if response.status_code == 404:
-                    response = requests.head(zipball_url, allow_redirects=True)
-                    # If this response is successful we want to use the finally
-                    # resolved URL to fetch the ZIP from.
-                    if response.status_code == 200:
-                        zipball_url = response.url
+            alternate_url = response.links.get("alternate", {}).get("url")
+            if alternate_url:
+                url = alternate_url  # Use the alternate URL
+                response = self.gh.api.session.head(url, allow_redirects=True)
 
-        assert (
-            response.status_code == 200
-        ), f"Could not retrieve archive from GitHub: {zipball_url}"
+        # Another edge-case, is when the access token we have does not have the
+        # scopes/permissions to access public links. In that rare case we fallback to a
+        # non-authenticated request.
+        if response.status_code == 404:
+            current_app.logger.warning(
+                "GitHub zipball URL {url} not found, trying unauthenticated request.",
+                extra={"url": response.url},
+            )
+            response = requests.head(url, allow_redirects=True)
+            # If this response is successful we want to use the finally resolved URL to
+            # fetch the ZIP from.
+            if response.status_code == 200:
+                return response.url
+
+        if response.status_code != 200:
+            raise ReleaseZipballFetchError()
+
+        if cache:
+            self._resolved_zipball_url = response.url
+
+        return response.url
 
     # High level API
 
@@ -663,8 +690,9 @@ class GitHubRelease(object):
         """Fetch release zipball file using the current github session."""
         session = self.gh.api.session
         timeout = current_app.config.get("GITHUB_ZIPBALL_TIMEOUT", 300)
-        with session.get(self.release_zipball_url, stream=True, timeout=timeout) as s:
-            yield s.raw
+        zipball_url = self.resolve_zipball_url()
+        with session.get(zipball_url, stream=True, timeout=timeout) as resp:
+            yield resp.raw
 
     def publish(self):
         """Publish a GitHub release."""
