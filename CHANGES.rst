@@ -26,6 +26,10 @@
 Changes
 =======
 
+Version v3.0.1 (released 2025-07-30)
+
+- api: fix set alternate zipball URL when tag and branch having same name
+
 Version 3.0.0 (release 2025-06-03)
 
 - setup: bump major dependencies
