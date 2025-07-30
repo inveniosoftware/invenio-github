@@ -28,4 +28,4 @@ on:
 
 jobs:
   Tests:
-    uses: inveniosoftware/workflows/.github/workflows/tests-python.yml@master
+    uses: inveniosoftware/workflows/.github/workflows/tests-python.yml@uv
