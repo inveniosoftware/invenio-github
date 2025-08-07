@@ -50,7 +50,7 @@ class InvenioGitHub(object):
     @cached_property
     def release_api_class(self):
         """Github Release API class."""
-        cls = current_app.config["GITHUB_RELEASE_CLASS"]
+        cls = current_app.config["VCS_RELEASE_CLASS"]
         if isinstance(cls, string_types):
             cls = import_string(cls)
         assert issubclass(cls, GitHubRelease)
@@ -78,7 +78,7 @@ class InvenioGitHub(object):
         )
 
         for k in dir(config):
-            if k.startswith("GITHUB_"):
+            if k.startswith("GITHUB_") or k.startswith("VCS_"):
                 app.config.setdefault(k, getattr(config, k))
 
 
@@ -92,6 +92,7 @@ def init_menu(app):
     if app.config.get("GITHUB_INTEGRATION_ENABLED", False):
         current_menu.submenu("settings.github").register(
             endpoint="invenio_github.get_repositories",
+            endpoint_arguments_constructor=lambda: {"provider": "github"},
             text=_(
                 "%(icon)s GitHub",
                 icon=LazyString(

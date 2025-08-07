@@ -47,7 +47,7 @@ from werkzeug.local import LocalProxy
 from werkzeug.utils import cached_property
 
 from invenio_github.models import Release, ReleaseStatus, Repository
-from invenio_github.proxies import current_github
+from invenio_github.proxies import current_vcs
 from invenio_github.tasks import sync_hooks as sync_hooks_task
 from invenio_github.utils import iso_utcnow, parse_timestamp, utcnow
 
@@ -64,8 +64,9 @@ from .errors import (
 class GitHubAPI(object):
     """Wrapper for GitHub API."""
 
-    def __init__(self, user_id=None):
+    def __init__(self, remote, user_id=None):
         """Create a GitHub API object."""
+        self.remote = remote
         self.user_id = user_id
 
     @cached_property
@@ -95,11 +96,6 @@ class GitHubAPI(object):
             return token
         return None
 
-    remote = LocalProxy(
-        lambda: current_oauthclient.oauth.remote_apps[
-            current_app.config["GITHUB_WEBHOOK_RECEIVER_ID"]
-        ]
-    )
     """Return OAuth remote application."""
 
     def check_repo_access_permissions(self, repo):
@@ -363,7 +359,7 @@ class GitHubAPI(object):
         release_instance = None
         release_object = repo.latest_release(ReleaseStatus.PUBLISHED)
         if release_object:
-            release_instance = current_github.release_api_class(release_object)
+            release_instance = current_vcs.release_api_class(release_object)
         return release_instance
 
     def get_repository_releases(self, repo):
@@ -373,7 +369,7 @@ class GitHubAPI(object):
         # Retrieve releases and sort them by creation date
         release_instances = []
         for release_object in repo.releases.order_by(Release.created):
-            release_instance = current_github.release_api_class(release_object)
+            release_instance = current_vcs.release_api_class(release_object)
             release_instances.append(release_instance)
 
         return release_instances
@@ -390,7 +386,7 @@ class GitHubAPI(object):
             )
             for repo in db_repos:
                 if str(repo.github_id) in repos:
-                    release_instance = current_github.release_api_class(
+                    release_instance = current_vcs.release_api_class(
                         repo.latest_release()
                     )
                     repos[str(repo.github_id)]["instance"] = repo

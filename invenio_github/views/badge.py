@@ -31,7 +31,7 @@ from flask_login import current_user
 from invenio_github.api import GitHubAPI
 from invenio_github.errors import ReleaseNotFound
 from invenio_github.models import ReleaseStatus, Repository
-from invenio_github.proxies import current_github
+from invenio_github.proxies import current_vcs
 
 blueprint = Blueprint(
     "invenio_github_badge",
@@ -56,7 +56,7 @@ def index(repo_github_id):
     if not latest_release:
         abort(404)
 
-    release = current_github.release_api_class(latest_release)
+    release = current_vcs.release_api_class(latest_release)
     # release.badge_title points to "DOI"
     # release.badge_value points to the record "pids.doi.identifier"
     badge_url = url_for(
@@ -80,7 +80,7 @@ def index_old(user_id, repo_name):
     if not latest_release:
         abort(404)
 
-    release = current_github.release_api_class(latest_release)
+    release = current_vcs.release_api_class(latest_release)
     # release.badge_title points to "DOI"
     # release.badge_value points to the record "pids.doi.identifier"
     badge_url = url_for(
@@ -105,7 +105,7 @@ def latest_doi(github_id):
     if not latest_release:
         abort(404)
 
-    release = current_github.release_api_class(latest_release)
+    release = current_vcs.release_api_class(latest_release)
 
     # record.url points to DOI url or HTML url if Datacite is not enabled.
     return redirect(release.record_url)

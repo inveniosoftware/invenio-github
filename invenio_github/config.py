@@ -24,6 +24,10 @@
 
 from datetime import timedelta
 
+from invenio_github.contrib.github import GitHubProvider
+
+VCS_PROVIDERS = []
+
 GITHUB_WEBHOOK_RECEIVER_ID = "github"
 """Local name of webhook receiver."""
 

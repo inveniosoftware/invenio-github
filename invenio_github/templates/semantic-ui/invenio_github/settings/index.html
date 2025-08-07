@@ -161,7 +161,7 @@
           <h2 class="ui huge header">{{ _('Software preservation made simple!') }}</h2>
           <a
             class="ui basic button rel-mt-1"
-            href="{{ url_for('invenio_oauthclient.login', remote_app='github', next=url_for('invenio_github.get_repositories')) }}"
+            href="{{ url_for('invenio_oauthclient.login', remote_app='github', next=url_for('invenio_github.get_repositories', provider='github')) }}"
             aria-label="{{ _('Connect your GitHub account') }}"
           >
             <i class="github icon" aria-hidden="True"></i>

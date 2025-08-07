@@ -110,7 +110,7 @@ class ReleaseStatus(Enum):
 class Repository(db.Model, Timestamp):
     """Information about a GitHub repository."""
 
-    __tablename__ = "github_repositories"
+    __tablename__ = "vcs_repositories"
 
     id = db.Column(
         UUIDType,
@@ -119,11 +119,10 @@ class Repository(db.Model, Timestamp):
     )
     """Repository identifier."""
 
-    github_id = db.Column(
-        db.Integer,
-        unique=True,
+    provider_id = db.Column(
+        db.String(255),
         index=True,
-        nullable=True,
+        nullable=False,
     )
     """Unique GitHub identifier for a repository.
 
@@ -142,13 +141,16 @@ class Repository(db.Model, Timestamp):
         `github_id`, that only has a `name`.
     """
 
+    provider = db.Column(db.String(255), nullable=False)
+    """Which VCS provider the repository is hosted by (and therefore the context in which to consider the provider_id)"""
+
     name = db.Column(db.String(255), unique=True, index=True, nullable=False)
     """Fully qualified name of the repository including user/organization."""
 
     user_id = db.Column(db.Integer, db.ForeignKey(User.id), nullable=True)
     """Reference user that can manage this repository."""
 
-    hook = db.Column(db.Integer)
+    hook = db.Column(db.String(255))
     """Hook identifier."""
 
     #
@@ -215,7 +217,7 @@ class Release(db.Model, Timestamp):
     )
     """Release identifier."""
 
-    release_id = db.Column(db.Integer, unique=True, nullable=True)
+    provider_id = db.Column(db.String(255), nullable=True)
     """Unique GitHub release identifier."""
 
     tag = db.Column(db.String(255))

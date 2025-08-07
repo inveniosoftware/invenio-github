@@ -35,7 +35,7 @@ from invenio_oauthclient.proxies import current_oauthclient
 
 from invenio_github.errors import CustomGitHubMetadataError, RepositoryAccessError
 from invenio_github.models import Release, ReleaseStatus
-from invenio_github.proxies import current_github
+from invenio_github.proxies import current_vcs
 
 
 def _get_err_obj(msg):
@@ -125,7 +125,7 @@ def process_release(release_id):
         Release.status.in_([ReleaseStatus.RECEIVED, ReleaseStatus.FAILED]),
     ).one()
 
-    release = current_github.release_api_class(release_model)
+    release = current_vcs.release_api_class(release_model)
 
     matched_error_cls = None
     matched_ex = None
@@ -134,7 +134,7 @@ def process_release(release_id):
         release.process_release()
         db.session.commit()
     except Exception as ex:
-        error_handlers = current_github.release_error_handlers
+        error_handlers = current_vcs.release_error_handlers
         matched_ex = None
         for error_cls, handler in error_handlers + DEFAULT_ERROR_HANDLERS:
             if isinstance(ex, error_cls):

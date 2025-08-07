@@ -30,9 +30,12 @@ from flask import Blueprint, abort, current_app, render_template
 from flask_login import current_user, login_required
 from invenio_db import db
 from invenio_i18n import gettext as _
+from invenio_oauthclient.proxies import current_oauthclient
 from sqlalchemy.orm.exc import NoResultFound
 
 from invenio_github.api import GitHubAPI
+from invenio_github.providers import get_provider_by_id
+from invenio_github.service import VersionControlService
 
 from ..errors import GithubTokenNotFound, RepositoryAccessError, RepositoryNotFoundError
 
@@ -63,7 +66,7 @@ def create_ui_blueprint(app):
         __name__,
         static_folder="../static",
         template_folder="../templates",
-        url_prefix="/account/settings/github",
+        url_prefix="/account/settings/<path:provider>",
     )
     if app.config.get("GITHUB_INTEGRATION_ENABLED", False):
         with app.app_context():  # Todo: Temporary fix, it should be removed when inveniosoftware/invenio-theme#355 is merged
@@ -84,14 +87,14 @@ def register_ui_routes(blueprint):
 
     @blueprint.route("/")
     @login_required
-    def get_repositories():
+    def get_repositories(provider):
         """Display list of the user's repositories."""
-        github = GitHubAPI(user_id=current_user.id)
+        svc = VersionControlService(provider, current_user.id)
         ctx = dict(connected=False)
-        if github.session_token:
+        if svc.is_authenticated:
             # Generate the repositories view object
-            repos = github.get_user_repositories()
-            last_sync = github.get_last_sync_time()
+            repos = svc.list_repositories()
+            last_sync = svc.get_last_sync_time()
 
             ctx.update(
                 {
