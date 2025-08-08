@@ -113,6 +113,19 @@ class GitHubProvider(RepositoryServiceProvider):
             )
         return hooks
 
+    def get_repository(self, repository_id):
+        assert repository_id.isdigit()
+        if self._gh is None:
+            return None
+
+        repo = self._gh.repository_with_id(int(repository_id))
+        if repo is None:
+            return None
+
+        return GenericRepository(
+            str(repo.id), repo.full_name, repo.description, repo.default_branch
+        )
+
     def get_repo_latest_release(self, repository_id):
         assert repository_id.isdigit()
         if self._gh is None:

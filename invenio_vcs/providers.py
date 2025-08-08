@@ -117,9 +117,7 @@ class RepositoryServiceProvider(ABC):
     @property
     def session_token(self):
         """Return OAuth session token."""
-        session_token = None
-        if self.user_id is not None:
-            session_token = token_getter(self.factory.remote)
+        session_token = token_getter(self.factory.remote)
         if session_token:
             token = RemoteToken.get(
                 self.user_id,
@@ -170,6 +168,10 @@ class RepositoryServiceProvider(ABC):
         pass
 
     @abstractmethod
+    def get_repository(self, repository_id):
+        pass
+
+    @abstractmethod
     def get_repo_latest_release(self, repository_id):
         pass
 
@@ -182,8 +184,12 @@ class RepositoryServiceProvider(ABC):
         pass
 
 
+def get_provider_list() -> list[RepositoryServiceProviderFactory]:
+    return current_app.config["VCS_PROVIDERS"]
+
+
 def get_provider_by_id(id: str) -> RepositoryServiceProviderFactory:
-    providers = current_app.config["VCS_PROVIDERS"]
+    providers = get_provider_list()
     for provider in providers:
         if id == provider.id:
             return provider

@@ -30,7 +30,6 @@ from flask import Blueprint, abort, current_app, render_template
 from flask_login import current_user, login_required
 from invenio_db import db
 from invenio_i18n import gettext as _
-from invenio_oauthclient.proxies import current_oauthclient
 from sqlalchemy.orm.exc import NoResultFound
 
 from invenio_github.api import GitHubAPI
@@ -46,12 +45,12 @@ def request_session_token():
     def decorator(f):
         @wraps(f)
         def inner(*args, **kwargs):
-            github = GitHubAPI(user_id=current_user.id)
-            token = github.session_token
-            if token:
+            provider = kwargs["provider"]
+            svc = VersionControlService(provider, current_user.id)
+            if svc.is_authenticated:
                 return f(*args, **kwargs)
             raise GithubTokenNotFound(
-                current_user, _("Github session token is requested")
+                current_user, _("VCS provider session token is required")
             )
 
         return inner
@@ -99,33 +98,28 @@ def register_ui_routes(blueprint):
             ctx.update(
                 {
                     "connected": True,
-                    "repos": sorted(repos.items(), key=lambda x: x[1]["full_name"]),
+                    "repos": repos,
                     "last_sync": last_sync,
                 }
             )
 
         return render_template(current_app.config["GITHUB_TEMPLATE_INDEX"], **ctx)
 
-    @blueprint.route("/repository/<path:repo_name>")
+    @blueprint.route("/repository/<path:repo_id>")
     @login_required
     @request_session_token()
-    def get_repository(repo_name):
+    def get_repository(provider, repo_id):
         """Displays one repository.
 
         Retrieves and builds context to display all repository releases, if any.
         """
-        user_id = current_user.id
-        github = GitHubAPI(user_id=user_id)
+        svc = VersionControlService(provider, current_user.id)
 
         try:
-            repo = github.get_repository(repo_name)
-            latest_release = github.repo_last_published_release(repo)
-            default_branch = (
-                github.account.extra_data.get("repos", {})
-                .get(str(repo.github_id), None)
-                .get("default_branch", None)
-            )
-            releases = github.get_repository_releases(repo=repo)
+            repo = svc.get_repository(repo_id)
+            latest_release = svc.get_repo_latest_release(repo)
+            default_branch = svc.get_repo_default_branch(repo_id)
+            releases = svc.list_repo_releases(repo)
             return render_template(
                 current_app.config["GITHUB_TEMPLATE_VIEW"],
                 latest_release=latest_release,

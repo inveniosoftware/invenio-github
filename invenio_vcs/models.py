@@ -35,6 +35,8 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy_utils.models import Timestamp
 from sqlalchemy_utils.types import ChoiceType, JSONType, UUIDType
 
+from invenio_github.providers import GenericRelease
+
 RELEASE_STATUS_TITLES = {
     "RECEIVED": _("Received"),
     "PROCESSING": _("Processing"),
@@ -166,7 +168,7 @@ class Repository(db.Model, Timestamp):
         return obj
 
     @classmethod
-    def get(cls, github_id=None, name=None):
+    def get(cls, provider_id=None, name=None):
         """Return a repository given its name or github id.
 
         :param integer github_id: GitHub repository identifier.
@@ -179,8 +181,8 @@ class Repository(db.Model, Timestamp):
                  exist.
         """
         repo = None
-        if github_id:
-            repo = cls.query.filter(Repository.github_id == github_id).one_or_none()
+        if provider_id:
+            repo = cls.query.filter(Repository.provider_id == provider_id).one_or_none()
         if not repo and name is not None:
             repo = cls.query.filter(Repository.name == name).one_or_none()
 
@@ -261,3 +263,6 @@ class Release(db.Model, Timestamp):
     def __repr__(self):
         """Get release representation."""
         return f"<Release {self.tag}:{self.release_id} ({self.status.title})>"
+
+    def to_generic(self):
+        return GenericRelease(self.id, "", self.tag, "", "", self.created)

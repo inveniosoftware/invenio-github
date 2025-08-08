@@ -78,7 +78,7 @@ GITHUB_ERROR_HANDLERS = None
 GITHUB_MAX_CONTRIBUTORS_NUMBER = 30
 """Max number of contributors of a release to be retrieved from Github."""
 
-GITHUB_INTEGRATION_ENABLED = False
+VCS_INTEGRATION_ENABLED = False
 """Enables the github integration."""
 
 GITHUB_CITATION_FILE = None

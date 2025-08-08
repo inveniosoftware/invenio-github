@@ -34,6 +34,7 @@ from six import string_types
 from werkzeug.utils import cached_property, import_string
 
 from invenio_github.api import GitHubRelease
+from invenio_github.providers import get_provider_list
 from invenio_github.utils import obj_or_import_string
 
 from . import config
@@ -68,7 +69,7 @@ class InvenioGitHub(object):
     def init_app(self, app):
         """Flask application initialization."""
         self.init_config(app)
-        app.extensions["invenio-github"] = self
+        app.extensions["invenio-vcs"] = self
 
     def init_config(self, app):
         """Initialize configuration."""
@@ -89,16 +90,18 @@ def finalize_app(app):
 
 def init_menu(app):
     """Init menu."""
-    if app.config.get("GITHUB_INTEGRATION_ENABLED", False):
-        current_menu.submenu("settings.github").register(
-            endpoint="invenio_github.get_repositories",
-            endpoint_arguments_constructor=lambda: {"provider": "github"},
-            text=_(
-                "%(icon)s GitHub",
-                icon=LazyString(
-                    lambda: f'<i class="{current_theme_icons.github}"></i>'
+    if app.config.get("VCS_INTEGRATION_ENABLED", False):
+        for provider in get_provider_list():
+            current_menu.submenu(f"settings.{provider.id}").register(
+                endpoint="invenio_vcs.get_repositories",
+                endpoint_arguments_constructor=lambda: {"provider": provider.id},
+                text=_(
+                    "%(icon)s $(provider)",
+                    icon=LazyString(
+                        lambda: f'<i class="{current_theme_icons[provider.icon]}"></i>'
+                    ),
+                    provider=LazyString(lambda: provider.name),
                 ),
-            ),
-            order=10,
-            active_when=lambda: request.endpoint.startswith("invenio_github."),
-        )
+                order=10,
+                active_when=lambda: request.endpoint.startswith("invenio_vcs."),
+            )
