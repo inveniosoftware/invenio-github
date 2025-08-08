@@ -9,7 +9,7 @@
 
 from invenio_oauthclient.contrib.github import GitHubOAuthSettingsHelper
 
-from invenio_github.oauth.handlers import account_setup_handler, disconnect_handler
+from invenio_vcs.oauth.handlers import account_setup_handler, disconnect_handler
 
 request_token_params = {"scope": "read:user,user:email,admin:repo_hook,read:org"}
 

@@ -25,7 +25,7 @@
 
 """Sphinx configuration."""
 
-from invenio_github import __version__
+from invenio_vcs import __version__
 
 # -- General configuration ------------------------------------------------
 

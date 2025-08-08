@@ -22,7 +22,7 @@
 
 """Test cases for badge creation."""
 
-from invenio_github.models import Repository
+from invenio_vcs.models import Repository
 
 
 def test_repository_unbound(app):

@@ -27,8 +27,8 @@ import json
 # from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_webhooks.models import Event
 
-from invenio_github.api import GitHubAPI
-from invenio_github.models import ReleaseStatus, Repository
+from invenio_vcs.api import GitHubAPI
+from invenio_vcs.models import ReleaseStatus, Repository
 
 
 def test_webhook_post(app, db, tester_id, remote_token, github_api):

@@ -12,7 +12,7 @@ from invenio_oauthclient.models import RemoteAccount, RemoteToken
 from werkzeug.local import LocalProxy
 from werkzeug.utils import cached_property
 
-from invenio_github.errors import RemoteAccountDataNotSet
+from invenio_vcs.errors import RemoteAccountDataNotSet
 
 
 @dataclass

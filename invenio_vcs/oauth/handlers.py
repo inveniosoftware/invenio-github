@@ -28,8 +28,8 @@ from invenio_db import db
 from invenio_oauth2server.models import Token as ProviderToken
 from invenio_oauthclient import oauth_unlink_external_id
 
-from invenio_github.api import GitHubAPI
-from invenio_github.tasks import disconnect_github
+from invenio_vcs.api import GitHubAPI
+from invenio_vcs.tasks import disconnect_github
 
 
 def account_setup_handler(remote, token, resp):

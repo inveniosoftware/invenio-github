@@ -46,10 +46,10 @@ from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.local import LocalProxy
 from werkzeug.utils import cached_property
 
-from invenio_github.models import Release, ReleaseStatus, Repository
-from invenio_github.proxies import current_vcs
-from invenio_github.tasks import sync_hooks as sync_hooks_task
-from invenio_github.utils import iso_utcnow, parse_timestamp, utcnow
+from invenio_vcs.models import Release, ReleaseStatus, Repository
+from invenio_vcs.proxies import current_vcs
+from invenio_vcs.tasks import sync_hooks as sync_hooks_task
+from invenio_vcs.utils import iso_utcnow, parse_timestamp, utcnow
 
 from .errors import (
     ReleaseZipballFetchError,

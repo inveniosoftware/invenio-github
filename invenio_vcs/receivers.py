@@ -25,8 +25,8 @@
 from invenio_db import db
 from invenio_webhooks.models import Receiver
 
-from invenio_github.models import Release, ReleaseStatus, Repository
-from invenio_github.tasks import process_release
+from invenio_vcs.models import Release, ReleaseStatus, Repository
+from invenio_vcs.tasks import process_release
 
 from .errors import (
     InvalidSenderError,

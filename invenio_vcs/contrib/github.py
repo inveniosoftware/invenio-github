@@ -5,8 +5,8 @@ from github3.repos import ShortRepository
 from invenio_oauthclient.contrib.github import GitHubOAuthSettingsHelper
 from werkzeug.utils import cached_property
 
-from invenio_github.oauth.handlers import account_setup_handler, disconnect_handler
-from invenio_github.providers import (
+from invenio_vcs.oauth.handlers import account_setup_handler, disconnect_handler
+from invenio_vcs.providers import (
     GenericRelease,
     GenericRepository,
     GenericWebhook,

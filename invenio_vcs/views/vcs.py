@@ -32,9 +32,9 @@ from invenio_db import db
 from invenio_i18n import gettext as _
 from sqlalchemy.orm.exc import NoResultFound
 
-from invenio_github.api import GitHubAPI
-from invenio_github.providers import get_provider_by_id
-from invenio_github.service import VersionControlService
+from invenio_vcs.api import GitHubAPI
+from invenio_vcs.providers import get_provider_by_id
+from invenio_vcs.service import VersionControlService
 
 from ..errors import GithubTokenNotFound, RepositoryAccessError, RepositoryNotFoundError
 

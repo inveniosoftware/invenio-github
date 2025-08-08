@@ -28,10 +28,10 @@ from __future__ import absolute_import
 from flask import Blueprint, abort, current_app, redirect, url_for
 from flask_login import current_user
 
-from invenio_github.api import GitHubAPI
-from invenio_github.errors import ReleaseNotFound
-from invenio_github.models import ReleaseStatus, Repository
-from invenio_github.proxies import current_vcs
+from invenio_vcs.api import GitHubAPI
+from invenio_vcs.errors import ReleaseNotFound
+from invenio_vcs.models import ReleaseStatus, Repository
+from invenio_vcs.proxies import current_vcs
 
 blueprint = Blueprint(
     "invenio_github_badge",

@@ -5,13 +5,13 @@ from invenio_db import db
 from invenio_i18n import gettext as _
 from werkzeug.utils import cached_property
 
-from invenio_github.errors import (
+from invenio_vcs.errors import (
     RemoteAccountDataNotSet,
     RepositoryAccessError,
     RepositoryNotFoundError,
 )
-from invenio_github.models import Release, ReleaseStatus, Repository
-from invenio_github.providers import GenericRelease, get_provider_by_id
+from invenio_vcs.models import Release, ReleaseStatus, Repository
+from invenio_vcs.providers import GenericRelease, get_provider_by_id
 
 
 class VersionControlService:

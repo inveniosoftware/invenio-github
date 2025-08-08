@@ -35,7 +35,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy_utils.models import Timestamp
 from sqlalchemy_utils.types import ChoiceType, JSONType, UUIDType
 
-from invenio_github.providers import GenericRelease
+from invenio_vcs.providers import GenericRelease
 
 RELEASE_STATUS_TITLES = {
     "RECEIVED": _("Received"),

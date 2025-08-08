@@ -24,7 +24,7 @@
 
 from datetime import timedelta
 
-from invenio_github.contrib.github import GitHubProvider
+from invenio_vcs.contrib.github import GitHubProvider
 
 VCS_PROVIDERS = []
 

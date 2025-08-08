@@ -27,12 +27,12 @@
 
 from flask import Flask
 
-from invenio_github import InvenioGitHub
+from invenio_vcs import InvenioGitHub
 
 
 def test_version():
     """Test version import."""
-    from invenio_github import __version__
+    from invenio_vcs import __version__
 
     assert __version__
 

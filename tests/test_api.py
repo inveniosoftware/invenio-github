@@ -11,8 +11,8 @@ import json
 import pytest
 from invenio_webhooks.models import Event
 
-from invenio_github.api import GitHubAPI, GitHubRelease
-from invenio_github.models import Release, ReleaseStatus
+from invenio_vcs.api import GitHubAPI, GitHubRelease
+from invenio_vcs.models import Release, ReleaseStatus
 
 from .fixtures import PAYLOAD as github_payload_fixture
 
