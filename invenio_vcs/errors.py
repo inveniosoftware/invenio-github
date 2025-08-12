@@ -145,10 +145,10 @@ class ReleaseNotFound(GitHubError):
         super().__init__(message or self.message)
 
 
-class UnexpectedGithubResponse(GitHubError):
+class UnexpectedProviderResponse(GitHubError):
     """Request to Github API returned an unexpected error."""
 
-    message = _("Github API returned an unexpected error.")
+    message = _("Provider API returned an unexpected error.")
 
     def __init__(self, message=None):
         """Constructor."""

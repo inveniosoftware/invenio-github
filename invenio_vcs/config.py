@@ -75,7 +75,7 @@ GITHUB_TEMPLATE_VIEW = "invenio_github/settings/view.html"
 GITHUB_ERROR_HANDLERS = None
 """Definition of the way specific exceptions are handled."""
 
-GITHUB_MAX_CONTRIBUTORS_NUMBER = 30
+VCS_MAX_CONTRIBUTORS_NUMBER = 30
 """Max number of contributors of a release to be retrieved from Github."""
 
 VCS_INTEGRATION_ENABLED = False

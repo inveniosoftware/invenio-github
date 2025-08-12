@@ -11,7 +11,7 @@ import json
 import pytest
 from invenio_webhooks.models import Event
 
-from invenio_vcs.api import GitHubAPI, GitHubRelease
+from invenio_vcs.api import GitHubAPI, VCSRelease
 from invenio_vcs.models import Release, ReleaseStatus
 
 from .fixtures import PAYLOAD as github_payload_fixture
@@ -58,7 +58,7 @@ def test_release_api(app, test_user, github_api):
             status=ReleaseStatus.RECEIVED,
         )
         # Idea is to test the public interface of GithubRelease
-        gh = GitHubRelease(release)
+        gh = VCSRelease(release)
 
         # Validate that public methods raise NotImplementedError
         with pytest.raises(NotImplementedError):
@@ -109,7 +109,7 @@ def test_release_branch_tag_conflict(app, test_user, github_api):
             status=ReleaseStatus.RECEIVED,
         )
         # Idea is to test the public interface of GithubRelease
-        rel_api = GitHubRelease(release)
+        rel_api = VCSRelease(release)
         resolved_url = rel_api.resolve_zipball_url()
         ref_tag_url = (
             "https://github.com/auser/repo-2/zipball/refs/tags/v1.0-tag-and-branch"

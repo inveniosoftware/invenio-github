@@ -95,18 +95,18 @@ def disconnect_github(access_token, repo_hooks):
 
 
 @shared_task(max_retries=6, default_retry_delay=10 * 60, rate_limit="100/m")
-def sync_hooks(user_id, repositories):
+def sync_hooks(provider, user_id, repositories):
     """Sync repository hooks for a user."""
     # Local import to avoid circular imports
-    from .api import GitHubAPI
+    from .service import VersionControlService
 
     try:
         # Sync hooks
-        gh = GitHubAPI(user_id=user_id)
+        svc = VersionControlService(provider, user_id)
         for repo_id in repositories:
             try:
                 with db.session.begin_nested():
-                    gh.sync_repo_hook(repo_id)
+                    svc.sync_repo_hook(repo_id)
                 # We commit per repository, because while the task is running
                 db.session.commit()
             except RepositoryAccessError as e:

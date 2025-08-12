@@ -2,13 +2,16 @@ from collections import defaultdict
 
 import github3
 from github3.repos import ShortRepository
+from invenio_i18n import gettext as _
 from invenio_oauthclient.contrib.github import GitHubOAuthSettingsHelper
 from werkzeug.utils import cached_property
 
+from invenio_vcs.errors import UnexpectedProviderResponse
 from invenio_vcs.oauth.handlers import account_setup_handler, disconnect_handler
 from invenio_vcs.providers import (
-    GenericRelease,
+    GenericContributor,
     GenericRepository,
+    GenericUser,
     GenericWebhook,
     RepositoryServiceProvider,
     RepositoryServiceProviderFactory,
@@ -41,7 +44,7 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
         }
 
         helper = GitHubOAuthSettingsHelper(
-            base_url=self.base_url, app_key=self.credentials_key
+            base_url=self.config["base_url"], app_key=self.config["credentials_key"]
         )
         github_app = helper.remote_app
         github_app["disconnect_handler"] = disconnect_handler
@@ -126,34 +129,13 @@ class GitHubProvider(RepositoryServiceProvider):
             str(repo.id), repo.full_name, repo.description, repo.default_branch
         )
 
-    def get_repo_latest_release(self, repository_id):
+    def create_webhook(self, repository_id):
         assert repository_id.isdigit()
         if self._gh is None:
-            return None
-        repo = self._gh.repository_with_id(int(repository_id))
-        if repo is None:
-            return None
-
-        release = repo.latest_release()
-        if not release:
-            return None
-
-        return GenericRelease(
-            str(release.id),
-            release.name,
-            release.tag_name,
-            release.tarball_url,
-            release.zipball_url,
-            release.created_at,
-        )
-
-    def create_webhook(self, repository_id, url):
-        assert repository_id.isdigit()
-        if self._gh is None:
-            return None
+            return False
 
         hook_config = dict(
-            url=url,
+            url=self.webhook_url,
             content_type="json",
             secret=self.factory.config["shared_secret"],
             insecure_ssl="1" if self.factory.config["insecure_ssl"] else "0",
@@ -163,7 +145,7 @@ class GitHubProvider(RepositoryServiceProvider):
         if repo is None:
             return False
 
-        hooks = (h for h in repo.hooks() if h.config.get("url", "") == url)
+        hooks = (h for h in repo.hooks() if h.config.get("url", "") == self.webhook_url)
         hook = next(hooks, None)
 
         if not hook:
@@ -176,7 +158,7 @@ class GitHubProvider(RepositoryServiceProvider):
     def delete_webhook(self, repository_id):
         assert repository_id.isdigit()
         if self._gh is None:
-            return None
+            return False
 
         repo = self._gh.repository_with_id(int(repository_id))
         if repo is None:
@@ -189,3 +171,58 @@ class GitHubProvider(RepositoryServiceProvider):
         if not hook or hook.delete():
             return True
         return False
+
+    def get_own_user(self):
+        if self._gh is None:
+            return None
+
+        user = self._gh.me()
+        if user is not None:
+            return GenericUser(user.id, user.login, user.name)
+
+        return None
+
+    def list_repository_contributors(self, repository_id, max):
+        assert repository_id.isdigit()
+        if self._gh is None:
+            return None
+
+        repo = self._gh.repository_with_id(repository_id)
+        if repo is None:
+            return None
+
+        contributors_iter = repo.contributors(number=max)
+        # Consume the iterator to materialize the request and have a `last_status``.
+        contributors = list(contributors_iter)
+        status = contributors_iter.last_status
+        if status == 200:
+            # Sort by contributions and filter only users.
+            sorted_contributors = sorted(
+                (c for c in contributors if c.type == "User"),
+                key=lambda x: x.contributions_count,
+                reverse=True,
+            )
+
+            contributors = [
+                GenericContributor(x.id, x.login, x.full_name, x.contributions_count)
+                for x in sorted_contributors
+            ]
+            return contributors
+        else:
+            raise UnexpectedProviderResponse(
+                _(
+                    "Provider returned unexpected code: %(status)s for release in repo %(repo_id)s"
+                )
+                % {"status": status, "repo_id": repository_id}
+            )
+
+    def get_repository_owner(self, repository_id):
+        assert repository_id.isdigit()
+        if self._gh is None:
+            return None
+
+        repo = self._gh.repository_with_id(repository_id)
+        if repo is None:
+            return None
+
+        return GenericUser(repo.owner.id, repo.owner.login, repo.owner.full_name)

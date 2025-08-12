@@ -161,9 +161,15 @@ class Repository(db.Model, Timestamp):
     user = db.relationship(User)
 
     @classmethod
-    def create(cls, user_id, github_id=None, name=None, **kwargs):
+    def create(cls, user_id, provider, provider_id=None, name=None, **kwargs):
         """Create the repository."""
-        obj = cls(user_id=user_id, github_id=github_id, name=name, **kwargs)
+        obj = cls(
+            user_id=user_id,
+            provider=provider,
+            provider_id=provider_id,
+            name=name,
+            **kwargs,
+        )
         db.session.add(obj)
         return obj
 
@@ -263,6 +269,3 @@ class Release(db.Model, Timestamp):
     def __repr__(self):
         """Get release representation."""
         return f"<Release {self.tag}:{self.release_id} ({self.status.title})>"
-
-    def to_generic(self):
-        return GenericRelease(self.id, "", self.tag, "", "", self.created)

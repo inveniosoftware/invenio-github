@@ -75,7 +75,9 @@ def create_ui_blueprint(app):
 
 def create_api_blueprint(app):
     """Creates blueprint and registers API endpoints if the integration is enabled."""
-    blueprint_api = Blueprint("invenio_github_api", __name__)
+    blueprint_api = Blueprint(
+        "invenio_github_api", __name__, url_prefix="/user/vcs/<path:provider>"
+    )
     if app.config.get("GITHUB_INTEGRATION_ENABLED", False):
         register_api_routes(blueprint_api)
     return blueprint_api
@@ -141,8 +143,8 @@ def register_api_routes(blueprint):
 
     @login_required
     @request_session_token()
-    @blueprint.route("/user/github/repositories/sync", methods=["POST"])
-    def sync_user_repositories():
+    @blueprint.route("/repositories/sync", methods=["POST"])
+    def sync_user_repositories(provider):
         """Synchronizes user repos.
 
         Currently:
@@ -151,8 +153,8 @@ def register_api_routes(blueprint):
             POST /account/settings/github/hook
         """
         try:
-            github = GitHubAPI(user_id=current_user.id)
-            github.sync(async_hooks=False)
+            svc = VersionControlService(provider, current_user.id)
+            svc.sync(async_hooks=False)
             db.session.commit()
         except Exception as exc:
             current_app.logger.exception(str(exc))
@@ -162,13 +164,13 @@ def register_api_routes(blueprint):
 
     @login_required
     @request_session_token()
-    @blueprint.route("/user/github/", methods=["POST"])
-    def init_user_github():
+    @blueprint.route("/", methods=["POST"])
+    def init_user_github(provider):
         """Initialises github account for an user."""
         try:
-            github = GitHubAPI(user_id=current_user.id)
-            github.init_account()
-            github.sync(async_hooks=False)
+            svc = VersionControlService(provider, current_user.id)
+            svc.init_account()
+            svc.sync(async_hooks=False)
             db.session.commit()
         except Exception as exc:
             current_app.logger.exception(str(exc))
@@ -177,10 +179,8 @@ def register_api_routes(blueprint):
 
     @login_required
     @request_session_token()
-    @blueprint.route(
-        "/user/github/repositories/<repository_id>/enable", methods=["POST"]
-    )
-    def enable_repository(repository_id):
+    @blueprint.route("/repositories/<repository_id>/enable", methods=["POST"])
+    def enable_repository(provider, repository_id):
         """Enables one repository.
 
         Currently:
@@ -189,18 +189,9 @@ def register_api_routes(blueprint):
             POST /account/settings/github/hook
         """
         try:
-            github = GitHubAPI(user_id=current_user.id)
+            svc = VersionControlService(provider, current_user.id)
+            create_success = svc.enable_repository(repository_id)
 
-            repos = github.account.extra_data.get("repos", {})
-
-            if str(repository_id) not in repos:
-                raise RepositoryNotFoundError(
-                    repository_id, _("Failed to enable repository.")
-                )
-
-            create_success = github.create_hook(
-                repository_id, repos[str(repository_id)]["full_name"]
-            )
             db.session.commit()
             if create_success:
                 return "", 201
@@ -218,10 +209,8 @@ def register_api_routes(blueprint):
 
     @login_required
     @request_session_token()
-    @blueprint.route(
-        "/user/github/repositories/<repository_id>/disable", methods=["POST"]
-    )
-    def disable_repository(repository_id):
+    @blueprint.route("/repositories/<repository_id>/disable", methods=["POST"])
+    def disable_repository(provider, repository_id):
         """Disables one repository.
 
         Currently:
@@ -230,21 +219,10 @@ def register_api_routes(blueprint):
             DELETE /account/settings/github/hook
         """
         try:
-            github = GitHubAPI(user_id=current_user.id)
+            svc = VersionControlService(provider, current_user.id)
+            remove_success = svc.disable_repository(repository_id)
 
-            repos = github.account.extra_data.get("repos", {})
-
-            if str(repository_id) not in repos:
-                raise RepositoryNotFoundError(
-                    repository_id, _("Failed to disable repository.")
-                )
-
-            remove_success = False
-            if repos:
-                remove_success = github.remove_hook(
-                    repository_id, repos[str(repository_id)]["full_name"]
-                )
-                db.session.commit()
+            db.session.commit()
             if remove_success:
                 return "", 204
             else:

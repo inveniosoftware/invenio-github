@@ -27,11 +27,11 @@ from zipfile import ZipFile
 
 from six import BytesIO
 
-from invenio_vcs.api import GitHubRelease
+from invenio_vcs.api import VCSRelease
 from invenio_vcs.models import ReleaseStatus
 
 
-class TestGithubRelease(GitHubRelease):
+class TestGithubRelease(VCSRelease):
     """Implements GithubRelease with test methods."""
 
     def publish(self):
@@ -39,8 +39,8 @@ class TestGithubRelease(GitHubRelease):
 
         Does not create a "real" record, as this only used to test the API.
         """
-        self.release_object.status = ReleaseStatus.PUBLISHED
-        self.release_object.record_id = "445aaacd-9de1-41ab-af52-25ab6cb93df7"
+        self.generic_release.status = ReleaseStatus.PUBLISHED
+        self.generic_release.record_id = "445aaacd-9de1-41ab-af52-25ab6cb93df7"
         return {}
 
     def process_release(self):

@@ -33,8 +33,7 @@ from invenio_theme.proxies import current_theme_icons
 from six import string_types
 from werkzeug.utils import cached_property, import_string
 
-from invenio_vcs.api import GitHubRelease
-from invenio_vcs.providers import get_provider_list
+from invenio_vcs.providers import VCSRelease, get_provider_list
 from invenio_vcs.utils import obj_or_import_string
 
 from . import config
@@ -54,7 +53,7 @@ class InvenioGitHub(object):
         cls = current_app.config["VCS_RELEASE_CLASS"]
         if isinstance(cls, string_types):
             cls = import_string(cls)
-        assert issubclass(cls, GitHubRelease)
+        assert issubclass(cls, VCSRelease)
         return cls
 
     @cached_property
