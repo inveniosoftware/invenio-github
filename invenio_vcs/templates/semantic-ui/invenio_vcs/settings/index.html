@@ -6,7 +6,7 @@
   Invenio is free software; you can redistribute it and/or modify it
   under the terms of the MIT License; see LICENSE file for more details.
 #}
-{%- import "invenio_github/settings/helpers.html" as helpers with context %}
+{%- import "invenio_vcs/settings/helpers.html" as helpers with context %}
 {%- if not request.is_xhr %}
   {%- extends config.GITHUB_SETTINGS_TEMPLATE %}
 {%- endif %}

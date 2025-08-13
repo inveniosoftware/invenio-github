@@ -27,8 +27,8 @@ from zipfile import ZipFile
 
 from six import BytesIO
 
-from invenio_vcs.api import VCSRelease
 from invenio_vcs.models import ReleaseStatus
+from invenio_vcs.service import VCSRelease
 
 
 class TestGithubRelease(VCSRelease):

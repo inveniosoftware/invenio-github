@@ -27,4 +27,4 @@
 from flask import current_app
 from werkzeug.local import LocalProxy
 
-current_vcs = LocalProxy(lambda: current_app.extensions["invenio-github"])
+current_vcs = LocalProxy(lambda: current_app.extensions["invenio-vcs"])

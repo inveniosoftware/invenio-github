@@ -10,7 +10,7 @@
 
 {%- macro doi_badge(doi, doi_url, github_id) %}
   {%- block doi_badge scoped %}
-    {% set image_url = url_for('invenio_github_badge.index', repo_github_id=github_id, _external=True) %}
+    {% set image_url = url_for('invenio_vcs_badge.index', repo_github_id=github_id, _external=True) %}
     <img
       role="button"
       tabindex="0"

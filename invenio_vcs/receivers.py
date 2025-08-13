@@ -26,6 +26,7 @@ from invenio_db import db
 from invenio_webhooks.models import Receiver
 
 from invenio_vcs.models import Release, ReleaseStatus, Repository
+from invenio_vcs.providers import get_provider_by_id
 from invenio_vcs.tasks import process_release
 
 from .errors import (
@@ -37,8 +38,12 @@ from .errors import (
 )
 
 
-class GitHubReceiver(Receiver):
+class VCSReceiver(Receiver):
     """Handle incoming notification from GitHub on a new release."""
+
+    def __init__(self, receiver_id):
+        super().__init__(receiver_id)
+        self.provider_factory = get_provider_by_id(receiver_id)
 
     def run(self, event):
         """Process an event.
@@ -53,43 +58,37 @@ class GitHubReceiver(Receiver):
 
     def _handle_event(self, event):
         """Handles an incoming github event."""
-        action = event.payload.get("action")
-        is_draft_release = event.payload.get("release", {}).get("draft")
-
-        # Draft releases do not create releases on invenio
-        is_create_release_event = (
-            action in ("published", "released", "created") and not is_draft_release
+        is_create_release_event = self.provider_factory.webhook_is_create_release_event(
+            event.payload
         )
 
         if is_create_release_event:
             self._handle_create_release(event)
-        else:
-            pass
 
     def _handle_create_release(self, event):
         """Creates a release in invenio."""
         try:
-            release_id = event.payload["release"]["id"]
+            generic_release, generic_repo = (
+                self.provider_factory.webhook_event_to_generic(event.payload)
+            )
 
             # Check if the release already exists
             existing_release = Release.query.filter_by(
-                release_id=release_id,
+                provider_id=generic_release.id,
             ).first()
 
             if existing_release:
                 raise ReleaseAlreadyReceivedError(release=existing_release)
 
             # Create the Release
-            repo_id = event.payload["repository"]["id"]
-            repo_name = event.payload["repository"]["name"]
-            repo = Repository.get(repo_id, repo_name)
+            repo = Repository.get(generic_repo.id, generic_repo.full_name)
             if not repo:
-                raise RepositoryNotFoundError(repo_name)
+                raise RepositoryNotFoundError(generic_repo.full_name)
 
             if repo.enabled:
                 release = Release(
-                    release_id=release_id,
-                    tag=event.payload["release"]["tag_name"],
+                    provider_id=generic_release.id,
+                    tag=generic_release.tag_name,
                     repository=repo,
                     event=event,
                     status=ReleaseStatus.RECEIVED,
@@ -101,7 +100,7 @@ class GitHubReceiver(Receiver):
             # Process the release
             # Since 'process_release' is executed asynchronously, we commit the current state of session
             db.session.commit()
-            process_release.delay(release.release_id)
+            process_release.delay(release.provider_id)
 
         except (ReleaseAlreadyReceivedError, RepositoryDisabledError) as e:
             event.response_code = 409

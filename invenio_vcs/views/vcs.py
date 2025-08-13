@@ -32,9 +32,7 @@ from invenio_db import db
 from invenio_i18n import gettext as _
 from sqlalchemy.orm.exc import NoResultFound
 
-from invenio_vcs.api import GitHubAPI
-from invenio_vcs.providers import get_provider_by_id
-from invenio_vcs.service import VersionControlService
+from invenio_vcs.service import VCSService
 
 from ..errors import GithubTokenNotFound, RepositoryAccessError, RepositoryNotFoundError
 
@@ -46,7 +44,7 @@ def request_session_token():
         @wraps(f)
         def inner(*args, **kwargs):
             provider = kwargs["provider"]
-            svc = VersionControlService(provider, current_user.id)
+            svc = VCSService.for_provider_and_user(provider, current_user.id)
             if svc.is_authenticated:
                 return f(*args, **kwargs)
             raise GithubTokenNotFound(
@@ -90,7 +88,7 @@ def register_ui_routes(blueprint):
     @login_required
     def get_repositories(provider):
         """Display list of the user's repositories."""
-        svc = VersionControlService(provider, current_user.id)
+        svc = VCSService.for_provider_and_user(provider, current_user.id)
         ctx = dict(connected=False)
         if svc.is_authenticated:
             # Generate the repositories view object
@@ -115,7 +113,7 @@ def register_ui_routes(blueprint):
 
         Retrieves and builds context to display all repository releases, if any.
         """
-        svc = VersionControlService(provider, current_user.id)
+        svc = VCSService.for_provider_and_user(provider, current_user.id)
 
         try:
             repo = svc.get_repository(repo_id)
@@ -153,7 +151,7 @@ def register_api_routes(blueprint):
             POST /account/settings/github/hook
         """
         try:
-            svc = VersionControlService(provider, current_user.id)
+            svc = VCSService.for_provider_and_user(provider, current_user.id)
             svc.sync(async_hooks=False)
             db.session.commit()
         except Exception as exc:
@@ -168,7 +166,7 @@ def register_api_routes(blueprint):
     def init_user_github(provider):
         """Initialises github account for an user."""
         try:
-            svc = VersionControlService(provider, current_user.id)
+            svc = VCSService.for_provider_and_user(provider, current_user.id)
             svc.init_account()
             svc.sync(async_hooks=False)
             db.session.commit()
@@ -189,7 +187,7 @@ def register_api_routes(blueprint):
             POST /account/settings/github/hook
         """
         try:
-            svc = VersionControlService(provider, current_user.id)
+            svc = VCSService.for_provider_and_user(provider, current_user.id)
             create_success = svc.enable_repository(repository_id)
 
             db.session.commit()
@@ -219,7 +217,7 @@ def register_api_routes(blueprint):
             DELETE /account/settings/github/hook
         """
         try:
-            svc = VersionControlService(provider, current_user.id)
+            svc = VCSService.for_provider_and_user(provider, current_user.id)
             remove_success = svc.disable_repository(repository_id)
 
             db.session.commit()

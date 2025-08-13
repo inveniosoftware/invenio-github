@@ -25,8 +25,8 @@
 
 """Invenio module that adds GitHub integration to the platform."""
 
-from .ext import InvenioGitHub
+from .ext import InvenioVCS
 
-__version__ = "3.0.1"
+__version__ = "4.0.0"
 
-__all__ = ("__version__", "InvenioGitHub")
+__all__ = ("__version__", "InvenioVCS")

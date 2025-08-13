@@ -1,15 +1,20 @@
+import json
 from collections import defaultdict
+from datetime import datetime
 
 import github3
+import requests
+from flask import current_app
 from github3.repos import ShortRepository
 from invenio_i18n import gettext as _
 from invenio_oauthclient.contrib.github import GitHubOAuthSettingsHelper
 from werkzeug.utils import cached_property
 
-from invenio_vcs.errors import UnexpectedProviderResponse
+from invenio_vcs.errors import ReleaseZipballFetchError, UnexpectedProviderResponse
 from invenio_vcs.oauth.handlers import account_setup_handler, disconnect_handler
 from invenio_vcs.providers import (
     GenericContributor,
+    GenericRelease,
     GenericRepository,
     GenericUser,
     GenericWebhook,
@@ -47,8 +52,10 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
             base_url=self.config["base_url"], app_key=self.config["credentials_key"]
         )
         github_app = helper.remote_app
-        github_app["disconnect_handler"] = disconnect_handler
-        github_app["signup_handler"]["setup"] = account_setup_handler
+        github_app["disconnect_handler"] = self.oauth_handlers.disconnect_handler
+        github_app["signup_handler"][
+            "setup"
+        ] = self.oauth_handlers.account_setup_handler
         github_app["params"]["request_token_params"] = request_token_params
 
         return github_app
@@ -76,6 +83,34 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
     @property
     def config(self):
         return self._config
+
+    def webhook_is_create_release_event(self, event_payload):
+        action = event_payload.get("action")
+        is_draft_release = event_payload.get("release", {}).get("draft")
+
+        # Draft releases do not create releases on invenio
+        is_create_release_event = (
+            action in ("published", "released", "created") and not is_draft_release
+        )
+        return is_create_release_event
+
+    def webhook_event_to_generic(self, event_payload):
+        release = GenericRelease(
+            str(event_payload["release"]["id"]),
+            event_payload["release"]["name"],
+            event_payload["release"]["tag_name"],
+            event_payload["release"]["tarball_url"],
+            event_payload["release"]["zipball_url"],
+            datetime.fromisoformat(event_payload["release"]["created_at"]),
+        )
+        repo = GenericRepository(
+            str(event_payload["repository"]["id"]),
+            event_payload["repository"]["full_name"],
+            event_payload["repository"]["description"],
+            event_payload["repository"]["default_branch"],
+        )
+
+        return (release, repo)
 
 
 class GitHubProvider(RepositoryServiceProvider):
@@ -155,7 +190,7 @@ class GitHubProvider(RepositoryServiceProvider):
 
         return True
 
-    def delete_webhook(self, repository_id):
+    def delete_webhook(self, repository_id, hook_id=None):
         assert repository_id.isdigit()
         if self._gh is None:
             return False
@@ -164,10 +199,16 @@ class GitHubProvider(RepositoryServiceProvider):
         if repo is None:
             return False
 
-        hooks = (
-            h for h in repo.hooks() if self.is_valid_webhook(h.config.get("url", ""))
-        )
-        hook = next(hooks, None)
+        if hook_id is not None:
+            hook = repo.hook(hook_id)
+        else:
+            hooks = (
+                h
+                for h in repo.hooks()
+                if self.is_valid_webhook(h.config.get("url", ""))
+            )
+            hook = next(hooks, None)
+
         if not hook or hook.delete():
             return True
         return False
@@ -226,3 +267,67 @@ class GitHubProvider(RepositoryServiceProvider):
             return None
 
         return GenericUser(repo.owner.id, repo.owner.login, repo.owner.full_name)
+
+    def resolve_release_zipball_url(self, release_zipball_url):
+        if self._gh is None:
+            return None
+
+        url = release_zipball_url
+
+        # Execute a HEAD request to the zipball url to test if it is accessible.
+        response = self._gh.session.head(url, allow_redirects=True)
+
+        # In case where there is a tag and branch with the same name, we might get back
+        # a "300 Multiple Choices" response, which requires fetching an "alternate"
+        # link.
+        if response.status_code == 300:
+            alternate_url = response.links.get("alternate", {}).get("url")
+            if alternate_url:
+                url = alternate_url  # Use the alternate URL
+                response = self._gh.session.head(url, allow_redirects=True)
+
+        # Another edge-case, is when the access token we have does not have the
+        # scopes/permissions to access public links. In that rare case we fallback to a
+        # non-authenticated request.
+        if response.status_code == 404:
+            current_app.logger.warning(
+                "GitHub zipball URL {url} not found, trying unauthenticated request.",
+                extra={"url": response.url},
+            )
+            response = requests.head(url, allow_redirects=True)
+            # If this response is successful we want to use the finally resolved URL to
+            # fetch the ZIP from.
+            if response.status_code == 200:
+                return response.url
+
+        if response.status_code != 200:
+            raise ReleaseZipballFetchError()
+
+        return response.url
+
+    def fetch_release_zipball(self, release_zipball_url, timeout):
+        with self._gh.session.get(
+            release_zipball_url, stream=True, timeout=timeout
+        ) as resp:
+            yield resp.raw
+
+    def retrieve_remote_file(self, repository_id, tag_name, file_name):
+        assert repository_id.isdigit()
+        if self._gh is None:
+            return None
+
+        try:
+            return self._gh.repository_with_id(repository_id).file_contents(
+                path=file_name, ref=tag_name
+            )
+        except github3.exceptions.NotFoundError:
+            return None
+
+    def revoke_token(self, access_token):
+        client_id, client_secret = self._gh.session.retrieve_client_credentials()
+        url = self._gh._build_url("applications", str(client_id), "token")
+        with self._gh.session.temporary_basic_auth(client_id, client_secret):
+            response = self._gh._delete(
+                url, data=json.dumps({"access_token": access_token})
+            )
+        return response

@@ -33,13 +33,15 @@ from invenio_theme.proxies import current_theme_icons
 from six import string_types
 from werkzeug.utils import cached_property, import_string
 
-from invenio_vcs.providers import VCSRelease, get_provider_list
+from invenio_vcs.providers import get_provider_list
+from invenio_vcs.receivers import VCSReceiver
+from invenio_vcs.service import VCSRelease
 from invenio_vcs.utils import obj_or_import_string
 
 from . import config
 
 
-class InvenioGitHub(object):
+class InvenioVCS(object):
     """Invenio-GitHub extension."""
 
     def __init__(self, app=None):
@@ -84,23 +86,32 @@ class InvenioGitHub(object):
 
 def finalize_app(app):
     """Finalize app."""
-    init_menu(app)
+    if app.config.get("VCS_INTEGRATION_ENABLED", False):
+        init_menu(app)
+        init_webhooks(app)
 
 
 def init_menu(app):
     """Init menu."""
-    if app.config.get("VCS_INTEGRATION_ENABLED", False):
-        for provider in get_provider_list():
-            current_menu.submenu(f"settings.{provider.id}").register(
-                endpoint="invenio_vcs.get_repositories",
-                endpoint_arguments_constructor=lambda: {"provider": provider.id},
-                text=_(
-                    "%(icon)s $(provider)",
-                    icon=LazyString(
-                        lambda: f'<i class="{current_theme_icons[provider.icon]}"></i>'
-                    ),
-                    provider=LazyString(lambda: provider.name),
+    for provider in get_provider_list(app):
+        current_menu.submenu(f"settings.{provider.id}").register(
+            endpoint="invenio_vcs.get_repositories",
+            endpoint_arguments_constructor=lambda: {"provider": provider.id},
+            text=_(
+                "%(icon)s $(provider)",
+                icon=LazyString(
+                    lambda: f'<i class="{current_theme_icons[provider.icon]}"></i>'
                 ),
-                order=10,
-                active_when=lambda: request.endpoint.startswith("invenio_vcs."),
-            )
+                provider=LazyString(lambda: provider.name),
+            ),
+            order=10,
+            active_when=lambda: request.endpoint.startswith("invenio_vcs."),
+        )
+
+
+def init_webhooks(app):
+    for provider in get_provider_list(app):
+        # Procedurally register the webhook receivers instead of including them as an entry point, since
+        # they are defined in the VCS provider config list rather than in the instance's setup.cfg file.
+        # TODO: is this an okay thing to do? It reduces duplication and work for instance maintainers but is a little unusual
+        app.extensions["invenio-webhooks"].register(provider.id, VCSReceiver)

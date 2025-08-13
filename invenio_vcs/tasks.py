@@ -25,7 +25,6 @@
 
 import datetime
 
-import github3
 from celery import shared_task
 from flask import current_app, g
 from invenio_db import db
@@ -35,6 +34,7 @@ from invenio_oauthclient.proxies import current_oauthclient
 
 from invenio_vcs.errors import CustomGitHubMetadataError, RepositoryAccessError
 from invenio_vcs.models import Release, ReleaseStatus
+from invenio_vcs.providers import get_provider_by_id
 from invenio_vcs.proxies import current_vcs
 
 
@@ -65,44 +65,43 @@ DEFAULT_ERROR_HANDLERS = [
 
 
 @shared_task(max_retries=6, default_retry_delay=10 * 60, rate_limit="100/m")
-def disconnect_github(access_token, repo_hooks):
+def disconnect_provider(provider_id, user_id, access_token, repo_hooks):
     """Uninstall webhooks."""
     # Note at this point the remote account and all associated data have
     # already been deleted. The celery task is passed the access_token to make
     # some last cleanup and afterwards delete itself remotely.
 
     # Local import to avoid circular imports
-    from .api import GitHubAPI
+    from .service import VCSService
 
     try:
         # Create a nested transaction to make sure that hook deletion + token revoke is atomic
         with db.session.begin_nested():
-            gh = github3.login(token=access_token)
+            svc = VCSService.for_provider_and_token(provider_id, user_id, access_token)
+
             for repo_id, repo_hook in repo_hooks:
-                ghrepo = gh.repository_with_id(repo_id)
-                if ghrepo:
-                    hook = ghrepo.hook(repo_hook)
-                    if hook and hook.delete():
-                        current_app.logger.info(
-                            _("Deleted hook from github repository."),
-                            extra={"hook": hook.id, "repo": ghrepo.full_name},
-                        )
+                if svc.disable_repository(repo_id, repo_hook):
+                    current_app.logger.info(
+                        _("Deleted hook from github repository."),
+                        extra={"hook": repo_hook, "repo": repo_id},
+                    )
+
             # If we finished our clean-up successfully, we can revoke the token
-            GitHubAPI.revoke_token(access_token)
+            svc.provider.revoke_token(access_token)
     except Exception as exc:
         # Retry in case GitHub may be down...
-        disconnect_github.retry(exc=exc)
+        disconnect_provider.retry(exc=exc)
 
 
 @shared_task(max_retries=6, default_retry_delay=10 * 60, rate_limit="100/m")
 def sync_hooks(provider, user_id, repositories):
     """Sync repository hooks for a user."""
     # Local import to avoid circular imports
-    from .service import VersionControlService
+    from .service import VCSService
 
     try:
         # Sync hooks
-        svc = VersionControlService(provider, user_id)
+        svc = VCSService.for_provider_and_user(provider, user_id)
         for repo_id in repositories:
             try:
                 with db.session.begin_nested():
@@ -118,14 +117,17 @@ def sync_hooks(provider, user_id, repositories):
 
 
 @shared_task(ignore_result=True, max_retries=5, default_retry_delay=10 * 60)
-def process_release(release_id):
+def process_release(provider_id, release_id):
     """Process a received Release."""
     release_model = Release.query.filter(
-        Release.release_id == release_id,
+        Release.provider_id == release_id,
         Release.status.in_([ReleaseStatus.RECEIVED, ReleaseStatus.FAILED]),
     ).one()
 
-    release = current_vcs.release_api_class(release_model)
+    provider = get_provider_by_id(provider_id).for_user(
+        release_model.repository.user_id
+    )
+    release = current_vcs.release_api_class(release_model, provider)
 
     matched_error_cls = None
     matched_ex = None
@@ -154,9 +156,9 @@ def refresh_accounts(expiration_threshold=None):
     :param expiration_threshold: Dictionary containing timedelta parameters
     referring to the maximum inactivity time.
     """
-    expiration_date = datetime.datetime.utcnow() - datetime.timedelta(
-        **(expiration_threshold or {"days": 6 * 30})
-    )
+    expiration_date = datetime.datetime.now(
+        tz=datetime.timezone.utc
+    ) - datetime.timedelta(**(expiration_threshold or {"days": 6 * 30}))
 
     remote = current_oauthclient.oauth.remote_apps["github"]
     remote_accounts_to_be_updated = RemoteAccount.query.filter(

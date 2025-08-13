@@ -1,6 +1,9 @@
+from contextlib import contextmanager
 from copy import deepcopy
 
 from flask import current_app
+from invenio_access.permissions import authenticated_user
+from invenio_access.utils import get_identity
 from invenio_db import db
 from invenio_i18n import gettext as _
 from invenio_oauth2server.models import Token as ProviderToken
@@ -14,23 +17,43 @@ from invenio_vcs.errors import (
     RepositoryNotFoundError,
 )
 from invenio_vcs.models import Release, ReleaseStatus, Repository
-from invenio_vcs.providers import get_provider_by_id
+from invenio_vcs.providers import RepositoryServiceProvider, get_provider_by_id
 from invenio_vcs.proxies import current_vcs
 from invenio_vcs.tasks import sync_hooks as sync_hooks_task
 from invenio_vcs.utils import iso_utcnow
 
 
-class VersionControlService:
-    def __init__(self, provider: str, user_id: str) -> None:
-        self.provider = get_provider_by_id(provider).for_user(user_id)
+class VCSService:
+    def __init__(self, provider: RepositoryServiceProvider) -> None:
+        self.provider = provider
+
+    @staticmethod
+    def for_provider_and_user(provider_id: str, user_id: str):
+        return VCSService(get_provider_by_id(provider_id).for_user(user_id))
+
+    @staticmethod
+    def for_provider_and_token(provider_id: str, user_id: str, access_token: str):
+        return VCSService(
+            get_provider_by_id(provider_id).for_access_token(user_id, access_token)
+        )
 
     @cached_property
     def is_authenticated(self):
         return self.provider.session_token is not None
 
+    @property
+    def user_available_repositories(self):
+        """Retrieve user repositories from user's remote data."""
+        return self.provider.remote_account.extra_data.get("repos", {})
+
+    @property
+    def user_enabled_repositories(self):
+        """Retrieve user repositories from the model."""
+        return Repository.query.filter(Repository.user_id == self.provider.user_id)
+
     def list_repositories(self):
         """Retrieves user repositories, containing db repositories plus remote repositories."""
-        vcs_repos = deepcopy(self.provider.user_available_repositories)
+        vcs_repos = deepcopy(self.user_available_repositories)
         if vcs_repos:
             # 'Enhance' our repos dict, from our database model
             db_repos = Repository.query.filter(
@@ -67,10 +90,8 @@ class VersionControlService:
         return release_instances
 
     def get_repo_default_branch(self, repo_id):
-        return (
-            self.provider.remote_account.extra_data.get("repos", {})
-            .get(repo_id, None)
-            .get("default_branch", None)
+        return self.user_available_repositories.get(repo_id, None).get(
+            "default_branch", None
         )
 
     def get_last_sync_time(self):
@@ -115,7 +136,7 @@ class VersionControlService:
                 return True
 
         if self.provider.remote_account and self.provider.remote_account.extra_data:
-            user_has_remote_access = self.provider.user_available_repositories.get(
+            user_has_remote_access = self.user_available_repositories.get(
                 repo.provider_id
             )
             if user_has_remote_access:
@@ -254,23 +275,193 @@ class VersionControlService:
         db.session.add(self.provider.remote_account)
 
     def enable_repository(self, repository_id):
-        repos = self.provider.remote_account.extra_data.get("repos", {})
-        if repository_id not in repos:
+        if repository_id not in self.user_available_repositories:
             raise RepositoryNotFoundError(
                 repository_id, _("Failed to enable repository.")
             )
 
         return self.provider.create_webhook(repository_id)
 
-    def disable_repository(self, repository_id):
-        repos = self.provider.remote_account.extra_data.get("repos", {})
-        if repository_id not in repos:
+    def disable_repository(self, repository_id, hook_id=None):
+        if hook_id is None and repository_id not in self.user_available_repositories:
             raise RepositoryNotFoundError(
                 repository_id, _("Failed to disable repository.")
             )
 
-        remove_success = False
-        if repos:
-            remove_success = self.provider.delete_webhook(repository_id)
+        return self.provider.delete_webhook(repository_id, hook_id)
 
-        return remove_success
+
+class VCSRelease:
+    """A GitHub release."""
+
+    def __init__(self, release, provider: RepositoryServiceProvider):
+        """Constructor."""
+        self.db_release = release
+        self.provider = provider
+        self._resolved_zipball_url = None
+
+    @cached_property
+    def record(self):
+        """Release record."""
+        return self.resolve_record()
+
+    @cached_property
+    def event(self):
+        """Get release event."""
+        return self.db_release.event
+
+    @cached_property
+    def payload(self):
+        """Return event payload."""
+        return self.event.payload
+
+    @cached_property
+    def generic_release(self):
+        """Return release metadata."""
+        return self.provider.factory.webhook_event_to_generic(self.payload)[0]
+
+    @cached_property
+    def generic_repo(self):
+        """Return repo metadata."""
+        return self.provider.factory.webhook_event_to_generic(self.payload)[1]
+
+    @cached_property
+    def db_repo(self):
+        """Return repository model from database."""
+        if self.db_release.repository_id:
+            repository = self.db_release.repository
+        else:
+            repository = Repository.query.filter_by(
+                user_id=self.event.user_id, provider_id=self.provider.factory.id
+            ).one()
+        return repository
+
+    @cached_property
+    def release_file_name(self):
+        """Returns release zipball file name."""
+        tag_name = self.generic_release.tag_name
+        repo_name = self.generic_repo.full_name
+        filename = f"{repo_name}-{tag_name}.zip"
+        return filename
+
+    @cached_property
+    def release_zipball_url(self):
+        """Returns the release zipball URL."""
+        return self.generic_release["zipball_url"]
+
+    @cached_property
+    def user_identity(self):
+        """Generates release owner's user identity."""
+        identity = get_identity(self.db_repo.user)
+        identity.provides.add(authenticated_user)
+        identity.user = self.db_repo.user
+        return identity
+
+    @cached_property
+    def contributors(self):
+        """Get list of contributors to a repository.
+
+        The list of contributors is fetched from Github API, filtered for type "User" and sorted by contributions.
+
+        :returns: a generator of objects that contains contributors information.
+        :raises UnexpectedGithubResponse: when Github API returns a status code other than 200.
+        """
+        max_contributors = current_app.config.get("VCS_MAX_CONTRIBUTORS_NUMBER", 30)
+        return self.provider.list_repository_contributors(
+            self.db_repo.id, max=max_contributors
+        )
+
+    @cached_property
+    def owner(self):
+        """Get owner of repository as a creator."""
+        try:
+            return self.provider.get_repository_owner(self.db_repo.id)
+        except Exception:
+            return None
+
+    # Helper functions
+
+    def is_first_release(self):
+        """Checks whether the current release is the first release of the repository."""
+        latest_release = self.db_repo.latest_release(ReleaseStatus.PUBLISHED)
+        return True if not latest_release else False
+
+    def test_zipball(self):
+        """Test if the zipball URL is accessible and return the resolved URL."""
+        return self.resolve_zipball_url()
+
+    def resolve_zipball_url(self, cache=True):
+        """Resolve the zipball URL.
+
+        This method will try to resolve the zipball URL by making a HEAD request,
+        handling the following edge cases:
+
+        - In the case of a 300 Multiple Choices response, which can happen when a tag
+          and branch have the same name, it will try to fetch an "alternate" link.
+        - If the access token does not have the required scopes/permissions to access
+          public links, it will fallback to a non-authenticated request.
+        """
+        if self._resolved_zipball_url and cache:
+            return self._resolved_zipball_url
+
+        url = self.release_zipball_url
+        url = self.provider.resolve_release_zipball_url(url)
+
+        if cache:
+            self._resolved_zipball_url = url
+
+        return url
+
+    # High level API
+
+    def release_failed(self):
+        """Set release status to FAILED."""
+        self.db_release.status = ReleaseStatus.FAILED
+
+    def release_processing(self):
+        """Set release status to PROCESSING."""
+        self.db_release.status = ReleaseStatus.PROCESSING
+
+    def release_published(self):
+        """Set release status to PUBLISHED."""
+        self.db_release.status = ReleaseStatus.PUBLISHED
+
+    @contextmanager
+    def fetch_zipball_file(self):
+        """Fetch release zipball file using the current github session."""
+        timeout = current_app.config.get("VCS_ZIPBALL_TIMEOUT", 300)
+        zipball_url = self.resolve_zipball_url()
+        return self.provider.fetch_release_zipball(zipball_url, timeout)
+
+    def publish(self):
+        """Publish a GitHub release."""
+        raise NotImplementedError
+
+    def process_release(self):
+        """Processes a github release."""
+        raise NotImplementedError
+
+    def resolve_record(self):
+        """Resolves a record from the release. To be implemented by the API class implementation."""
+        raise NotImplementedError
+
+    def serialize_record(self):
+        """Serializes the release record."""
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def badge_title(self):
+        """Stores a string to render in the record badge title (e.g. 'DOI')."""
+        return None
+
+    @property
+    @abstractmethod
+    def badge_value(self):
+        """Stores a string to render in the record badge value (e.g. '10.1234/invenio.1234')."""
+        raise NotImplementedError
+
+    @property
+    def record_url(self):
+        """Release self url (e.g. github HTML url)."""
+        raise NotImplementedError
