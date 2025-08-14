@@ -23,15 +23,16 @@
 """Configuration for GitHub module."""
 
 from datetime import timedelta
+from typing import TYPE_CHECKING
 
-from invenio_vcs.contrib.github import GitHubProvider
+from flask import current_app
+
+if TYPE_CHECKING:
+    from invenio_vcs.providers import RepositoryServiceProviderFactory
 
 VCS_PROVIDERS = []
 
-GITHUB_WEBHOOK_RECEIVER_ID = "github"
-"""Local name of webhook receiver."""
-
-GITHUB_WEBHOOK_RECEIVER_URL = None
+# GITHUB_WEBHOOK_RECEIVER_URL = None
 """URL format to be used when creating a webhook on GitHub.
 
 This configuration variable must be set explicitly. Example::
@@ -45,7 +46,7 @@ This configuration variable must be set explicitly. Example::
     context, doesn't work as expected.
 """
 
-GITHUB_SHARED_SECRET = "CHANGEME"
+# GITHUB_SHARED_SECRET = "CHANGEME"
 """Shared secret between you and GitHub.
 
 Used to make GitHub sign webhook requests with HMAC.
@@ -53,7 +54,7 @@ Used to make GitHub sign webhook requests with HMAC.
 See http://developer.github.com/v3/repos/hooks/#example
 """
 
-GITHUB_INSECURE_SSL = False
+# GITHUB_INSECURE_SSL = False
 """Determine if the GitHub webhook request will check the SSL certificate.
 
 Never set to True in a production environment, but can be useful for
@@ -63,13 +64,13 @@ development and integration servers.
 GITHUB_REFRESH_TIMEDELTA = timedelta(days=1)
 """Time period after which a GitHub account sync should be initiated."""
 
-GITHUB_RELEASE_CLASS = "invenio_github.api:GitHubRelease"
+VCS_RELEASE_CLASS = "invenio_vcs.service:VCSRelease"
 """GitHubRelease class to be used for release handling."""
 
-GITHUB_TEMPLATE_INDEX = "invenio_github/settings/index.html"
+VCS_TEMPLATE_INDEX = "invenio_vcs/settings/index.html"
 """Repositories list template."""
 
-GITHUB_TEMPLATE_VIEW = "invenio_github/settings/view.html"
+VCS_TEMPLATE_VIEW = "invenio_vcs/settings/view.html"
 """Repository detail view template."""
 
 GITHUB_ERROR_HANDLERS = None
@@ -81,11 +82,23 @@ VCS_MAX_CONTRIBUTORS_NUMBER = 30
 VCS_INTEGRATION_ENABLED = False
 """Enables the github integration."""
 
-GITHUB_CITATION_FILE = None
+VCS_CITATION_FILE = None
 """Citation file name."""
 
-GITHUB_CITATION_METADATA_SCHEMA = None
+VCS_CITATION_METADATA_SCHEMA = None
 """Citation metadata schema."""
 
 VCS_ZIPBALL_TIMEOUT = 300
 """Timeout for the zipball download, in seconds."""
+
+
+def get_provider_list(app=current_app) -> list["RepositoryServiceProviderFactory"]:
+    return app.config["VCS_PROVIDERS"]
+
+
+def get_provider_by_id(id: str) -> "RepositoryServiceProviderFactory":
+    providers = get_provider_list()
+    for provider in providers:
+        if id == provider.id:
+            return provider
+    raise Exception(f"VCS provider with ID {id} not registered")

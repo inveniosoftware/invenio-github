@@ -59,13 +59,13 @@ def request_session_token():
 def create_ui_blueprint(app):
     """Creates blueprint and registers UI endpoints if the integration is enabled."""
     blueprint = Blueprint(
-        "invenio_github",
+        "invenio_vcs",
         __name__,
         static_folder="../static",
         template_folder="../templates",
-        url_prefix="/account/settings/<path:provider>",
+        url_prefix="/account/settings/vcs/<provider>",
     )
-    if app.config.get("GITHUB_INTEGRATION_ENABLED", False):
+    if app.config.get("VCS_INTEGRATION_ENABLED", False):
         with app.app_context():  # Todo: Temporary fix, it should be removed when inveniosoftware/invenio-theme#355 is merged
             register_ui_routes(blueprint)
     return blueprint
@@ -74,9 +74,9 @@ def create_ui_blueprint(app):
 def create_api_blueprint(app):
     """Creates blueprint and registers API endpoints if the integration is enabled."""
     blueprint_api = Blueprint(
-        "invenio_github_api", __name__, url_prefix="/user/vcs/<path:provider>"
+        "invenio_vcs_api", __name__, url_prefix="/user/vcs/<provider>"
     )
-    if app.config.get("GITHUB_INTEGRATION_ENABLED", False):
+    if app.config.get("VCS_INTEGRATION_ENABLED", False):
         register_api_routes(blueprint_api)
     return blueprint_api
 
@@ -89,7 +89,12 @@ def register_ui_routes(blueprint):
     def get_repositories(provider):
         """Display list of the user's repositories."""
         svc = VCSService.for_provider_and_user(provider, current_user.id)
-        ctx = dict(connected=False)
+        ctx: dict = dict(
+            connected=False,
+            provider=provider,
+            vocabulary=svc.provider.factory.vocabulary,
+        )
+
         if svc.is_authenticated:
             # Generate the repositories view object
             repos = svc.list_repositories()
@@ -103,7 +108,7 @@ def register_ui_routes(blueprint):
                 }
             )
 
-        return render_template(current_app.config["GITHUB_TEMPLATE_INDEX"], **ctx)
+        return render_template(current_app.config["VCS_TEMPLATE_INDEX"], **ctx)
 
     @blueprint.route("/repository/<path:repo_id>")
     @login_required
@@ -121,7 +126,7 @@ def register_ui_routes(blueprint):
             default_branch = svc.get_repo_default_branch(repo_id)
             releases = svc.list_repo_releases(repo)
             return render_template(
-                current_app.config["GITHUB_TEMPLATE_VIEW"],
+                current_app.config["VCS_TEMPLATE_VIEW"],
                 latest_release=latest_release,
                 repo=repo,
                 releases=releases,

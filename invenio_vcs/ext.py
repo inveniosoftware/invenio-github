@@ -33,7 +33,7 @@ from invenio_theme.proxies import current_theme_icons
 from six import string_types
 from werkzeug.utils import cached_property, import_string
 
-from invenio_vcs.providers import get_provider_list
+from invenio_vcs.config import get_provider_list
 from invenio_vcs.receivers import VCSReceiver
 from invenio_vcs.service import VCSRelease
 from invenio_vcs.utils import obj_or_import_string
@@ -75,12 +75,12 @@ class InvenioVCS(object):
     def init_config(self, app):
         """Initialize configuration."""
         app.config.setdefault(
-            "GITHUB_SETTINGS_TEMPLATE",
-            app.config.get("SETTINGS_TEMPLATE", "invenio_github/settings/base.html"),
+            "VCS_SETTINGS_TEMPLATE",
+            app.config.get("SETTINGS_TEMPLATE", "invenio_vcs/settings/base.html"),
         )
 
         for k in dir(config):
-            if k.startswith("GITHUB_") or k.startswith("VCS_"):
+            if k.startswith("VCS_"):
                 app.config.setdefault(k, getattr(config, k))
 
 
@@ -98,11 +98,11 @@ def init_menu(app):
             endpoint="invenio_vcs.get_repositories",
             endpoint_arguments_constructor=lambda: {"provider": provider.id},
             text=_(
-                "%(icon)s $(provider)",
+                "%(icon)s %(provider)s",
                 icon=LazyString(
                     lambda: f'<i class="{current_theme_icons[provider.icon]}"></i>'
                 ),
-                provider=LazyString(lambda: provider.name),
+                provider=provider.name,
             ),
             order=10,
             active_when=lambda: request.endpoint.startswith("invenio_vcs."),

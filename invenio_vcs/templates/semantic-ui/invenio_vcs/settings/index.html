@@ -8,7 +8,7 @@
 #}
 {%- import "invenio_vcs/settings/helpers.html" as helpers with context %}
 {%- if not request.is_xhr %}
-  {%- extends config.GITHUB_SETTINGS_TEMPLATE %}
+  {%- extends config.VCS_SETTINGS_TEMPLATE %}
 {%- endif %}
 
 {%- block settings_content %}
@@ -16,14 +16,15 @@
     {%- block repositories_get_started %}
       {{
         helpers.panel_start(
-          _('GitHub Repositories'),
-          icon="github icon",
+          _('Repositories'),
+          icon=vocabulary["icon"] + " icon",
           btn_text=_('Sync now'),
           btn_loading_text=_('Syncing'),
           btn_icon='sync alternate icon',
           btn_id='sync_repos',
           btn_name='sync-repos',
           btn_help_text=_('(updated {})').format(last_sync|naturaltime),
+          btn_provider=provider,
           loaded_message_id='sync-result-message',
           id="github-view",
         )
@@ -33,7 +34,7 @@
         <div class="ui grid">
           <div class="sixteen wide centered column">
             <h3 class="ui large header mt-10">
-              <i class="github icon" aria-hidden="true"></i>{{ _("Get started") }}
+              <i class="{{ vocabulary["icon"] }} icon" aria-hidden="true"></i>{{ _("Get started") }}
             </h3>
           </div>
 
@@ -106,9 +107,9 @@
         {{ helpers.panel_start(_('Enabled Repositories')) }}
 
         <ul class="ui segments no-border no-border-radius-top no-style-list m-0 p-0">
-          {%- for repo_id, repo in repos if repo.instance and repo.instance.hook %}
+          {%- for repo_id, repo in repos.items() if repo.instance and repo.instance.hook %}
             <li class="ui segment {{ 'no-border-radius-top' if loop.last else 'no-border-radius' }} left-border positive m-0">
-              {% include "invenio_github/settings/index_item.html" with context %}
+              {% include "invenio_vcs/settings/index_item.html" with context %}
             </li>
           {%- endfor %}
         </ul>
@@ -136,14 +137,14 @@
           {{_('You have no repositories on GitHub.') }}
           <br />
           <br />
-          {{_('Go to <a href="https://github.com/new" target="_blank">GitHub <i class="small icon external" aria-hidden="true"></i></a> and create your first or
-          click Sync-button to synchronize latest changes from GitHub.')}}
+          {{_('Go to <a href="https://github.com/new" target="_blank">%(name)s <i class="small icon external" aria-hidden="true"></i></a> and create your first or
+          click Sync-button to synchronize latest changes from %(name)s.', name=vocabulary["name"])}}
         </p>
       {%- else %}
         <ul class="ui segments no-border no-border-radius-top no-style-list m-0 p-0">
-          {%- for repo_id, repo in repos if not repo.instance or not repo.instance.hook %}
+          {%- for repo_id, repo in repos.items() if not repo.instance or not repo.instance.hook %}
             <li class="ui segment {{ 'no-border-radius-top' if loop.last else 'no-border-radius' }}">
-              {% include "invenio_github/settings/index_item.html" with context %}
+              {% include "invenio_vcs/settings/index_item.html" with context %}
             </li>
           {%- endfor %}
         </ul>
@@ -155,20 +156,20 @@
   {#- If the user has not connected his GitHub account... #}
   {%- else %}
     {%- block connect_to_github %}
-      {{ helpers.panel_start(_('GitHub'), icon="github icon") }}
+      {{ helpers.panel_start(_('%(name)s', name=vocabulary["name"]), icon=vocabulary["icon"] + " icon") }}
       <div class="ui segment">
         <div class="ui centered container">
           <h2 class="ui huge header">{{ _('Software preservation made simple!') }}</h2>
           <a
             class="ui basic button rel-mt-1"
-            href="{{ url_for('invenio_oauthclient.login', remote_app='github', next=url_for('invenio_github.get_repositories', provider='github')) }}"
-            aria-label="{{ _('Connect your GitHub account') }}"
+            href="{{ url_for('invenio_oauthclient.login', remote_app=provider, next=url_for('invenio_vcs.get_repositories', provider=provider)) }}"
+            aria-label="{{ _('Connect your %(name)s account', name=vocabulary["name"]) }}"
           >
-            <i class="github icon" aria-hidden="True"></i>
+            <i class="{{ vocabulary["icon"] }} icon" aria-hidden="True"></i>
             {{ _('Connect') }}
           </a>
           <p class="rel-mt-2">
-            {{ _('To get started, click "Connect" and we will get a list of your repositories from GitHub.') }}
+            {{ _('To get started, click "Connect" and we will get a list of your %(repositories)s from %(name)s.', repositories=vocabulary["repository_name_plural"], name=vocabulary["name"]) }}
           </p>
         </div>
       </div>
@@ -179,5 +180,5 @@
 
 {%- block javascript %}
   {{ super() }}
-  {{ webpack['invenio-github-init.js'] }}
+  {{ webpack['invenio-vcs-init.js'] }}
 {%- endblock javascript %}

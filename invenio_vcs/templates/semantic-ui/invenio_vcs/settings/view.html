@@ -326,5 +326,5 @@ date-released: {{ release.event.payload.get("release", {}).get("published_at", "
 
 {%- block javascript %}
   {{ super() }}
-  {{ webpack['invenio-github-init.js'] }}
+  {{ webpack['invenio-vcs-init.js'] }}
 {%- endblock javascript %}

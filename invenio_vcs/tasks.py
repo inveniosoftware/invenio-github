@@ -32,9 +32,9 @@ from invenio_i18n import gettext as _
 from invenio_oauthclient.models import RemoteAccount
 from invenio_oauthclient.proxies import current_oauthclient
 
+from invenio_vcs.config import get_provider_by_id
 from invenio_vcs.errors import CustomGitHubMetadataError, RepositoryAccessError
 from invenio_vcs.models import Release, ReleaseStatus
-from invenio_vcs.providers import get_provider_by_id
 from invenio_vcs.proxies import current_vcs
 
 

@@ -35,8 +35,6 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy_utils.models import Timestamp
 from sqlalchemy_utils.types import ChoiceType, JSONType, UUIDType
 
-from invenio_vcs.providers import GenericRelease
-
 RELEASE_STATUS_TITLES = {
     "RECEIVED": _("Received"),
     "PROCESSING": _("Processing"),
@@ -174,7 +172,7 @@ class Repository(db.Model, Timestamp):
         return obj
 
     @classmethod
-    def get(cls, provider_id=None, name=None):
+    def get(cls, provider, provider_id=None, name=None):
         """Return a repository given its name or github id.
 
         :param integer github_id: GitHub repository identifier.
@@ -188,9 +186,13 @@ class Repository(db.Model, Timestamp):
         """
         repo = None
         if provider_id:
-            repo = cls.query.filter(Repository.provider_id == provider_id).one_or_none()
+            repo = cls.query.filter(
+                Repository.provider_id == provider_id, Repository.provider == provider
+            ).one_or_none()
         if not repo and name is not None:
-            repo = cls.query.filter(Repository.name == name).one_or_none()
+            repo = cls.query.filter(
+                Repository.name == name, Repository.provider == provider
+            ).one_or_none()
 
         return repo
 
@@ -210,13 +212,13 @@ class Repository(db.Model, Timestamp):
 
     def __repr__(self):
         """Get repository representation."""
-        return "<Repository {self.name}:{self.github_id}>".format(self=self)
+        return "<Repository {self.name}:{self.provider_id}>".format(self=self)
 
 
 class Release(db.Model, Timestamp):
     """Information about a GitHub release."""
 
-    __tablename__ = "github_releases"
+    __tablename__ = "vcs_releases"
 
     id = db.Column(
         UUIDType,
@@ -268,4 +270,4 @@ class Release(db.Model, Timestamp):
 
     def __repr__(self):
         """Get release representation."""
-        return f"<Release {self.tag}:{self.release_id} ({self.status.title})>"
+        return f"<Release {self.tag}:{self.provider_id} ({self.status.title})>"

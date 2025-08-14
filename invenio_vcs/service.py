@@ -1,5 +1,8 @@
+from abc import abstractmethod
 from contextlib import contextmanager
 from copy import deepcopy
+from dataclasses import asdict
+from typing import TYPE_CHECKING
 
 from flask import current_app
 from invenio_access.permissions import authenticated_user
@@ -10,6 +13,7 @@ from invenio_oauth2server.models import Token as ProviderToken
 from sqlalchemy.exc import NoResultFound
 from werkzeug.utils import cached_property
 
+from invenio_vcs.config import get_provider_by_id
 from invenio_vcs.errors import (
     RemoteAccountDataNotSet,
     RemoteAccountNotFound,
@@ -17,14 +21,20 @@ from invenio_vcs.errors import (
     RepositoryNotFoundError,
 )
 from invenio_vcs.models import Release, ReleaseStatus, Repository
-from invenio_vcs.providers import RepositoryServiceProvider, get_provider_by_id
 from invenio_vcs.proxies import current_vcs
 from invenio_vcs.tasks import sync_hooks as sync_hooks_task
 from invenio_vcs.utils import iso_utcnow
 
+if TYPE_CHECKING:
+    from invenio_vcs.providers import (
+        GenericRelease,
+        GenericRepository,
+        RepositoryServiceProvider,
+    )
+
 
 class VCSService:
-    def __init__(self, provider: RepositoryServiceProvider) -> None:
+    def __init__(self, provider: "RepositoryServiceProvider") -> None:
         self.provider = provider
 
     @staticmethod
@@ -57,15 +67,15 @@ class VCSService:
         if vcs_repos:
             # 'Enhance' our repos dict, from our database model
             db_repos = Repository.query.filter(
-                Repository.provider_id.in_([int(k) for k in vcs_repos.keys()])
+                Repository.provider_id.in_([k for k in vcs_repos.keys()])
             )
             for db_repo in db_repos:
-                if str(db_repo.provider_id) in vcs_repos:
+                if db_repo.provider_id in vcs_repos:
                     release_instance = current_vcs.release_api_class(
                         db_repo.latest_release(), self.provider.factory.id
                     )
-                    vcs_repos[str(db_repo.github_id)]["instance"] = db_repo
-                    vcs_repos[str(db_repo.github_id)]["latest"] = release_instance
+                    vcs_repos[db_repo.provider_id]["instance"] = db_repo
+                    vcs_repos[db_repo.provider_id]["latest"] = release_instance
 
         return vcs_repos
 
@@ -108,12 +118,14 @@ class VCSService:
 
         return extra_data["last_sync"]
 
-    def get_repository(self, repo_id):
+    def get_repository(self, repo_id=None, repo_name=None):
         """Retrieves one repository.
 
         Checks for access permission.
         """
-        repo = Repository.get(provider_id=repo_id)
+        repo = Repository.get(
+            self.provider.factory.id, provider_id=repo_id, name=repo_name
+        )
         if not repo:
             raise RepositoryNotFoundError(repo_id)
 
@@ -160,6 +172,8 @@ class VCSService:
             own state based on this information.
         """
         vcs_repos = self.provider.list_repositories()
+        if vcs_repos is None:
+            vcs_repos = {}
 
         if hooks:
             self._sync_hooks(vcs_repos.keys(), asynchronous=async_hooks)
@@ -170,7 +184,7 @@ class VCSService:
         )
 
         for repo in db_repos:
-            vcs_repo = vcs_repos.get(repo.github_id)
+            vcs_repo = vcs_repos.get(repo.provider_id)
             if vcs_repo and repo.name != vcs_repo.full_name:
                 repo.name = vcs_repo.full_name
                 db.session.add(repo)
@@ -185,7 +199,7 @@ class VCSService:
         # Update repos and last sync
         self.provider.remote_account.extra_data.update(
             dict(
-                repos=vcs_repos,
+                repos={k: asdict(v) for k, v in vcs_repos.items()},
                 last_sync=iso_utcnow(),
             )
         )
@@ -219,21 +233,21 @@ class VCSService:
 
         # If hook on GitHub exists, get or create corresponding db object and
         # enable the hook. Otherwise remove the old hook information.
-        repo = Repository.get(repo_id)
+        db_repo = Repository.get(self.provider.factory.id, provider_id=repo_id)
 
         if hook:
-            if not repo:
-                repo = Repository.create(
+            if not db_repo:
+                db_repo = Repository.create(
                     self.provider.user_id,
                     self.provider.factory.id,
                     repo_id,
                     vcs_repo.full_name,
                 )
-            if not repo.enabled:
-                self.mark_repo_enabled(repo, hook.id)
+            if not db_repo.enabled:
+                self.mark_repo_enabled(db_repo, hook.id)
         else:
-            if repo:
-                self.mark_repo_disabled(repo)
+            if db_repo:
+                self.mark_repo_disabled(db_repo)
 
     def mark_repo_disabled(self, repo):
         """Disables an user repository."""
@@ -253,6 +267,10 @@ class VCSService:
             )
 
         user = self.provider.get_own_user()
+        if user is None:
+            # TODO: create a reasonable exception here
+            raise Exception("TODO")
+
         # Setup local access tokens to be used by the webhooks
         hook_token = ProviderToken.create_personal(
             f"{self.provider.factory.id}-webhook",
@@ -263,8 +281,8 @@ class VCSService:
         # Initial structure of extra data
         self.provider.remote_account.extra_data = dict(
             id=user.id,
-            login=user.login,
-            name=user.name,
+            login=user.username,
+            name=user.display_name,
             tokens=dict(
                 webhook=hook_token.id,
             ),
@@ -294,7 +312,7 @@ class VCSService:
 class VCSRelease:
     """A GitHub release."""
 
-    def __init__(self, release, provider: RepositoryServiceProvider):
+    def __init__(self, release: Release, provider: "RepositoryServiceProvider"):
         """Constructor."""
         self.db_release = release
         self.provider = provider
@@ -316,17 +334,21 @@ class VCSRelease:
         return self.event.payload
 
     @cached_property
-    def generic_release(self):
+    def _generic_release_and_repo(self):
+        return self.provider.factory.webhook_event_to_generic(self.payload)
+
+    @property
+    def generic_release(self) -> "GenericRelease":
         """Return release metadata."""
-        return self.provider.factory.webhook_event_to_generic(self.payload)[0]
+        return self._generic_release_and_repo[0]
 
     @cached_property
-    def generic_repo(self):
+    def generic_repo(self) -> "GenericRepository":
         """Return repo metadata."""
-        return self.provider.factory.webhook_event_to_generic(self.payload)[1]
+        return self._generic_release_and_repo[1]
 
     @cached_property
-    def db_repo(self):
+    def db_repo(self) -> Repository:
         """Return repository model from database."""
         if self.db_release.repository_id:
             repository = self.db_release.repository
@@ -347,7 +369,7 @@ class VCSRelease:
     @cached_property
     def release_zipball_url(self):
         """Returns the release zipball URL."""
-        return self.generic_release["zipball_url"]
+        return self.generic_release.zipball_url
 
     @cached_property
     def user_identity(self):

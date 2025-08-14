@@ -20,6 +20,7 @@
     btn_class='',
     btn_id='',
     btn_name='',
+    btn_provider='',
     loaded_message_id='',
     id="",
     panel_extra_class="secondary"
@@ -81,6 +82,7 @@
                       id="{{ btn_id }}"
                       name="{{ btn_name }}"
                       data-loading-text="{{ btn_loading_text }}"
+                      data-provider="{{ btn_provider }}"
                       class="ui compact tiny button {{ btn_class }} ml-10"
                     >
                       {% if btn_icon %}
@@ -114,7 +116,7 @@
   {%- endblock %}
 {%- endmacro %}
 
-{%- macro repo_switch(repo, repo_id) %}
+{%- macro repo_switch(repo, repo_id, provider) %}
   {%- block repo_switch scoped %}
     {%- set inaccessible = (repo and repo.user_id and (repo.user_id != current_user.id)) %}
     <div
@@ -125,6 +127,7 @@
         type="checkbox"
         {{' disabled' if inaccessible}}{{ ' checked' if repo and repo.enabled }}
         data-repo-id="{{ repo_id }}"
+        data-provider="{{ provider }}"
         data-checked-aria-label="{{ _('Disable') }} {{ repo.name if repo }}"
         data-unchecked-aria-label="{{ _('Enable') }} {{ repo.name if repo }}"
         aria-label="{{ 'disable' if repo and repo.enabled else 'enable' }} {{ repo.name if repo }}"

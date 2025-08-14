@@ -11,7 +11,6 @@ from invenio_oauthclient.contrib.github import GitHubOAuthSettingsHelper
 from werkzeug.utils import cached_property
 
 from invenio_vcs.errors import ReleaseZipballFetchError, UnexpectedProviderResponse
-from invenio_vcs.oauth.handlers import account_setup_handler, disconnect_handler
 from invenio_vcs.providers import (
     GenericContributor,
     GenericRelease,
@@ -26,21 +25,22 @@ from invenio_vcs.providers import (
 class GitHubProviderFactory(RepositoryServiceProviderFactory):
     def __init__(
         self,
+        base_url,
         webhook_receiver_url,
         id="github",
         name="GitHub",
         config={},
     ):
-        super().__init__(GitHubProvider, webhook_receiver_url)
+        super().__init__(GitHubProvider, base_url, webhook_receiver_url)
         self._id = id
         self._name = name
-        self._config = defaultdict(
-            config,
-            base_url="https://github.com",
+        self._config = dict()
+        self._config.update(
             credentials_key="GITHUB_APP_CREDENTIALS",
             shared_secret="",
             insecure_ssl=False,
         )
+        self._config.update(config)
 
     @property
     def remote_config(self):
@@ -49,7 +49,7 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
         }
 
         helper = GitHubOAuthSettingsHelper(
-            base_url=self.config["base_url"], app_key=self.config["credentials_key"]
+            base_url=self.base_url, app_key=self.config["credentials_key"]
         )
         github_app = helper.remote_app
         github_app["disconnect_handler"] = self.oauth_handlers.disconnect_handler
@@ -95,28 +95,65 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
         return is_create_release_event
 
     def webhook_event_to_generic(self, event_payload):
+        release_published_at = event_payload["release"].get("published_at")
+        if release_published_at is not None:
+            release_published_at = datetime.fromisoformat(release_published_at)
+
         release = GenericRelease(
-            str(event_payload["release"]["id"]),
-            event_payload["release"]["name"],
-            event_payload["release"]["tag_name"],
-            event_payload["release"]["tarball_url"],
-            event_payload["release"]["zipball_url"],
-            datetime.fromisoformat(event_payload["release"]["created_at"]),
+            id=str(event_payload["release"]["id"]),
+            name=event_payload["release"].get("name"),
+            tag_name=event_payload["release"]["tag_name"],
+            tarball_url=event_payload["release"].get("tarball_url"),
+            zipball_url=event_payload["release"].get("zipball_url"),
+            body=event_payload["release"].get("body"),
+            created_at=datetime.fromisoformat(event_payload["release"]["created_at"]),
+            published_at=release_published_at,
         )
+
+        license_spdx = event_payload["repository"].get("license")
+        if license_spdx is not None:
+            license_spdx = filter_license_spdx(license_spdx["spdx_id"])
+
         repo = GenericRepository(
-            str(event_payload["repository"]["id"]),
-            event_payload["repository"]["full_name"],
-            event_payload["repository"]["description"],
-            event_payload["repository"]["default_branch"],
+            id=str(event_payload["repository"]["id"]),
+            full_name=event_payload["repository"]["full_name"],
+            html_url=event_payload["repository"]["html_url"],
+            description=event_payload["repository"].get("description"),
+            default_branch=event_payload["repository"]["default_branch"],
+            license_spdx=license_spdx,
         )
 
         return (release, repo)
+
+    def url_for_tag(self, repository_name, tag_name):
+        return "{}/{}/tree/{}".format(self.base_url, repository_name, tag_name)
 
 
 class GitHubProvider(RepositoryServiceProvider):
     @cached_property
     def _gh(self):
-        return github3.login(token=self.access_token(self.user_id))
+        if self.factory.base_url == "https://github.com":
+            return github3.login(token=self.access_token)
+        else:
+            return github3.enterprise_login(
+                url=self.factory.base_url, token=self.access_token
+            )
+
+    @staticmethod
+    def _extract_license(repo):
+        # The GitHub API returns the `license` as a simple key of the ShortRepository.
+        # But for some reason github3py does not include a mapping for this.
+        # So the only way to access it without making an additional request is to convert
+        # the repo to a dict.
+        repo_dict = repo.as_dict()
+        license_obj = repo_dict["license"]
+        if license_obj is not None:
+            spdx = license_obj["spdx_id"]
+            if spdx == "NOASSERTION":
+                # For 'other' type of licenses, Github sets the spdx_id to NOASSERTION
+                return None
+            return spdx
+        return None
 
     def list_repositories(self):
         if self._gh is None:
@@ -128,10 +165,12 @@ class GitHubProvider(RepositoryServiceProvider):
 
             if repo.permissions["admin"]:
                 repos[str(repo.id)] = GenericRepository(
-                    str(repo.id),
-                    repo.full_name,
-                    repo.description,
-                    repo.default_branch,
+                    id=str(repo.id),
+                    full_name=repo.full_name,
+                    description=repo.description,
+                    html_url=repo.html_url,
+                    default_branch=repo.default_branch,
+                    license_spdx=GitHubProvider._extract_license(repo),
                 )
 
         return repos
@@ -147,7 +186,11 @@ class GitHubProvider(RepositoryServiceProvider):
         hooks = []
         for hook in repo.hooks():
             hooks.append(
-                GenericWebhook(str(hook.id), repository_id, hook.config.get("url", ""))
+                GenericWebhook(
+                    id=str(hook.id),
+                    repository_id=repository_id,
+                    url=hook.config.get("url"),
+                )
             )
         return hooks
 
@@ -161,7 +204,12 @@ class GitHubProvider(RepositoryServiceProvider):
             return None
 
         return GenericRepository(
-            str(repo.id), repo.full_name, repo.description, repo.default_branch
+            id=str(repo.id),
+            full_name=repo.full_name,
+            description=repo.description,
+            html_url=repo.html_url,
+            default_branch=repo.default_branch,
+            license_spdx=GitHubProvider._extract_license(repo),
         )
 
     def create_webhook(self, repository_id):
@@ -245,7 +293,13 @@ class GitHubProvider(RepositoryServiceProvider):
             )
 
             contributors = [
-                GenericContributor(x.id, x.login, x.full_name, x.contributions_count)
+                GenericContributor(
+                    id=x.id,
+                    username=x.login,
+                    display_name=x.full_name,
+                    contributions_count=x.contributions_count,
+                    company=x.refresh().company,
+                )
                 for x in sorted_contributors
             ]
             return contributors
@@ -266,7 +320,11 @@ class GitHubProvider(RepositoryServiceProvider):
         if repo is None:
             return None
 
-        return GenericUser(repo.owner.id, repo.owner.login, repo.owner.full_name)
+        return GenericUser(
+            id=repo.owner.id,
+            username=repo.owner.login,
+            display_name=repo.owner.full_name,
+        )
 
     def resolve_release_zipball_url(self, release_zipball_url):
         if self._gh is None:

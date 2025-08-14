@@ -42,8 +42,9 @@ if (sync_button) {
     const buttonTextElem = document.getElementById("sync_repos_btn_text");
     const buttonText = buttonTextElem.innerHTML;
     const loadingText = sync_button.dataset.loadingText;
+    const provider = sync_button.dataset.provider;
 
-    const url = "/api/user/github/repositories/sync";
+    const url = `/api/user/vcs/${provider}/repositories/sync`;
     const request = new Request(url, {
       method: "POST",
       headers: REQUEST_HEADERS,
@@ -129,18 +130,16 @@ if (repositories) {
 }
 
 function sendEnableDisableRequest(checked, repo) {
-  const repo_id = repo
-    .querySelector("input[data-repo-id]")
-    .getAttribute("data-repo-id");
+  const input = repo.querySelector("input[data-repo-id]");
+  const repo_id= input.getAttribute("data-repo-id");
+  const provider = input.getAttribute("data-provider");
   const switchMessage = repo.querySelector(".repo-switch-message");
 
   let url;
   if (checked === true) {
-    url = "/api/user/github/repositories/" + repo_id + "/enable";
-  } else {
-    if (checked === false) {
-      url = "/api/user/github/repositories/" + repo_id + "/disable";
-    }
+    url = `/api/user/vcs/${provider}/repositories/${repo_id}/enable`;
+  } else if (checked === false) {
+    url = `/api/user/vcs/${provider}/repositories/${repo_id}/disable`;
   }
 
   const request = new Request(url, {

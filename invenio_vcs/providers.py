@@ -1,9 +1,11 @@
+from __future__ import annotations
+
+import types
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from urllib.parse import urlparse
 
-from flask import current_app
 from invenio_i18n import gettext as _
 from invenio_oauth2server.models import Token as ProviderToken
 from invenio_oauthclient import current_oauthclient
@@ -20,47 +22,56 @@ from invenio_vcs.oauth.handlers import OAuthHandlers
 class GenericWebhook:
     id: str
     repository_id: str
-    url: str
+    url: str | types.NoneType = None
 
 
 @dataclass
 class GenericRepository:
     id: str
     full_name: str
-    description: str
     default_branch: str
+    html_url: str
+    description: str | types.NoneType = None
+    license_spdx: str | types.NoneType = None
 
 
 @dataclass
 class GenericRelease:
     id: str
-    name: str
     tag_name: str
-    tarball_url: str
-    zipball_url: str
     created_at: datetime
+    name: str | types.NoneType = None
+    body: str | types.NoneType = None
+    tarball_url: str | types.NoneType = None
+    zipball_url: str | types.NoneType = None
+    published_at: datetime | types.NoneType = None
 
 
 @dataclass
 class GenericUser:
     id: str
     username: str
-    display_name: str
+    display_name: str | types.NoneType = None
 
 
 @dataclass
 class GenericContributor:
     id: str
     username: str
-    display_name: str
+    company: str | None
     contributions_count: int
+    display_name: str | types.NoneType = None
 
 
 class RepositoryServiceProviderFactory(ABC):
     def __init__(
-        self, provider: type["RepositoryServiceProvider"], webhook_receiver_url: str
+        self,
+        provider: type["RepositoryServiceProvider"],
+        base_url: str,
+        webhook_receiver_url: str,
     ):
         self.provider = provider
+        self.base_url = base_url
         self.webhook_receiver_url = webhook_receiver_url
 
     @property
@@ -114,11 +125,25 @@ class RepositoryServiceProviderFactory(ABC):
     def webhook_event_to_generic(self, event_payload):
         raise NotImplementedError
 
+    @abstractmethod
+    def url_for_tag(self, repository_name, tag_name):
+        raise NotImplementedError
+
     def for_user(self, user_id: str):
         return self.provider(self, user_id)
 
     def for_access_token(self, user_id: str, access_token: str):
         return self.provider(self, user_id, access_token=access_token)
+
+    @property
+    def vocabulary(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "repository_name": self.repository_name,
+            "repository_name_plural": self.repository_name_plural,
+            "icon": self.icon,
+        }
 
 
 class RepositoryServiceProvider(ABC):
@@ -192,46 +217,50 @@ class RepositoryServiceProvider(ABC):
         return configured_host == url_host
 
     @abstractmethod
-    def list_repositories(self):
+    def list_repositories(self) -> dict[str, GenericRepository] | None:
         raise NotImplementedError
 
     @abstractmethod
-    def list_repository_webhooks(self, repository_id):
+    def list_repository_webhooks(self, repository_id) -> list[GenericWebhook] | None:
         raise NotImplementedError
 
-    def get_first_valid_webhook(self, repository_id):
+    def get_first_valid_webhook(self, repository_id) -> GenericWebhook | None:
         webhooks = self.list_repository_webhooks(repository_id)
+        if webhooks is None:
+            return None
         for hook in webhooks:
             if self.is_valid_webhook(hook.url):
                 return hook
         return None
 
     @abstractmethod
-    def get_repository(self, repository_id):
+    def get_repository(self, repository_id) -> GenericRepository | None:
         raise NotImplementedError
 
     @abstractmethod
-    def list_repository_contributors(self, repository_id, max):
+    def list_repository_contributors(
+        self, repository_id, max
+    ) -> list[GenericContributor] | None:
         raise NotImplementedError
 
     @abstractmethod
-    def get_repository_owner(self, repository_id):
+    def get_repository_owner(self, repository_id) -> GenericUser | None:
         raise NotImplementedError
 
     @abstractmethod
-    def create_webhook(self, repository_id):
+    def create_webhook(self, repository_id) -> bool:
         raise NotImplementedError
 
     @abstractmethod
-    def delete_webhook(self, repository_id, hook_id=None):
+    def delete_webhook(self, repository_id, hook_id=None) -> bool:
         raise NotImplementedError
 
     @abstractmethod
-    def get_own_user(self):
+    def get_own_user(self) -> GenericUser | None:
         raise NotImplementedError
 
     @abstractmethod
-    def resolve_release_zipball_url(self, release_zipball_url):
+    def resolve_release_zipball_url(self, release_zipball_url) -> str | None:
         raise NotImplementedError
 
     @abstractmethod
@@ -245,15 +274,3 @@ class RepositoryServiceProvider(ABC):
     @abstractmethod
     def revoke_token(self, access_token):
         raise NotImplementedError
-
-
-def get_provider_list(app=current_app) -> list[RepositoryServiceProviderFactory]:
-    return app.config["VCS_PROVIDERS"]
-
-
-def get_provider_by_id(id: str) -> RepositoryServiceProviderFactory:
-    providers = get_provider_list()
-    for provider in providers:
-        if id == provider.id:
-            return provider
-    raise Exception(f"VCS provider with ID {id} not registered")

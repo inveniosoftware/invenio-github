@@ -25,8 +25,8 @@
 from invenio_db import db
 from invenio_webhooks.models import Receiver
 
+from invenio_vcs.config import get_provider_by_id
 from invenio_vcs.models import Release, ReleaseStatus, Repository
-from invenio_vcs.providers import get_provider_by_id
 from invenio_vcs.tasks import process_release
 
 from .errors import (
@@ -81,7 +81,11 @@ class VCSReceiver(Receiver):
                 raise ReleaseAlreadyReceivedError(release=existing_release)
 
             # Create the Release
-            repo = Repository.get(generic_repo.id, generic_repo.full_name)
+            repo = Repository.get(
+                self.provider_factory.id,
+                provider_id=generic_repo.id,
+                name=generic_repo.full_name,
+            )
             if not repo:
                 raise RepositoryNotFoundError(generic_repo.full_name)
 
