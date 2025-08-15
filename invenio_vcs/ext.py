@@ -30,6 +30,7 @@ from flask_menu import current_menu
 from invenio_i18n import LazyString
 from invenio_i18n import gettext as _
 from invenio_theme.proxies import current_theme_icons
+from invenio_webhooks import current_webhooks
 from six import string_types
 from werkzeug.utils import cached_property, import_string
 
@@ -84,10 +85,16 @@ class InvenioVCS(object):
                 app.config.setdefault(k, getattr(config, k))
 
 
-def finalize_app(app):
+def finalize_app_ui(app):
     """Finalize app."""
     if app.config.get("VCS_INTEGRATION_ENABLED", False):
         init_menu(app)
+        init_webhooks(app)
+
+
+def finalize_app_api(app):
+    """Finalize app."""
+    if app.config.get("VCS_INTEGRATION_ENABLED", False):
         init_webhooks(app)
 
 
@@ -110,8 +117,9 @@ def init_menu(app):
 
 
 def init_webhooks(app):
-    for provider in get_provider_list(app):
-        # Procedurally register the webhook receivers instead of including them as an entry point, since
-        # they are defined in the VCS provider config list rather than in the instance's setup.cfg file.
-        # TODO: is this an okay thing to do? It reduces duplication and work for instance maintainers but is a little unusual
-        app.extensions["invenio-webhooks"].register(provider.id, VCSReceiver)
+    state = app.extensions.get("invenio-webhooks")
+    if state is not None:
+        for provider in get_provider_list(app):
+            # Procedurally register the webhook receivers instead of including them as an entry point, since
+            # they are defined in the VCS provider config list rather than in the instance's setup.cfg file.
+            state.register(provider.id, VCSReceiver)

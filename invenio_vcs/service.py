@@ -18,6 +18,7 @@ from invenio_vcs.errors import (
     RemoteAccountDataNotSet,
     RemoteAccountNotFound,
     RepositoryAccessError,
+    RepositoryDisabledError,
     RepositoryNotFoundError,
 )
 from invenio_vcs.models import Release, ReleaseStatus, Repository
@@ -59,7 +60,10 @@ class VCSService:
     @property
     def user_enabled_repositories(self):
         """Retrieve user repositories from the model."""
-        return Repository.query.filter(Repository.user_id == self.provider.user_id)
+        return Repository.query.filter(
+            Repository.user_id == self.provider.user_id,
+            Repository.provider == self.provider.factory.id,
+        )
 
     def list_repositories(self):
         """Retrieves user repositories, containing db repositories plus remote repositories."""
@@ -293,12 +297,28 @@ class VCSService:
         db.session.add(self.provider.remote_account)
 
     def enable_repository(self, repository_id):
-        if repository_id not in self.user_available_repositories:
+        vcs_repo = self.user_available_repositories.get(repository_id)
+        if vcs_repo is None:
             raise RepositoryNotFoundError(
                 repository_id, _("Failed to enable repository.")
             )
 
-        return self.provider.create_webhook(repository_id)
+        hook_id = self.provider.create_webhook(repository_id)
+        if hook_id is None:
+            return False
+
+        db_repo = Repository.get(
+            provider=self.provider.factory.id, provider_id=repository_id
+        )
+        if not db_repo:
+            db_repo = Repository.create(
+                provider=self.provider.factory.id,
+                user_id=self.provider.user_id,
+                provider_id=repository_id,
+                name=vcs_repo["full_name"],
+            )
+        self.mark_repo_enabled(db_repo, hook_id)
+        return True
 
     def disable_repository(self, repository_id, hook_id=None):
         if hook_id is None and repository_id not in self.user_available_repositories:
@@ -306,7 +326,17 @@ class VCSService:
                 repository_id, _("Failed to disable repository.")
             )
 
-        return self.provider.delete_webhook(repository_id, hook_id)
+        db_repo = Repository.get(
+            provider=self.provider.factory.id, provider_id=repository_id
+        )
+        if db_repo is None:
+            raise RepositoryDisabledError(repository_id)
+
+        if not self.provider.delete_webhook(repository_id, hook_id):
+            return False
+
+        self.mark_repo_disabled(db_repo)
+        return True
 
 
 class VCSRelease:
@@ -390,14 +420,14 @@ class VCSRelease:
         """
         max_contributors = current_app.config.get("VCS_MAX_CONTRIBUTORS_NUMBER", 30)
         return self.provider.list_repository_contributors(
-            self.db_repo.id, max=max_contributors
+            self.db_repo.provider_id, max=max_contributors
         )
 
     @cached_property
     def owner(self):
         """Get owner of repository as a creator."""
         try:
-            return self.provider.get_repository_owner(self.db_repo.id)
+            return self.provider.get_repository_owner(self.db_repo.provider_id)
         except Exception:
             return None
 

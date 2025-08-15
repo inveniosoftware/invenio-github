@@ -1,7 +1,7 @@
 import json
-from collections import defaultdict
 from datetime import datetime
 
+import dateutil
 import github3
 import requests
 from flask import current_app
@@ -97,7 +97,7 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
     def webhook_event_to_generic(self, event_payload):
         release_published_at = event_payload["release"].get("published_at")
         if release_published_at is not None:
-            release_published_at = datetime.fromisoformat(release_published_at)
+            release_published_at = dateutil.parser.parse(release_published_at)
 
         release = GenericRelease(
             id=str(event_payload["release"]["id"]),
@@ -106,7 +106,7 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
             tarball_url=event_payload["release"].get("tarball_url"),
             zipball_url=event_payload["release"].get("zipball_url"),
             body=event_payload["release"].get("body"),
-            created_at=datetime.fromisoformat(event_payload["release"]["created_at"]),
+            created_at=dateutil.parser.parse(event_payload["release"]["created_at"]),
             published_at=release_published_at,
         )
 
@@ -215,7 +215,7 @@ class GitHubProvider(RepositoryServiceProvider):
     def create_webhook(self, repository_id):
         assert repository_id.isdigit()
         if self._gh is None:
-            return False
+            return None
 
         hook_config = dict(
             url=self.webhook_url,
@@ -226,7 +226,7 @@ class GitHubProvider(RepositoryServiceProvider):
 
         repo = self._gh.repository_with_id(int(repository_id))
         if repo is None:
-            return False
+            return None
 
         hooks = (h for h in repo.hooks() if h.config.get("url", "") == self.webhook_url)
         hook = next(hooks, None)
@@ -236,7 +236,7 @@ class GitHubProvider(RepositoryServiceProvider):
         else:
             hook.edit(config=hook_config, events=["release"])
 
-        return True
+        return str(hook.id)
 
     def delete_webhook(self, repository_id, hook_id=None):
         assert repository_id.isdigit()
@@ -292,16 +292,20 @@ class GitHubProvider(RepositoryServiceProvider):
                 reverse=True,
             )
 
-            contributors = [
-                GenericContributor(
-                    id=x.id,
-                    username=x.login,
-                    display_name=x.full_name,
-                    contributions_count=x.contributions_count,
-                    company=x.refresh().company,
+            contributors = []
+            for c in sorted_contributors:
+                contributions_count = c.contributions_count
+                c = c.refresh()
+                contributors.append(
+                    GenericContributor(
+                        id=c.id,
+                        username=c.login,
+                        display_name=c.name,
+                        contributions_count=contributions_count,
+                        company=c.company,
+                    )
                 )
-                for x in sorted_contributors
-            ]
+
             return contributors
         else:
             raise UnexpectedProviderResponse(

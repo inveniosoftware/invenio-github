@@ -24,6 +24,7 @@
 """Task for managing GitHub integration."""
 
 import datetime
+from typing import TYPE_CHECKING
 
 from celery import shared_task
 from flask import current_app, g
@@ -37,6 +38,9 @@ from invenio_vcs.errors import CustomGitHubMetadataError, RepositoryAccessError
 from invenio_vcs.models import Release, ReleaseStatus
 from invenio_vcs.proxies import current_vcs
 
+if TYPE_CHECKING:
+    from invenio_vcs.service import VCSRelease
+
 
 def _get_err_obj(msg):
     """Generate the error entry with a Sentry ID."""
@@ -46,15 +50,15 @@ def _get_err_obj(msg):
     return err
 
 
-def release_gh_metadata_handler(release, ex):
+def release_gh_metadata_handler(release: "VCSRelease", ex):
     """Handler for CustomGithubMetadataError."""
-    release.release_object.errors = _get_err_obj(str(ex))
+    release.db_release.errors = _get_err_obj(str(ex))
     db.session.commit()
 
 
-def release_default_exception_handler(release, ex):
+def release_default_exception_handler(release: "VCSRelease", ex):
     """Default handler."""
-    release.release_object.errors = _get_err_obj(str(ex))
+    release.db_release.errors = _get_err_obj(str(ex))
     db.session.commit()
 
 
@@ -117,16 +121,14 @@ def sync_hooks(provider, user_id, repositories):
 
 
 @shared_task(ignore_result=True, max_retries=5, default_retry_delay=10 * 60)
-def process_release(provider_id, release_id):
+def process_release(provider, release_id):
     """Process a received Release."""
     release_model = Release.query.filter(
         Release.provider_id == release_id,
         Release.status.in_([ReleaseStatus.RECEIVED, ReleaseStatus.FAILED]),
     ).one()
 
-    provider = get_provider_by_id(provider_id).for_user(
-        release_model.repository.user_id
-    )
+    provider = get_provider_by_id(provider).for_user(release_model.repository.user_id)
     release = current_vcs.release_api_class(release_model, provider)
 
     matched_error_cls = None

@@ -104,7 +104,7 @@ class VCSReceiver(Receiver):
             # Process the release
             # Since 'process_release' is executed asynchronously, we commit the current state of session
             db.session.commit()
-            process_release.delay(release.provider_id)
+            process_release.delay(self.provider_factory.id, release.provider_id)
 
         except (ReleaseAlreadyReceivedError, RepositoryDisabledError) as e:
             event.response_code = 409

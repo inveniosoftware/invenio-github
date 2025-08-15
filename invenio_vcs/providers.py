@@ -248,7 +248,7 @@ class RepositoryServiceProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def create_webhook(self, repository_id) -> bool:
+    def create_webhook(self, repository_id) -> str | None:
         raise NotImplementedError
 
     @abstractmethod
