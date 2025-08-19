@@ -76,7 +76,7 @@ class VCSService:
             for db_repo in db_repos:
                 if db_repo.provider_id in vcs_repos:
                     release_instance = current_vcs.release_api_class(
-                        db_repo.latest_release(), self.provider.factory.id
+                        db_repo.latest_release(), self.provider
                     )
                     vcs_repos[db_repo.provider_id]["instance"] = db_repo
                     vcs_repos[db_repo.provider_id]["latest"] = release_instance
@@ -92,14 +92,14 @@ class VCSService:
         q = repo.releases.filter_by(status=ReleaseStatus.PUBLISHED)
         release_object = q.order_by(db.desc(Release.created)).first()
 
-        return current_vcs.release_api_class(release_object, self.provider.factory.id)
+        return current_vcs.release_api_class(release_object, self.provider)
 
     def list_repo_releases(self, repo):
         # Retrieve releases and sort them by creation date
         release_instances = []
         for release_object in repo.releases.order_by(Release.created):
             release_instances.append(
-                current_vcs.release_api_class(release_object, self.provider.factory.id)
+                current_vcs.release_api_class(release_object, self.provider)
             )
         return release_instances
 
@@ -367,7 +367,7 @@ class VCSRelease:
     def _generic_release_and_repo(self):
         return self.provider.factory.webhook_event_to_generic(self.payload)
 
-    @property
+    @cached_property
     def generic_release(self) -> "GenericRelease":
         """Return release metadata."""
         return self._generic_release_and_repo[0]

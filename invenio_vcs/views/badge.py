@@ -26,7 +26,9 @@
 from __future__ import absolute_import
 
 from flask import Blueprint, abort, redirect, url_for
+from flask_login import current_user
 
+from invenio_vcs.config import get_provider_by_id
 from invenio_vcs.models import ReleaseStatus, Repository
 from invenio_vcs.proxies import current_vcs
 from invenio_vcs.service import VCSService
@@ -53,7 +55,9 @@ def index(provider, repo_provider_id):
     if not latest_release:
         abort(404)
 
+    provider = get_provider_by_id(provider).for_user(current_user.id)
     release = current_vcs.release_api_class(latest_release, provider)
+
     # release.badge_title points to "DOI"
     # release.badge_value points to the record "pids.doi.identifier"
     badge_url = url_for(
@@ -79,7 +83,9 @@ def index_old(provider, user_id, repo_name):
     if not latest_release:
         abort(404)
 
+    provider = get_provider_by_id(provider).for_user(current_user.id)
     release = current_vcs.release_api_class(latest_release, provider)
+
     # release.badge_title points to "DOI"
     # release.badge_value points to the record "pids.doi.identifier"
     badge_url = url_for(
@@ -106,6 +112,7 @@ def latest_doi(provider, provider_id):
     if not latest_release:
         abort(404)
 
+    provider = get_provider_by_id(provider).for_user(current_user.id)
     release = current_vcs.release_api_class(latest_release, provider)
 
     # record.url points to DOI url or HTML url if Datacite is not enabled.

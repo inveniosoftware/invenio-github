@@ -40,6 +40,7 @@ class GenericRelease:
     id: str
     tag_name: str
     created_at: datetime
+    html_url: str
     name: str | types.NoneType = None
     body: str | types.NoneType = None
     tarball_url: str | types.NoneType = None
@@ -122,11 +123,21 @@ class RepositoryServiceProviderFactory(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def webhook_event_to_generic(self, event_payload):
+    def webhook_event_to_generic(
+        self, event_payload
+    ) -> tuple[GenericRelease, GenericRepository]:
         raise NotImplementedError
 
     @abstractmethod
-    def url_for_tag(self, repository_name, tag_name):
+    def url_for_tag(self, repository_name, tag_name) -> str:
+        raise NotImplementedError
+
+    @abstractmethod
+    def url_for_new_release(self, repository_name) -> str:
+        raise NotImplementedError
+
+    @abstractmethod
+    def url_for_new_file(self, repository_name, branch_name, file_name) -> str:
         raise NotImplementedError
 
     def for_user(self, user_id: str):

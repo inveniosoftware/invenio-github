@@ -94,6 +94,21 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
         )
         return is_create_release_event
 
+    @staticmethod
+    def _extract_license(gh_repo_dict):
+        # The GitHub API returns the `license` as a simple key of the ShortRepository.
+        # But for some reason github3py does not include a mapping for this.
+        # So the only way to access it without making an additional request is to convert
+        # the repo to a dict.
+        license_obj = gh_repo_dict.get("license")
+        if license_obj is not None:
+            spdx = license_obj["spdx_id"]
+            if spdx == "NOASSERTION":
+                # For 'other' type of licenses, Github sets the spdx_id to NOASSERTION
+                return None
+            return spdx
+        return None
+
     def webhook_event_to_generic(self, event_payload):
         release_published_at = event_payload["release"].get("published_at")
         if release_published_at is not None:
@@ -105,14 +120,15 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
             tag_name=event_payload["release"]["tag_name"],
             tarball_url=event_payload["release"].get("tarball_url"),
             zipball_url=event_payload["release"].get("zipball_url"),
+            html_url=event_payload["release"]["html_url"],
             body=event_payload["release"].get("body"),
             created_at=dateutil.parser.parse(event_payload["release"]["created_at"]),
             published_at=release_published_at,
         )
 
-        license_spdx = event_payload["repository"].get("license")
-        if license_spdx is not None:
-            license_spdx = filter_license_spdx(license_spdx["spdx_id"])
+        license_spdx = GitHubProviderFactory._extract_license(
+            event_payload["repository"]
+        )
 
         repo = GenericRepository(
             id=str(event_payload["repository"]["id"]),
@@ -128,6 +144,14 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
     def url_for_tag(self, repository_name, tag_name):
         return "{}/{}/tree/{}".format(self.base_url, repository_name, tag_name)
 
+    def url_for_new_release(self, repository_name):
+        return "{}/{}/releases/new".format(self.base_url, repository_name)
+
+    def url_for_new_file(self, repository_name, branch_name, file_name):
+        return "{}/{}/new/{}?filename={}".format(
+            self.base_url, repository_name, branch_name, file_name
+        )
+
 
 class GitHubProvider(RepositoryServiceProvider):
     @cached_property
@@ -138,22 +162,6 @@ class GitHubProvider(RepositoryServiceProvider):
             return github3.enterprise_login(
                 url=self.factory.base_url, token=self.access_token
             )
-
-    @staticmethod
-    def _extract_license(repo):
-        # The GitHub API returns the `license` as a simple key of the ShortRepository.
-        # But for some reason github3py does not include a mapping for this.
-        # So the only way to access it without making an additional request is to convert
-        # the repo to a dict.
-        repo_dict = repo.as_dict()
-        license_obj = repo_dict["license"]
-        if license_obj is not None:
-            spdx = license_obj["spdx_id"]
-            if spdx == "NOASSERTION":
-                # For 'other' type of licenses, Github sets the spdx_id to NOASSERTION
-                return None
-            return spdx
-        return None
 
     def list_repositories(self):
         if self._gh is None:
@@ -170,7 +178,7 @@ class GitHubProvider(RepositoryServiceProvider):
                     description=repo.description,
                     html_url=repo.html_url,
                     default_branch=repo.default_branch,
-                    license_spdx=GitHubProvider._extract_license(repo),
+                    license_spdx=GitHubProviderFactory._extract_license(repo.as_dict()),
                 )
 
         return repos
@@ -209,7 +217,7 @@ class GitHubProvider(RepositoryServiceProvider):
             description=repo.description,
             html_url=repo.html_url,
             default_branch=repo.default_branch,
-            license_spdx=GitHubProvider._extract_license(repo),
+            license_spdx=GitHubProviderFactory._extract_license(repo.as_dict()),
         )
 
     def create_webhook(self, repository_id):

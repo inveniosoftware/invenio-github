@@ -10,10 +10,9 @@
 {%- import "invenio_vcs/settings/helpers.html" as helpers with context %}
 {%- from "invenio_vcs/helpers.html" import doi_badge with context -%}
 
-{%- extends config.GITHUB_SETTINGS_TEMPLATE %}
+{%- extends config.VCS_SETTINGS_TEMPLATE %}
 
 {%- block settings_content %}
-  {%- set github_rel_url = 'https://github.com/{0}/releases/new'.format(repo.name) %}
   {% set active = true %}
 
   {%- block repo_details_header scoped %}
@@ -25,7 +24,7 @@
               <div class="ui small header m-0">
                 <a
                   class="mt-5 mb-5"
-                  href="/account/settings/github/"
+                  href="{{ url_for('invenio_vcs.get_repositories', provider=provider) }}"
                   aria-label="{{ _('Go back to all repositories') }}"
                 >
                   {{ _("Repositories") }}
@@ -34,13 +33,13 @@
                   <i class="right angle icon mr-0" aria-hidden="true"></i>
                 </span>
                 <h2 class="ui small header mt-5 mb-5 inline-computer rel-mr-1">
-                  <i class="github small icon mr-5" aria-hidden="true"></i>{{ repo.name }}
+                  <i class="{{ vocabulary["icon"] }} small icon mr-5" aria-hidden="true"></i>{{ repo.name }}
                 </h2>
               </div>
             </div>
           </div>
           <div class="six wide right aligned middle aligned column">
-            {{ helpers.repo_switch(repo, repo.github_id) }}
+            {{ helpers.repo_switch(repo, repo.provider_id, provider) }}
           </div>
         </div>
 
@@ -59,8 +58,8 @@
     helpers.panel_start(
       _('Releases'),
       btn_text=_('Create release'),
-      btn_icon='github icon',
-      btn_href=github_rel_url,
+      btn_icon=vocabulary["icon"] + ' icon',
+      btn_href=new_release_url,
     )
   }}
   <div class="ui segment {{ 'p-0' if releases }}">
@@ -70,9 +69,9 @@
         {%- block enabled_repo_get_started scoped %}
           <div class="ui centered container">
             <h2 class="ui large header mt-10">{{ _("Get started!") }}</h2>
-            <p class="rel-mt-1">{{ _("Go to GitHub and make your first release.") }}</p>
-            <a class="ui positive large icon button rel-mt-1 mr-0" href="{{ github_rel_url }}" target="_blank">
-              <i class="github icon" aria-hidden="true"></i>
+            <p class="rel-mt-1">{{ _("Go to %(name)s and make your first release.", name=vocabulary["name"]) }}</p>
+            <a class="ui positive large icon button rel-mt-1 mr-0" href="{{ new_release_url }}" target="_blank">
+              <i class="{{ vocabulary["icon"] }} icon" aria-hidden="true"></i>
               {{ repo.name }}
             </a>
           </div>
@@ -93,7 +92,7 @@
                   {{ _("Toggle the switch below to turn on/off automatic preservation of your repository.") }}
                 </p>
                 <div class="text-align-center rel-mt-1">
-                  {{ helpers.repo_switch(repo, repo.github_id) }}
+                  {{ helpers.repo_switch(repo, repo.provider_id) }}
                 </div>
 
                 <div class="repo-switch-message ui compact icon message hidden rel-mt-1">
@@ -106,14 +105,14 @@
                 <h2 class="ui medium header">2 {{ _("Create a release") }}</h2>
                 <div class="ui divider"></div>
                 <p>
-                  {{ _('Go to GitHub and create a release. {}
+                  {{ _('Go to {} and create a release. {}
                   will automatically download a .zip-ball of each new release and register a DOI.')
-                  .format(config.THEME_SITENAME | default('Invenio')) }}
+                  .format(vocabulary["name"], config.THEME_SITENAME | default('Invenio')) }}
                 </p>
 
                 <div class="text-align-center rel-mt-1">
-                  <a class="ui positive medium icon button" href="{{ github_rel_url }}">
-                    <i class="github icon"></i>
+                  <a class="ui positive medium icon button" href="{{ new_release_url }}">
+                    <i class="{{ vocabulary["icon"] }} icon"></i>
                     {{ repo.name }}
                   </a>
                 </div>
@@ -129,17 +128,12 @@
 
           {%- for release in releases %}
 
-            {% set release_status = release.release_object.status.title %}
-            {% set release_status_color = release.release_object.status.color %}
+            {% set release_status = release.db_release.status.title %}
+            {% set release_status_color = release.db_release.status.color %}
             {% set release_status_icon_color = release_status_color %}
-            {% set release_tag = release.release_object.tag %}
-            {% set release_url = 'https://github.com/{0}/releases/tag/{1}'.format(repo.name, release_tag) %}
+            {% set release_tag = release.db_release.tag %}
+            {% set release_url = release.generic_release.html_url %}
             {% set release_name = release_tag %}
-            <!-- Some older releases don't have an event -->
-            {% if release.event %}
-              {% set release_name = release.event.payload.get("release", {}).get("name", release_name) %}
-              {% set release_url = release.event.payload.get("release", {}).get("html_url", release_url) %}
-            {% endif %}
             {% if release_status_color == "warning" %}
               {% set release_status_icon_color = "warning-color" %}
             {% endif %}
@@ -174,9 +168,9 @@
                           <a
                             href="{{ release_url }}"
                             target="_blank"
-                            aria-label="{{ _('See release on GitHub') }}"
+                            aria-label="{{ _('See release on %(name)s', name=vocabulary["name"]) }}"
                           >
-                            <i class="github icon tab-menu-accordion" aria-hidden="true"></i>{{ release_name or release_tag }}
+                            <i class="{{ vocabulary["icon"] }} icon tab-menu-accordion" aria-hidden="true"></i>{{ release_name or release_tag }}
                           </a>
                         </p>
                       </div>
@@ -185,13 +179,13 @@
                     {%- block release_status scoped %}
                       <div class="four wide right aligned column">
                         <div>
-                          <i class="{{ release.release_object.status.icon }} {{ release_status_icon_color }} tab-menu-accordion"></i>
+                          <i class="{{ release.db_release.status.icon }} {{ release_status_icon_color }} tab-menu-accordion"></i>
                           <span class="ui tiny header {{ release_status_color }}">
-                            {{ release.release_object.status.title }}
+                            {{ release.db_release.status.title }}
                           </span>
                         </div>
                         <p class="rel-mt-1">
-                          <small>{{ release.release_object.created|naturaltime }}</small>
+                          <small>{{ release.db_release.created|naturaltime }}</small>
                         </p>
                       </div>
                     {%- endblock release_status %}
@@ -215,7 +209,7 @@
                             {%- block metadata_tab scoped %}
                             {%- endblock metadata_tab %}
 
-                            {%- if release.release_object.errors %}
+                            {%- if release.db_release.errors %}
                               <div id="errors-{{ loop.index }}-tab" role="tab" tabindex="0" aria-selected="{{ active }}" class="{{ 'active' if active }} item" data-tab="errors-{{ loop.index }}">
                                 {{ _("Errors") }}
                               </div>
@@ -229,11 +223,10 @@
                           <div id="citation-{{ loop.index }}-tab-panel" role="tabpanel" class="ui tab rel-p-1 {{ 'active' if active }}" data-tab="citation-{{ loop.index }}">
                             {%- block releasetab_cff %}
                               {% set repo_name = value %}
-                              {% set citation_cff_create_link = 'https://github.com/{0}/new/{1}?filename=CITATION.cff'.format(repo.name, (default_branch or 'master')) %}
                               <div class="flex align-items-center justify-space-between rel-mb-1">
                                 <h3 class="ui header m-0">{{ _("Citation File") }}</h3>
-                                <a class="ui basic button" href="{{ citation_cff_create_link }}">
-                                  <i class="github icon"></i>{{ _("Create CITATION.cff") }}
+                                <a class="ui basic button" href="{{ new_citation_file_url }}">
+                                  <i class="{{ vocabulary["icon"] }} icon"></i>{{ _("Create CITATION.cff") }}
                                 </a>
                               </div>
                               <p>
@@ -263,8 +256,7 @@ date-released: {{ release.event.payload.get("release", {}).get("published_at", "
                             {%- block releasetab_payload %}
                               {%- if release.event %}
                                 <div class="flex align-items-center justify-space-between">
-                                  <h3 class="ui header m-0">{{ _("GitHub Payload") }}</h3>
-
+                                  <h3 class="ui header m-0">{{ _("%(name)s Payload", name=vocabulary["name"]) }}</h3>
                                   <small class="text-align-right">{{ _("Received") }} {{ release.event.created|datetimeformat }}.</small>
                                 </div>
 
@@ -282,7 +274,7 @@ date-released: {{ release.event.payload.get("release", {}).get("published_at", "
 
                           <div id="errors-{{ loop.index }}-tab-panel" role="tabpanel" class="ui tab {{ 'active' if active }}" data-tab="errors-{{ loop.index }}">
                             {%- block releasetab_errors %}
-                              {%- if release.release_object.errors %}
+                              {%- if release.db_release.errors %}
                                 <div class="ui grid">
                                   <div class="row">
                                     <div class="column">
@@ -292,7 +284,7 @@ date-released: {{ release.event.payload.get("release", {}).get("published_at", "
                                   <div class="row">
                                     <div class="column">
                                       <div class="ui message">
-                                        <pre>{{ release.release_object.errors|tojson(indent=4) }}</pre>
+                                        <pre>{{ release.db_release.errors|tojson(indent=4) }}</pre>
                                       </div>
                                     </div>
                                   </div>
