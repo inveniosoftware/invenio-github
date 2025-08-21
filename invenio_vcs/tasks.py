@@ -152,7 +152,7 @@ def process_release(provider, release_id):
 
 
 @shared_task(ignore_result=True)
-def refresh_accounts(expiration_threshold=None):
+def refresh_accounts(provider, expiration_threshold=None):
     """Refresh stale accounts, avoiding token expiration.
 
     :param expiration_threshold: Dictionary containing timedelta parameters
@@ -162,22 +162,22 @@ def refresh_accounts(expiration_threshold=None):
         tz=datetime.timezone.utc
     ) - datetime.timedelta(**(expiration_threshold or {"days": 6 * 30}))
 
-    remote = current_oauthclient.oauth.remote_apps["github"]
+    remote = current_oauthclient.oauth.remote_apps[provider]
     remote_accounts_to_be_updated = RemoteAccount.query.filter(
         RemoteAccount.updated < expiration_date,
         RemoteAccount.client_id == remote.consumer_key,
     )
     for remote_account in remote_accounts_to_be_updated:
-        sync_account.delay(remote_account.user_id)
+        sync_account.delay(provider, remote_account.user_id)
 
 
 @shared_task(ignore_result=True)
-def sync_account(user_id):
+def sync_account(provider, user_id):
     """Sync a user account."""
     # Local import to avoid circular imports
-    from .api import GitHubAPI
+    from .service import VCSService
 
     # Start a nested transaction so every data writing inside sync is executed atomically
     with db.session.begin_nested():
-        gh = GitHubAPI(user_id=user_id)
-        gh.sync(hooks=False, async_hooks=False)
+        svc = VCSService.for_provider_and_user(provider, user_id)
+        svc.sync(hooks=False, async_hooks=False)

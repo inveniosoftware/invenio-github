@@ -8,11 +8,13 @@ from flask import current_app
 from github3.repos import ShortRepository
 from invenio_i18n import gettext as _
 from invenio_oauthclient.contrib.github import GitHubOAuthSettingsHelper
-from werkzeug.utils import cached_property
+from werkzeug.utils import cached_property, import_string
 
 from invenio_vcs.errors import ReleaseZipballFetchError, UnexpectedProviderResponse
 from invenio_vcs.providers import (
     GenericContributor,
+    GenericOwner,
+    GenericOwnerType,
     GenericRelease,
     GenericRepository,
     GenericUser,
@@ -29,14 +31,25 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
         webhook_receiver_url,
         id="github",
         name="GitHub",
+        description="Automatically archive your repositories",
+        credentials_key="GITHUB_APP_CREDENTIALS",
         config={},
     ):
-        super().__init__(GitHubProvider, base_url, webhook_receiver_url)
-        self._id = id
-        self._name = name
+        super().__init__(
+            GitHubProvider,
+            base_url=base_url,
+            webhook_receiver_url=webhook_receiver_url,
+            id=id,
+            name=name,
+            description=description,
+            credentials_key=credentials_key,
+            icon="github",
+            repository_name="repository",
+            repository_name_plural="repositories",
+        )
+
         self._config = dict()
         self._config.update(
-            credentials_key="GITHUB_APP_CREDENTIALS",
             shared_secret="",
             insecure_ssl=False,
         )
@@ -49,7 +62,11 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
         }
 
         helper = GitHubOAuthSettingsHelper(
-            base_url=self.base_url, app_key=self.config["credentials_key"]
+            title=self.name,
+            icon="fa fa-{}".format(self.icon),
+            description=self.description,
+            base_url=self.base_url,
+            app_key=self.credentials_key,
         )
         github_app = helper.remote_app
         github_app["disconnect_handler"] = self.oauth_handlers.disconnect_handler
@@ -59,26 +76,6 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
         github_app["params"]["request_token_params"] = request_token_params
 
         return github_app
-
-    @property
-    def id(self):
-        return self._id
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def repository_name(self):
-        return "repository"
-
-    @property
-    def repository_name_plural(self):
-        return "repositories"
-
-    @property
-    def icon(self):
-        return "github"
 
     @property
     def config(self):
@@ -156,17 +153,18 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
 class GitHubProvider(RepositoryServiceProvider):
     @cached_property
     def _gh(self):
+        _gh = None
         if self.factory.base_url == "https://github.com":
-            return github3.login(token=self.access_token)
+            _gh = github3.login(token=self.access_token)
         else:
-            return github3.enterprise_login(
+            _gh = github3.enterprise_login(
                 url=self.factory.base_url, token=self.access_token
             )
 
-    def list_repositories(self):
-        if self._gh is None:
-            return None
+        assert _gh is not None
+        return _gh
 
+    def list_repositories(self):
         repos: dict[str, GenericRepository] = {}
         for repo in self._gh.repositories():
             assert isinstance(repo, ShortRepository)
@@ -185,8 +183,6 @@ class GitHubProvider(RepositoryServiceProvider):
 
     def list_repository_webhooks(self, repository_id):
         assert repository_id.isdigit()
-        if self._gh is None:
-            return None
         repo = self._gh.repository_with_id(int(repository_id))
         if repo is None:
             return None
@@ -204,8 +200,6 @@ class GitHubProvider(RepositoryServiceProvider):
 
     def get_repository(self, repository_id):
         assert repository_id.isdigit()
-        if self._gh is None:
-            return None
 
         repo = self._gh.repository_with_id(int(repository_id))
         if repo is None:
@@ -222,8 +216,6 @@ class GitHubProvider(RepositoryServiceProvider):
 
     def create_webhook(self, repository_id):
         assert repository_id.isdigit()
-        if self._gh is None:
-            return None
 
         hook_config = dict(
             url=self.webhook_url,
@@ -248,8 +240,6 @@ class GitHubProvider(RepositoryServiceProvider):
 
     def delete_webhook(self, repository_id, hook_id=None):
         assert repository_id.isdigit()
-        if self._gh is None:
-            return False
 
         repo = self._gh.repository_with_id(int(repository_id))
         if repo is None:
@@ -270,9 +260,6 @@ class GitHubProvider(RepositoryServiceProvider):
         return False
 
     def get_own_user(self):
-        if self._gh is None:
-            return None
-
         user = self._gh.me()
         if user is not None:
             return GenericUser(user.id, user.login, user.name)
@@ -281,8 +268,6 @@ class GitHubProvider(RepositoryServiceProvider):
 
     def list_repository_contributors(self, repository_id, max):
         assert repository_id.isdigit()
-        if self._gh is None:
-            return None
 
         repo = self._gh.repository_with_id(repository_id)
         if repo is None:
@@ -325,23 +310,25 @@ class GitHubProvider(RepositoryServiceProvider):
 
     def get_repository_owner(self, repository_id):
         assert repository_id.isdigit()
-        if self._gh is None:
-            return None
 
         repo = self._gh.repository_with_id(repository_id)
         if repo is None:
             return None
 
-        return GenericUser(
+        owner_type = (
+            GenericOwnerType.Person
+            if repo.owner.type == "User"
+            else GenericOwnerType.Organization
+        )
+
+        return GenericOwner(
             id=repo.owner.id,
-            username=repo.owner.login,
+            path_name=repo.owner.login,
             display_name=repo.owner.full_name,
+            type=owner_type,
         )
 
     def resolve_release_zipball_url(self, release_zipball_url):
-        if self._gh is None:
-            return None
-
         url = release_zipball_url
 
         # Execute a HEAD request to the zipball url to test if it is accessible.
@@ -383,13 +370,12 @@ class GitHubProvider(RepositoryServiceProvider):
 
     def retrieve_remote_file(self, repository_id, tag_name, file_name):
         assert repository_id.isdigit()
-        if self._gh is None:
-            return None
 
         try:
-            return self._gh.repository_with_id(repository_id).file_contents(
+            resp = self._gh.repository_with_id(repository_id).file_contents(
                 path=file_name, ref=tag_name
             )
+            return resp.decoded
         except github3.exceptions.NotFoundError:
             return None
 

@@ -30,7 +30,6 @@ from flask_menu import current_menu
 from invenio_i18n import LazyString
 from invenio_i18n import gettext as _
 from invenio_theme.proxies import current_theme_icons
-from invenio_webhooks import current_webhooks
 from six import string_types
 from werkzeug.utils import cached_property, import_string
 
@@ -101,9 +100,17 @@ def finalize_app_api(app):
 def init_menu(app):
     """Init menu."""
     for provider in get_provider_list(app):
-        current_menu.submenu(f"settings.{provider.id}").register(
+        id = provider.id
+
+        def is_active():
+            return (
+                request.endpoint.startswith("invenio_vcs.")
+                and request.view_args.get("provider", "") == id
+            )
+
+        current_menu.submenu(f"settings.vcs_{id}").register(
             endpoint="invenio_vcs.get_repositories",
-            endpoint_arguments_constructor=lambda: {"provider": provider.id},
+            endpoint_arguments_constructor=lambda: {"provider": id},
             text=_(
                 "%(icon)s %(provider)s",
                 icon=LazyString(
@@ -112,7 +119,7 @@ def init_menu(app):
                 provider=provider.name,
             ),
             order=10,
-            active_when=lambda: request.endpoint.startswith("invenio_vcs."),
+            active_when=is_active,
         )
 
 
