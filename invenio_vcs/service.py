@@ -20,6 +20,7 @@ from invenio_vcs.errors import (
     RepositoryAccessError,
     RepositoryDisabledError,
     RepositoryNotFoundError,
+    UserInfoNoneError,
 )
 from invenio_vcs.models import Release, ReleaseStatus, Repository
 from invenio_vcs.proxies import current_vcs
@@ -226,7 +227,7 @@ class VCSService:
             # If hooks will run asynchronously, we need to commit any changes done so far
             db.session.commit()
             sync_hooks_task.delay(
-                self.provider.factory.id, self.provider.user_id, repo_ids
+                self.provider.factory.id, self.provider.user_id, list(repo_ids)
             )
 
     def sync_repo_hook(self, repo_id):
@@ -272,8 +273,7 @@ class VCSService:
 
         user = self.provider.get_own_user()
         if user is None:
-            # TODO: create a reasonable exception here
-            raise Exception("TODO")
+            raise UserInfoNoneError
 
         # Setup local access tokens to be used by the webhooks
         hook_token = ProviderToken.create_personal(
