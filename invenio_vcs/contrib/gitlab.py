@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+# This file is part of Invenio.
+# Copyright (C) 2025 CERN.
+#
+# Invenio is free software; you can redistribute it and/or modify it
+# under the terms of the MIT License; see LICENSE file for more details.
+
 from __future__ import annotations
 
 from typing import Any
@@ -10,7 +17,7 @@ from flask import current_app
 from invenio_oauthclient import current_oauthclient
 from werkzeug.utils import cached_property
 
-from invenio_vcs.providers import (
+from invenio_vcs.generic_models import (
     GenericContributor,
     GenericOwner,
     GenericOwnerType,
@@ -18,6 +25,8 @@ from invenio_vcs.providers import (
     GenericRepository,
     GenericUser,
     GenericWebhook,
+)
+from invenio_vcs.providers import (
     RepositoryServiceProvider,
     RepositoryServiceProviderFactory,
 )

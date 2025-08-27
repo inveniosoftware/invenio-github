@@ -1,5 +1,11 @@
+# -*- coding: utf-8 -*-
+# This file is part of Invenio.
+# Copyright (C) 2025 CERN.
+#
+# Invenio is free software; you can redistribute it and/or modify it
+# under the terms of the MIT License; see LICENSE file for more details.
+
 import json
-from datetime import datetime
 
 import dateutil
 import github3
@@ -8,10 +14,10 @@ from flask import current_app
 from github3.repos import ShortRepository
 from invenio_i18n import gettext as _
 from invenio_oauthclient.contrib.github import GitHubOAuthSettingsHelper
-from werkzeug.utils import cached_property, import_string
+from werkzeug.utils import cached_property
 
 from invenio_vcs.errors import ReleaseZipballFetchError, UnexpectedProviderResponse
-from invenio_vcs.providers import (
+from invenio_vcs.generic_models import (
     GenericContributor,
     GenericOwner,
     GenericOwnerType,
@@ -19,6 +25,8 @@ from invenio_vcs.providers import (
     GenericRepository,
     GenericUser,
     GenericWebhook,
+)
+from invenio_vcs.providers import (
     RepositoryServiceProvider,
     RepositoryServiceProviderFactory,
 )

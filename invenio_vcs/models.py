@@ -31,6 +31,7 @@ from invenio_accounts.models import User
 from invenio_db import db
 from invenio_i18n import lazy_gettext as _
 from invenio_webhooks.models import Event
+from sqlalchemy import Index, UniqueConstraint
 from sqlalchemy.dialects import postgresql
 from sqlalchemy_utils.models import Timestamp
 from sqlalchemy_utils.types import ChoiceType, JSONType, UUIDType
@@ -112,6 +113,21 @@ class Repository(db.Model, Timestamp):
 
     __tablename__ = "vcs_repositories"
 
+    __table_args__ = (
+        UniqueConstraint(
+            "provider",
+            "provider_id",
+            "name",
+            name="uq_vcs_repositories_provider_provider_id_name",
+        ),
+        UniqueConstraint(
+            "provider",
+            "provider_id",
+            name="uq_vcs_repositories_provider_provider_id",
+        ),
+        # Index("ix_vcs_repositories_provider_provider_id", "provider", "provider_id"),
+    )
+
     id = db.Column(
         UUIDType,
         primary_key=True,
@@ -121,7 +137,6 @@ class Repository(db.Model, Timestamp):
 
     provider_id = db.Column(
         db.String(255),
-        index=True,
         nullable=False,
     )
     """Unique GitHub identifier for a repository.
@@ -144,13 +159,18 @@ class Repository(db.Model, Timestamp):
     provider = db.Column(db.String(255), nullable=False)
     """Which VCS provider the repository is hosted by (and therefore the context in which to consider the provider_id)"""
 
-    name = db.Column(db.String(255), unique=True, index=True, nullable=False)
+    description = db.Column(db.String(10000), nullable=True)
+    html_url = db.Column(db.String(10000), nullable=False)
+    license_spdx = db.Column(db.String(255), nullable=True)
+    default_branch = db.Column(db.String(255), nullable=False)
+
+    name = db.Column(db.String(255), nullable=False)
     """Fully qualified name of the repository including user/organization."""
 
     user_id = db.Column(db.Integer, db.ForeignKey(User.id), nullable=True)
     """Reference user that can manage this repository."""
 
-    hook = db.Column(db.String(255))
+    hook = db.Column(db.String(255), nullable=True)
     """Hook identifier."""
 
     #
@@ -159,13 +179,28 @@ class Repository(db.Model, Timestamp):
     user = db.relationship(User)
 
     @classmethod
-    def create(cls, user_id, provider, provider_id=None, name=None, **kwargs):
+    def create(
+        cls,
+        user_id,
+        provider,
+        provider_id,
+        html_url,
+        default_branch,
+        name=None,
+        description=None,
+        license_spdx=None,
+        **kwargs,
+    ):
         """Create the repository."""
         obj = cls(
             user_id=user_id,
             provider=provider,
             provider_id=provider_id,
             name=name,
+            html_url=html_url,
+            default_branch=default_branch,
+            description=description,
+            license_spdx=license_spdx,
             **kwargs,
         )
         db.session.add(obj)
@@ -220,6 +255,20 @@ class Release(db.Model, Timestamp):
 
     __tablename__ = "vcs_releases"
 
+    __table_args__ = (
+        UniqueConstraint(
+            "provider",
+            "provider_id",
+            name="uq_vcs_releases_provider_id_provider",
+        ),
+        UniqueConstraint(
+            "provider_id",
+            "provider",
+            "tag",
+            name="uq_vcs_releases_provider_id_provider_tag",
+        ),
+    )
+
     id = db.Column(
         UUIDType,
         primary_key=True,
@@ -229,6 +278,9 @@ class Release(db.Model, Timestamp):
 
     provider_id = db.Column(db.String(255), nullable=True)
     """Unique GitHub release identifier."""
+
+    provider = db.Column(db.String(255), nullable=False)
+    """Which VCS provider the release is hosted by (and therefore the context in which to consider the provider_id)"""
 
     tag = db.Column(db.String(255))
     """Release tag."""

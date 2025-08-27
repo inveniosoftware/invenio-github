@@ -1,6 +1,5 @@
 from abc import abstractmethod
 from contextlib import contextmanager
-from copy import deepcopy
 from dataclasses import asdict
 from typing import TYPE_CHECKING
 
@@ -22,6 +21,7 @@ from invenio_vcs.errors import (
     RepositoryNotFoundError,
     UserInfoNoneError,
 )
+from invenio_vcs.generic_models import GenericRelease, GenericRepository
 from invenio_vcs.models import Release, ReleaseStatus, Repository
 from invenio_vcs.proxies import current_vcs
 from invenio_vcs.tasks import sync_hooks as sync_hooks_task
@@ -29,8 +29,6 @@ from invenio_vcs.utils import iso_utcnow
 
 if TYPE_CHECKING:
     from invenio_vcs.providers import (
-        GenericRelease,
-        GenericRepository,
         RepositoryServiceProvider,
     )
 
@@ -40,11 +38,11 @@ class VCSService:
         self.provider = provider
 
     @staticmethod
-    def for_provider_and_user(provider_id: str, user_id: str):
+    def for_provider_and_user(provider_id: str, user_id: int):
         return VCSService(get_provider_by_id(provider_id).for_user(user_id))
 
     @staticmethod
-    def for_provider_and_token(provider_id: str, user_id: str, access_token: str):
+    def for_provider_and_token(provider_id: str, user_id: int, access_token: str):
         return VCSService(
             get_provider_by_id(provider_id).for_access_token(user_id, access_token)
         )
@@ -56,7 +54,10 @@ class VCSService:
     @property
     def user_available_repositories(self):
         """Retrieve user repositories from user's remote data."""
-        return self.provider.remote_account.extra_data.get("repos", {})
+        return Repository.query.filter(
+            Repository.user_id == self.provider.user_id,
+            Repository.provider == self.provider.factory.id,
+        )
 
     @property
     def user_enabled_repositories(self):
@@ -64,25 +65,21 @@ class VCSService:
         return Repository.query.filter(
             Repository.user_id == self.provider.user_id,
             Repository.provider == self.provider.factory.id,
+            Repository.hook != None,
         )
 
     def list_repositories(self):
         """Retrieves user repositories, containing db repositories plus remote repositories."""
-        vcs_repos = deepcopy(self.user_available_repositories)
-        if vcs_repos:
-            # 'Enhance' our repos dict, from our database model
-            db_repos = Repository.query.filter(
-                Repository.provider_id.in_([k for k in vcs_repos.keys()])
+        repos = {}
+        for db_repo in self.user_available_repositories:
+            repos[db_repo.provider_id] = asdict(GenericRepository.from_model(db_repo))
+            release_instance = current_vcs.release_api_class(
+                db_repo.latest_release(), self.provider
             )
-            for db_repo in db_repos:
-                if db_repo.provider_id in vcs_repos:
-                    release_instance = current_vcs.release_api_class(
-                        db_repo.latest_release(), self.provider
-                    )
-                    vcs_repos[db_repo.provider_id]["instance"] = db_repo
-                    vcs_repos[db_repo.provider_id]["latest"] = release_instance
+            repos[db_repo.provider_id]["instance"] = db_repo
+            repos[db_repo.provider_id]["latest"] = release_instance
 
-        return vcs_repos
+        return repos
 
     def get_repo_latest_release(self, repo):
         """Retrieves the repository last release."""
@@ -105,9 +102,14 @@ class VCSService:
         return release_instances
 
     def get_repo_default_branch(self, repo_id):
-        return self.user_available_repositories.get(repo_id, None).get(
-            "default_branch", None
-        )
+        db_repo = self.user_available_repositories.filter(
+            Repository.provider_id == repo_id
+        ).first()
+
+        if db_repo is None:
+            return None
+
+        return db_repo.default_branch
 
     def get_last_sync_time(self):
         """Retrieves the last sync delta time from github's client extra data.
@@ -139,7 +141,7 @@ class VCSService:
 
         return repo
 
-    def check_repo_access_permissions(self, repo):
+    def check_repo_access_permissions(self, repo: Repository):
         """Checks permissions from user on repo.
 
         Repo has access if any of the following is True:
@@ -153,10 +155,10 @@ class VCSService:
                 return True
 
         if self.provider.remote_account and self.provider.remote_account.extra_data:
-            user_has_remote_access = self.user_available_repositories.get(
-                repo.provider_id
-            )
-            if user_has_remote_access:
+            user_has_remote_access_count = self.user_available_repositories.filter(
+                Repository.provider_id == repo.provider_id
+            ).count()
+            if user_has_remote_access_count == 1:
                 return True
 
         raise RepositoryAccessError(
@@ -186,25 +188,43 @@ class VCSService:
         # Update changed names for repositories stored in DB
         db_repos = Repository.query.filter(
             Repository.user_id == self.provider.user_id,
-        )
+            Repository.provider == self.provider.factory.id,
+        ).all()
 
-        for repo in db_repos:
-            vcs_repo = vcs_repos.get(repo.provider_id)
-            if vcs_repo and repo.name != vcs_repo.full_name:
-                repo.name = vcs_repo.full_name
-                db.session.add(repo)
+        for db_repo in db_repos:
+            vcs_repo = vcs_repos.get(db_repo.provider_id)
+            if vcs_repo and db_repo.name != vcs_repo.full_name:
+                db_repo.name = vcs_repo.full_name
+                db.session.add(db_repo)
 
         # Remove ownership from repositories that the user has no longer
         # 'admin' permissions, or have been deleted.
         Repository.query.filter(
             Repository.user_id == self.provider.user_id,
+            Repository.provider == self.provider.factory.id,
             ~Repository.provider_id.in_(vcs_repos.keys()),
         ).update({"user_id": None, "hook": None}, synchronize_session=False)
 
-        # Update repos and last sync
+        # Add new repos from VCS to the DB (without the hook activated)
+        for _, vcs_repo in vcs_repos.items():
+            if any(r.provider_id == vcs_repo.id for r in db_repos):
+                # We have already added this to our DB
+                continue
+
+            Repository.create(
+                user_id=self.provider.user_id,
+                provider=self.provider.factory.id,
+                provider_id=vcs_repo.id,
+                html_url=vcs_repo.html_url,
+                default_branch=vcs_repo.default_branch,
+                name=vcs_repo.full_name,
+                description=vcs_repo.description,
+                license_spdx=vcs_repo.license_spdx,
+            )
+
+        # Update last sync
         self.provider.remote_account.extra_data.update(
             dict(
-                repos={k: asdict(v) for k, v in vcs_repos.items()},
                 last_sync=iso_utcnow(),
             )
         )
@@ -235,6 +255,7 @@ class VCSService:
         # Get the hook that we may have set in the past
         hook = self.provider.get_first_valid_webhook(repo_id)
         vcs_repo = self.provider.get_repository(repo_id)
+        assert vcs_repo is not None
 
         # If hook on GitHub exists, get or create corresponding db object and
         # enable the hook. Otherwise remove the old hook information.
@@ -243,10 +264,14 @@ class VCSService:
         if hook:
             if not db_repo:
                 db_repo = Repository.create(
-                    self.provider.user_id,
-                    self.provider.factory.id,
-                    repo_id,
-                    vcs_repo.full_name,
+                    user_id=self.provider.user_id,
+                    provider=self.provider.factory.id,
+                    provider_id=repo_id,
+                    html_url=vcs_repo.html_url,
+                    default_branch=vcs_repo.default_branch,
+                    name=vcs_repo.full_name,
+                    description=vcs_repo.description,
+                    license_spdx=vcs_repo.license_spdx,
                 )
             if not db_repo.enabled:
                 self.mark_repo_enabled(db_repo, hook.id)
@@ -257,7 +282,6 @@ class VCSService:
     def mark_repo_disabled(self, repo):
         """Disables an user repository."""
         repo.hook = None
-        repo.user_id = None
 
     def mark_repo_enabled(self, repo, hook):
         """Enables an user repository."""
@@ -290,15 +314,16 @@ class VCSService:
             tokens=dict(
                 webhook=hook_token.id,
             ),
-            repos=dict(),
             last_sync=iso_utcnow(),
         )
 
         db.session.add(self.provider.remote_account)
 
     def enable_repository(self, repository_id):
-        vcs_repo = self.user_available_repositories.get(repository_id)
-        if vcs_repo is None:
+        db_repo = self.user_available_repositories.filter(
+            Repository.provider_id == repository_id
+        ).first()
+        if db_repo is None:
             raise RepositoryNotFoundError(
                 repository_id, _("Failed to enable repository.")
             )
@@ -307,29 +332,20 @@ class VCSService:
         if hook_id is None:
             return False
 
-        db_repo = Repository.get(
-            provider=self.provider.factory.id, provider_id=repository_id
-        )
-        if not db_repo:
-            db_repo = Repository.create(
-                provider=self.provider.factory.id,
-                user_id=self.provider.user_id,
-                provider_id=repository_id,
-                name=vcs_repo["full_name"],
-            )
         self.mark_repo_enabled(db_repo, hook_id)
         return True
 
     def disable_repository(self, repository_id, hook_id=None):
-        if hook_id is None and repository_id not in self.user_available_repositories:
+        db_repo = self.user_available_repositories.filter(
+            Repository.provider_id == repository_id
+        ).first()
+
+        if db_repo is None:
             raise RepositoryNotFoundError(
                 repository_id, _("Failed to disable repository.")
             )
 
-        db_repo = Repository.get(
-            provider=self.provider.factory.id, provider_id=repository_id
-        )
-        if db_repo is None:
+        if not db_repo.enabled:
             raise RepositoryDisabledError(repository_id)
 
         if not self.provider.delete_webhook(repository_id, hook_id):

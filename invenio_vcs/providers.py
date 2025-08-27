@@ -1,10 +1,6 @@
 from __future__ import annotations
 
-import types
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from datetime import datetime
-from enum import Enum
 from typing import Any, Generator
 from urllib.parse import urlparse
 
@@ -19,65 +15,6 @@ from werkzeug.utils import cached_property
 
 from invenio_vcs.errors import RemoteAccountDataNotSet
 from invenio_vcs.oauth.handlers import OAuthHandlers
-
-
-@dataclass
-class GenericWebhook:
-    id: str
-    repository_id: str
-    url: str
-
-
-@dataclass
-class GenericRepository:
-    id: str
-    full_name: str
-    default_branch: str
-    html_url: str
-    description: str | types.NoneType = None
-    license_spdx: str | types.NoneType = None
-
-
-@dataclass
-class GenericRelease:
-    id: str
-    tag_name: str
-    created_at: datetime
-    html_url: str
-    name: str | types.NoneType = None
-    body: str | types.NoneType = None
-    tarball_url: str | types.NoneType = None
-    zipball_url: str | types.NoneType = None
-    published_at: datetime | types.NoneType = None
-
-
-@dataclass
-class GenericUser:
-    id: str
-    username: str
-    display_name: str | types.NoneType = None
-
-
-class GenericOwnerType(Enum):
-    Person = 1
-    Organization = 2
-
-
-@dataclass
-class GenericOwner:
-    id: str
-    path_name: str
-    type: GenericOwnerType
-    display_name: str | types.NoneType = None
-
-
-@dataclass
-class GenericContributor:
-    id: str
-    username: str
-    company: str | None = None
-    contributions_count: int | None = None
-    display_name: str | types.NoneType = None
 
 
 class RepositoryServiceProviderFactory(ABC):
@@ -145,10 +82,10 @@ class RepositoryServiceProviderFactory(ABC):
     ) -> tuple[GenericRelease, GenericRepository]:
         raise NotImplementedError
 
-    def for_user(self, user_id: str):
+    def for_user(self, user_id: int):
         return self.provider(self, user_id)
 
-    def for_access_token(self, user_id: str, access_token: str):
+    def for_access_token(self, user_id: int, access_token: str):
         return self.provider(self, user_id, access_token=access_token)
 
     @property
@@ -164,7 +101,7 @@ class RepositoryServiceProviderFactory(ABC):
 
 class RepositoryServiceProvider(ABC):
     def __init__(
-        self, factory: RepositoryServiceProviderFactory, user_id: str, access_token=None
+        self, factory: RepositoryServiceProviderFactory, user_id: int, access_token=None
     ) -> None:
         self.factory = factory
         self.user_id = user_id
