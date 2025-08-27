@@ -158,12 +158,14 @@ class GitLabProviderFactory(RepositoryServiceProviderFactory):
     def webhook_event_to_generic(
         self, event_payload: dict[str, Any]
     ) -> tuple[GenericRelease, GenericRepository]:
+        # https://archives.docs.gitlab.com/18.0/user/project/integrations/webhook_events/#release-events
         # https://archives.docs.gitlab.com/17.11/user/project/integrations/webhook_events/#release-events
+        # https://archives.docs.gitlab.com/16.11/ee/user/project/integrations/webhook_events.html#release-events
 
         zipball_url: str | None = None
         tarball_url: str | None = None
 
-        for source in event_payload["sources"]:
+        for source in event_payload["assets"]["sources"]:
             format = source["format"]
             url = source["url"]
             if format == "zip":

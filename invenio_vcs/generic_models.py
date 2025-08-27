@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
 
@@ -27,12 +27,25 @@ class GenericRepository:
     def from_model(model: Repository):
         return GenericRepository(
             id=model.provider_id,
-            full_name=model.name,
+            full_name=model.full_name,
             default_branch=model.default_branch,
             html_url=model.html_url,
             description=model.description,
             license_spdx=model.license_spdx,
         )
+
+    def to_model(self, model: Repository):
+        changed = False
+        for key, value in asdict(self).items():
+            if key in ["id"]:
+                continue
+
+            db_value = getattr(model, key)
+            if db_value != value:
+                changed = True
+                setattr(model, key, value)
+
+        return changed
 
 
 @dataclass

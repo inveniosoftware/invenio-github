@@ -131,7 +131,7 @@ class VCSService:
         Checks for access permission.
         """
         repo = Repository.get(
-            self.provider.factory.id, provider_id=repo_id, name=repo_name
+            self.provider.factory.id, provider_id=repo_id, full_name=repo_name
         )
         if not repo:
             raise RepositoryNotFoundError(repo_id)
@@ -162,7 +162,7 @@ class VCSService:
                 return True
 
         raise RepositoryAccessError(
-            user=self.provider.user_id, repo=repo.name, repo_id=repo.provider_id
+            user=self.provider.user_id, repo=repo.full_name, repo_id=repo.provider_id
         )
 
     def sync(self, hooks=True, async_hooks=True):
@@ -193,8 +193,11 @@ class VCSService:
 
         for db_repo in db_repos:
             vcs_repo = vcs_repos.get(db_repo.provider_id)
-            if vcs_repo and db_repo.name != vcs_repo.full_name:
-                db_repo.name = vcs_repo.full_name
+            if not vcs_repo:
+                continue
+
+            changed = vcs_repo.to_model(db_repo)
+            if changed:
                 db.session.add(db_repo)
 
         # Remove ownership from repositories that the user has no longer
@@ -217,7 +220,7 @@ class VCSService:
                 provider_id=vcs_repo.id,
                 html_url=vcs_repo.html_url,
                 default_branch=vcs_repo.default_branch,
-                name=vcs_repo.full_name,
+                full_name=vcs_repo.full_name,
                 description=vcs_repo.description,
                 license_spdx=vcs_repo.license_spdx,
             )
@@ -269,7 +272,7 @@ class VCSService:
                     provider_id=repo_id,
                     html_url=vcs_repo.html_url,
                     default_branch=vcs_repo.default_branch,
-                    name=vcs_repo.full_name,
+                    full_name=vcs_repo.full_name,
                     description=vcs_repo.description,
                     license_spdx=vcs_repo.license_spdx,
                 )

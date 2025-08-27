@@ -69,9 +69,9 @@ def upgrade():
         columns=["provider", "provider_id"],
     )
     op.create_unique_constraint(
-        constraint_name=op.f("uq_vcs_repositories_provider_provider_id_name"),
+        constraint_name=op.f("uq_vcs_repositories_provider_name"),
         table_name="vcs_repositories",
-        columns=["provider", "provider_id", "name"],
+        columns=["provider", "name"],
     )
 
     op.rename_table("github_releases", "vcs_releases")

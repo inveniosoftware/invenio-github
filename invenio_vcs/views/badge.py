@@ -74,7 +74,7 @@ def index(provider, repo_provider_id):
 def index_old(provider, user_id, repo_name):
     """Generate a badge for a specific GitHub repository (by name)."""
     repo = Repository.query.filter(
-        Repository.name == repo_name, Repository.provider == provider
+        Repository.full_name == repo_name, Repository.provider == provider
     ).one_or_none()
     if not repo:
         abort(404)

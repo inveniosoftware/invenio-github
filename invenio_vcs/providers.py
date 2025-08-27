@@ -14,6 +14,14 @@ from werkzeug.local import LocalProxy
 from werkzeug.utils import cached_property
 
 from invenio_vcs.errors import RemoteAccountDataNotSet
+from invenio_vcs.generic_models import (
+    GenericContributor,
+    GenericOwner,
+    GenericRelease,
+    GenericRepository,
+    GenericUser,
+    GenericWebhook,
+)
 from invenio_vcs.oauth.handlers import OAuthHandlers
 
 

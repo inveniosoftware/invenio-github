@@ -125,9 +125,9 @@ def register_ui_routes(blueprint):
             latest_release = svc.get_repo_latest_release(repo)
             default_branch = svc.get_repo_default_branch(repo_id)
             releases = svc.list_repo_releases(repo)
-            new_release_url = svc.provider.factory.url_for_new_release(repo.name)
+            new_release_url = svc.provider.factory.url_for_new_release(repo.full_name)
             new_citation_file_url = svc.provider.factory.url_for_new_file(
-                repo.name, default_branch or "main", "CITATION.cff"
+                repo.full_name, default_branch or "main", "CITATION.cff"
             )
 
             return render_template(

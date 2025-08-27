@@ -116,9 +116,8 @@ class Repository(db.Model, Timestamp):
     __table_args__ = (
         UniqueConstraint(
             "provider",
-            "provider_id",
             "name",
-            name="uq_vcs_repositories_provider_provider_id_name",
+            name="uq_vcs_repositories_provider_name",
         ),
         UniqueConstraint(
             "provider",
@@ -164,7 +163,7 @@ class Repository(db.Model, Timestamp):
     license_spdx = db.Column(db.String(255), nullable=True)
     default_branch = db.Column(db.String(255), nullable=False)
 
-    name = db.Column(db.String(255), nullable=False)
+    full_name = db.Column("name", db.String(255), nullable=False)
     """Fully qualified name of the repository including user/organization."""
 
     user_id = db.Column(db.Integer, db.ForeignKey(User.id), nullable=True)
@@ -186,7 +185,7 @@ class Repository(db.Model, Timestamp):
         provider_id,
         html_url,
         default_branch,
-        name=None,
+        full_name=None,
         description=None,
         license_spdx=None,
         **kwargs,
@@ -196,7 +195,7 @@ class Repository(db.Model, Timestamp):
             user_id=user_id,
             provider=provider,
             provider_id=provider_id,
-            name=name,
+            full_name=full_name,
             html_url=html_url,
             default_branch=default_branch,
             description=description,
@@ -207,7 +206,7 @@ class Repository(db.Model, Timestamp):
         return obj
 
     @classmethod
-    def get(cls, provider, provider_id=None, name=None):
+    def get(cls, provider, provider_id=None, full_name=None):
         """Return a repository given its name or github id.
 
         :param integer github_id: GitHub repository identifier.
@@ -224,9 +223,9 @@ class Repository(db.Model, Timestamp):
             repo = cls.query.filter(
                 Repository.provider_id == provider_id, Repository.provider == provider
             ).one_or_none()
-        if not repo and name is not None:
+        if not repo and full_name is not None:
             repo = cls.query.filter(
-                Repository.name == name, Repository.provider == provider
+                Repository.full_name == full_name, Repository.provider == provider
             ).one_or_none()
 
         return repo
@@ -247,7 +246,7 @@ class Repository(db.Model, Timestamp):
 
     def __repr__(self):
         """Get repository representation."""
-        return "<Repository {self.name}:{self.provider_id}>".format(self=self)
+        return "<Repository {self.full_name}:{self.provider_id}>".format(self=self)
 
 
 class Release(db.Model, Timestamp):

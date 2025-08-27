@@ -84,7 +84,7 @@ class VCSReceiver(Receiver):
             repo = Repository.get(
                 self.provider_factory.id,
                 provider_id=generic_repo.id,
-                name=generic_repo.full_name,
+                full_name=generic_repo.full_name,
             )
             if not repo:
                 raise RepositoryNotFoundError(generic_repo.full_name)
@@ -92,6 +92,7 @@ class VCSReceiver(Receiver):
             if repo.enabled:
                 release = Release(
                     provider_id=generic_release.id,
+                    provider=self.provider_factory.id,
                     tag=generic_release.tag_name,
                     repository=repo,
                     event=event,
