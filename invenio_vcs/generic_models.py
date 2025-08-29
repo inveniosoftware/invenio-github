@@ -1,3 +1,19 @@
+# -*- coding: utf-8 -*-
+# This file is part of Invenio.
+# Copyright (C) 2025 CERN.
+#
+# Invenio is free software; you can redistribute it and/or modify it
+# under the terms of the MIT License; see LICENSE file for more details.
+"""
+Generic dataclass models to represent the bare minimum necessary data
+from VCS providers. These are essentially the "lowest common factor" of
+the otherwise large, complex, and heterogenous responses returned by APIs.
+
+These are used by higher-level calls to have a common set of data to
+operate on. Provider implementations are responsible for converting API
+responses into these generic classes.
+"""
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
