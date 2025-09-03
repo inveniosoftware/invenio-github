@@ -6,9 +6,13 @@ from typing import TYPE_CHECKING
 from flask import current_app
 from invenio_access.permissions import authenticated_user
 from invenio_access.utils import get_identity
+from invenio_accounts.models import User, UserIdentity
 from invenio_db import db
 from invenio_i18n import gettext as _
 from invenio_oauth2server.models import Token as ProviderToken
+from invenio_oauthclient import oauth_link_external_id
+from invenio_oauthclient.models import RemoteAccount
+from sqlalchemy import delete, select
 from sqlalchemy.exc import NoResultFound
 from werkzeug.utils import cached_property
 
@@ -22,7 +26,12 @@ from invenio_vcs.errors import (
     UserInfoNoneError,
 )
 from invenio_vcs.generic_models import GenericRelease, GenericRepository
-from invenio_vcs.models import Release, ReleaseStatus, Repository
+from invenio_vcs.models import (
+    Release,
+    ReleaseStatus,
+    Repository,
+    repository_user_association,
+)
 from invenio_vcs.proxies import current_vcs
 from invenio_vcs.tasks import sync_hooks as sync_hooks_task
 from invenio_vcs.utils import iso_utcnow
@@ -54,16 +63,16 @@ class VCSService:
     @property
     def user_available_repositories(self):
         """Retrieve user repositories from user's remote data."""
-        return Repository.query.filter(
-            Repository.user_id == self.provider.user_id,
+        return Repository.query.join(repository_user_association).filter(
+            repository_user_association.c.user_id == self.provider.user_id,
             Repository.provider == self.provider.factory.id,
         )
 
     @property
     def user_enabled_repositories(self):
         """Retrieve user repositories from the model."""
-        return Repository.query.filter(
-            Repository.user_id == self.provider.user_id,
+        return Repository.query.join(repository_user_association).filter(
+            repository_user_association.c.user_id == self.provider.user_id,
             Repository.provider == self.provider.factory.id,
             Repository.hook != None,
         )
@@ -149,9 +158,11 @@ class VCSService:
         - user is the owner of the repo
         - user has access to the repo in GitHub (stored in RemoteAccount.extra_data.repos)
         """
-        if self.provider.user_id and repo and repo.user_id:
-            user_is_owner = repo.user_id == int(self.provider.user_id)
-            if user_is_owner:
+        if self.provider.user_id and repo:
+            user_is_collaborator = any(
+                user.id == self.provider.user_id for user in repo.users
+            )
+            if user_is_collaborator:
                 return True
 
         if self.provider.remote_account and self.provider.remote_account.extra_data:
@@ -164,6 +175,32 @@ class VCSService:
         raise RepositoryAccessError(
             user=self.provider.user_id, repo=repo.full_name, repo_id=repo.provider_id
         )
+
+    def sync_repo_users(self, db_repo: Repository):
+        vcs_users = self.provider.list_repository_user_ids(db_repo.provider_id)
+        if vcs_users is None:
+            return
+
+        is_changed = False
+        for extern_user_id in vcs_users:
+            user_identity = UserIdentity.query.filter_by(
+                method=self.provider.factory.id,
+                id=extern_user_id,
+            ).first()
+
+            if user_identity is None:
+                continue
+
+            if not db.session.scalar(
+                select(repository_user_association)
+                .filter_by(user_id=user_identity.id_user, repository_id=db_repo.id)
+                .limit(1)
+            ):
+                db_repo.add_user(user_identity.id_user)
+                is_changed = True
+
+        return is_changed
+        # TODO: delete access for users who are no longer in vcs_users
 
     def sync(self, hooks=True, async_hooks=True):
         """Synchronize user repositories.
@@ -186,27 +223,34 @@ class VCSService:
             self._sync_hooks(vcs_repos.keys(), asynchronous=async_hooks)
 
         # Update changed names for repositories stored in DB
-        db_repos = Repository.query.filter(
-            Repository.user_id == self.provider.user_id,
-            Repository.provider == self.provider.factory.id,
-        ).all()
+        db_repos = (
+            Repository.query.join(repository_user_association)
+            .filter(
+                repository_user_association.c.user_id == self.provider.user_id,
+                Repository.provider == self.provider.factory.id,
+            )
+            .all()
+        )
 
         for db_repo in db_repos:
             vcs_repo = vcs_repos.get(db_repo.provider_id)
             if not vcs_repo:
                 continue
 
-            changed = vcs_repo.to_model(db_repo)
-            if changed:
+            changed_users = self.sync_repo_users(db_repo)
+            changed_model = vcs_repo.to_model(db_repo)
+            if changed_users or changed_model:
                 db.session.add(db_repo)
 
         # Remove ownership from repositories that the user has no longer
         # 'admin' permissions, or have been deleted.
-        Repository.query.filter(
-            Repository.user_id == self.provider.user_id,
+        delete_stmt = delete(repository_user_association).where(
+            repository_user_association.c.user_id == self.provider.user_id,
             Repository.provider == self.provider.factory.id,
             ~Repository.provider_id.in_(vcs_repos.keys()),
-        ).update({"user_id": None, "hook": None}, synchronize_session=False)
+            repository_user_association.c.repository_id == Repository.id,
+        )
+        db.session.execute(delete_stmt)
 
         # Add new repos from VCS to the DB (without the hook activated)
         for _, vcs_repo in vcs_repos.items():
@@ -214,8 +258,7 @@ class VCSService:
                 # We have already added this to our DB
                 continue
 
-            Repository.create(
-                user_id=self.provider.user_id,
+            new_db_repo = Repository.create(
                 provider=self.provider.factory.id,
                 provider_id=vcs_repo.id,
                 html_url=vcs_repo.html_url,
@@ -224,6 +267,7 @@ class VCSService:
                 description=vcs_repo.description,
                 license_spdx=vcs_repo.license_spdx,
             )
+            self.sync_repo_users(new_db_repo)
 
         # Update last sync
         self.provider.remote_account.extra_data.update(
@@ -267,7 +311,6 @@ class VCSService:
         if hook:
             if not db_repo:
                 db_repo = Repository.create(
-                    user_id=self.provider.user_id,
                     provider=self.provider.factory.id,
                     provider_id=repo_id,
                     html_url=vcs_repo.html_url,
@@ -276,20 +319,22 @@ class VCSService:
                     description=vcs_repo.description,
                     license_spdx=vcs_repo.license_spdx,
                 )
+                self.sync_repo_users(db_repo)
             if not db_repo.enabled:
                 self.mark_repo_enabled(db_repo, hook.id)
         else:
             if db_repo:
                 self.mark_repo_disabled(db_repo)
 
-    def mark_repo_disabled(self, repo):
+    def mark_repo_disabled(self, db_repo: Repository):
         """Disables an user repository."""
-        repo.hook = None
+        db_repo.hook = None
+        db_repo.enabled_by_id = None
 
-    def mark_repo_enabled(self, repo, hook):
+    def mark_repo_enabled(self, db_repo: Repository, hook_id: str):
         """Enables an user repository."""
-        repo.hook = hook
-        repo.user_id = self.provider.user_id
+        db_repo.hook = hook_id
+        db_repo.enabled_by_id = self.provider.user_id
 
     def init_account(self):
         """Setup a new GitHub account."""
@@ -318,6 +363,11 @@ class VCSService:
                 webhook=hook_token.id,
             ),
             last_sync=iso_utcnow(),
+        )
+
+        oauth_link_external_id(
+            User(id=self.provider.user_id),
+            dict(id=user.id, method=self.provider.factory.id),
         )
 
         db.session.add(self.provider.remote_account)

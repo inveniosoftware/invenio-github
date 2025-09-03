@@ -66,7 +66,9 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
     @property
     def remote_config(self):
         request_token_params = {
-            "scope": "read:user,user:email,admin:repo_hook,read:org"
+            # General `repo` scope is required for reading collaborators
+            # https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps
+            "scope": "read:user,user:email,admin:repo_hook,read:org,repo"
         }
 
         helper = GitHubOAuthSettingsHelper(
@@ -205,6 +207,21 @@ class GitHubProvider(RepositoryServiceProvider):
                 )
             )
         return hooks
+
+    def list_repository_user_ids(self, repository_id: str):
+        assert repository_id.isdigit()
+        repo = self._gh.repository_with_id(int(repository_id))
+        if repo is None:
+            return None
+
+        user_ids: list[str] = []
+        for collaborator in repo.collaborators():
+            if not collaborator.permissions["admin"]:
+                continue
+
+            user_ids.append(str(collaborator.id))
+
+        return user_ids
 
     def get_repository(self, repository_id):
         assert repository_id.isdigit()

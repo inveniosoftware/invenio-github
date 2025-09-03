@@ -26,13 +26,15 @@
 
 import uuid
 from enum import Enum
+from typing import List
 
 from invenio_accounts.models import User
 from invenio_db import db
 from invenio_i18n import lazy_gettext as _
 from invenio_webhooks.models import Event
-from sqlalchemy import Index, UniqueConstraint
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.orm import Mapped
 from sqlalchemy_utils.models import Timestamp
 from sqlalchemy_utils.types import ChoiceType, JSONType, UUIDType
 
@@ -108,6 +110,21 @@ class ReleaseStatus(Enum):
         return RELEASE_STATUS_COLOR[self.name]
 
 
+repository_user_association = db.Table(
+    "vcs_repository_users",
+    db.Model.metadata,
+    db.Column(
+        "repository_id",
+        UUIDType,
+        db.ForeignKey("vcs_repositories.id"),
+        primary_key=True,
+    ),
+    db.Column(
+        "user_id", db.Integer, db.ForeignKey("accounts_user.id"), primary_key=True
+    ),
+)
+
+
 class Repository(db.Model, Timestamp):
     """Information about a GitHub repository."""
 
@@ -166,21 +183,20 @@ class Repository(db.Model, Timestamp):
     full_name = db.Column("name", db.String(255), nullable=False)
     """Fully qualified name of the repository including user/organization."""
 
-    user_id = db.Column(db.Integer, db.ForeignKey(User.id), nullable=True)
-    """Reference user that can manage this repository."""
-
     hook = db.Column(db.String(255), nullable=True)
     """Hook identifier."""
+
+    enabled_by_id = db.Column(db.Integer, db.ForeignKey(User.id), nullable=True)
 
     #
     # Relationships
     #
-    user = db.relationship(User)
+    users = db.relationship(User, secondary=repository_user_association)
+    enabled_by_user = db.relationship(User, foreign_keys=[enabled_by_id])
 
     @classmethod
     def create(
         cls,
-        user_id,
         provider,
         provider_id,
         html_url,
@@ -192,7 +208,6 @@ class Repository(db.Model, Timestamp):
     ):
         """Create the repository."""
         obj = cls(
-            user_id=user_id,
             provider=provider,
             provider_id=provider_id,
             full_name=full_name,
@@ -204,6 +219,16 @@ class Repository(db.Model, Timestamp):
         )
         db.session.add(obj)
         return obj
+
+    def add_user(self, user_id: int):
+        user = User(id=user_id)
+        user = db.session.merge(user)
+        self.users.append(user)
+
+    def delete_user(self, user_id: int):
+        user = User(id=user_id)
+        user = db.session.merge(user)
+        self.users.remove(user)
 
     @classmethod
     def get(cls, provider, provider_id=None, full_name=None):

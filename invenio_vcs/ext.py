@@ -129,4 +129,5 @@ def init_webhooks(app):
         for provider in get_provider_list(app):
             # Procedurally register the webhook receivers instead of including them as an entry point, since
             # they are defined in the VCS provider config list rather than in the instance's setup.cfg file.
-            state.register(provider.id, VCSReceiver)
+            if provider.id not in state.receivers:
+                state.register(provider.id, VCSReceiver)

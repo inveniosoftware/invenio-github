@@ -9,6 +9,7 @@
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy_utils import UUIDType
 
 # revision identifiers, used by Alembic.
 revision = "1754318294"
@@ -102,11 +103,35 @@ def upgrade():
         table_name="vcs_releases",
         columns=["provider_id", "provider", "tag"],
     )
+
+    op.create_table(
+        "vcs_repository_users",
+        sa.Column("repository_id", UUIDType(), primary_key=True),
+        sa.Column("user_id", sa.Integer(), primary_key=True),
+        sa.ForeignKeyConstraint(
+            ["repository_id"],
+            ["vcs_repositories.id"],
+            name=op.f("fk_vcs_repository_users_repository_id_vcs_repositories"),
+        ),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["accounts_user.id"],
+            name=op.f("fk_vcs_repository_users_user_id_accounts_user"),
+        ),
+    )
+    op.alter_column("vcs_repositories", "user_id", new_column_name="enabled_by_id")
     # ### end Alembic commands ###
 
 
 def downgrade():
     """Downgrade database."""
+    op.alter_column(
+        "vcs_repositories",
+        "enabled_by_id",
+        new_column_name="user_id",
+    )
+    op.drop_table("vcs_repository_users")
+
     op.rename_table("vcs_repositories", "github_repositories")
     op.alter_column(
         "github_repositories",

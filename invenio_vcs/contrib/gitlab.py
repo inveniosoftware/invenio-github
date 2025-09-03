@@ -320,6 +320,15 @@ class GitLabProvider(RepositoryServiceProvider):
             )
         return hooks
 
+    def list_repository_user_ids(self, repository_id: str) -> list[str] | None:
+        # https://docs.gitlab.com/api/members/#list-all-members-of-a-group-or-project-including-inherited-and-invited-members
+        user_ids: list[str] = []
+        for member in self._gl.projects.get(repository_id, lazy=True).members_all.list(
+            iterator=True
+        ):
+            user_ids.append(str(member.id))
+        return user_ids
+
     @_gl_response_error_handler
     def create_webhook(self, repository_id: str) -> str | None:
         assert repository_id.isdigit()
