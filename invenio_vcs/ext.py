@@ -100,17 +100,16 @@ def finalize_app_api(app):
 def init_menu(app):
     """Init menu."""
     for provider in get_provider_list(app):
-        id = provider.id
 
-        def is_active():
+        def is_active(current_node):
             return (
                 request.endpoint.startswith("invenio_vcs.")
-                and request.view_args.get("provider", "") == id
+                and request.view_args.get("provider", "") == current_node.name
             )
 
-        current_menu.submenu(f"settings.vcs_{id}").register(
+        current_menu.submenu(f"settings.{provider.id}").register(
             endpoint="invenio_vcs.get_repositories",
-            endpoint_arguments_constructor=lambda: {"provider": id},
+            endpoint_arguments_constructor=lambda id=provider.id: {"provider": id},
             text=_(
                 "%(icon)s %(provider)s",
                 icon=LazyString(
