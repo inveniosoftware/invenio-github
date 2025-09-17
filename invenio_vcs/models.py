@@ -225,7 +225,7 @@ class Repository(db.Model, Timestamp):
         user = db.session.merge(user)
         self.users.append(user)
 
-    def delete_user(self, user_id: int):
+    def remove_user(self, user_id: int):
         user = User(id=user_id)
         user = db.session.merge(user)
         self.users.remove(user)

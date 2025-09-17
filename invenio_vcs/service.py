@@ -177,12 +177,24 @@ class VCSService:
         )
 
     def sync_repo_users(self, db_repo: Repository):
-        vcs_users = self.provider.list_repository_user_ids(db_repo.provider_id)
-        if vcs_users is None:
+        """
+        Synchronises the member users of the repository.
+        This retrieves a list of the IDs of users from the VCS who have sufficient access to the
+        repository (i.e. being able to access all details and create/manage webhooks).
+        The user IDs are compared locally to find Invenio users who have connected their VCS account.
+        This is then propagated to the database: Invenio users who have access to the repo are added to
+        the `repository_user_association` table, and ones who no longer have access are removed.
+
+        :return: boolean of whether any changed were made to the DB
+        """
+
+        vcs_user_ids = self.provider.list_repository_user_ids(db_repo.provider_id)
+        if vcs_user_ids is None:
             return
 
-        is_changed = False
-        for extern_user_id in vcs_users:
+        vcs_user_identities: list[UserIdentity] = []
+        # Find local users who have connected their VCS accounts with the IDs from the repo members
+        for extern_user_id in vcs_user_ids:
             user_identity = UserIdentity.query.filter_by(
                 method=self.provider.factory.id,
                 id=extern_user_id,
@@ -191,16 +203,23 @@ class VCSService:
             if user_identity is None:
                 continue
 
-            if not db.session.scalar(
-                select(repository_user_association)
-                .filter_by(user_id=user_identity.id_user, repository_id=db_repo.id)
-                .limit(1)
-            ):
+            vcs_user_identities.append(user_identity)
+
+        is_changed = False
+
+        # Create user associations that exist in the VCS but not in the DB
+        for user_identity in vcs_user_identities:
+            if not any(db_user.id == user_identity.id_user for db_user in db_repo.users):
                 db_repo.add_user(user_identity.id_user)
                 is_changed = True
 
+        # Remove user associations that exist in the DB but not in the VCS
+        for db_user in db_repo.users:
+            if not any(user_identity.id_user == db_user.id for user_identity in vcs_user_identities):
+                db_repo.remove_user(db_user.id)
+                is_changed = True
+
         return is_changed
-        # TODO: delete access for users who are no longer in vcs_users
 
     def sync(self, hooks=True, async_hooks=True):
         """Synchronize user repositories.
@@ -254,20 +273,28 @@ class VCSService:
 
         # Add new repos from VCS to the DB (without the hook activated)
         for _, vcs_repo in vcs_repos.items():
-            if any(r.provider_id == vcs_repo.id for r in db_repos):
-                # We have already added this to our DB
-                continue
+            # We cannot just check the repo from the existing `db_repos` list as this only includes the repos to which the user
+            # already has access. E.g. a repo from the VCS might already exist in our DB but the user doesn't yet have access to it.
+            corresponding_db_repo = Repository.query.filter(
+                Repository.provider_id == vcs_repo.id,
+                Repository.provider == self.provider.factory.id,
+            ).first()
 
-            new_db_repo = Repository.create(
-                provider=self.provider.factory.id,
-                provider_id=vcs_repo.id,
-                html_url=vcs_repo.html_url,
-                default_branch=vcs_repo.default_branch,
-                full_name=vcs_repo.full_name,
-                description=vcs_repo.description,
-                license_spdx=vcs_repo.license_spdx,
-            )
-            self.sync_repo_users(new_db_repo)
+            if corresponding_db_repo is None:
+                # We do not yet have this repo registered for any user at all in our DB, so we need to create it.
+                corresponding_db_repo = Repository.create(
+                    provider=self.provider.factory.id,
+                    provider_id=vcs_repo.id,
+                    html_url=vcs_repo.html_url,
+                    default_branch=vcs_repo.default_branch,
+                    full_name=vcs_repo.full_name,
+                    description=vcs_repo.description,
+                    license_spdx=vcs_repo.license_spdx,
+                )
+
+            # In any case (even if we already have the repo) we need to sync its member users
+            # E.g. maybe the repo is in our DB but the user for which this sync has been trigerred isn't registered as a member
+            self.sync_repo_users(corresponding_db_repo)
 
         # Update last sync
         self.provider.remote_account.extra_data.update(
