@@ -128,7 +128,9 @@ def process_release(provider, release_id):
         Release.status.in_([ReleaseStatus.RECEIVED, ReleaseStatus.FAILED]),
     ).one()
 
-    provider = get_provider_by_id(provider).for_user(release_model.repository.user_id)
+    provider = get_provider_by_id(provider).for_user(
+        release_model.repository.enabled_by_id
+    )
     release = current_vcs.release_api_class(release_model, provider)
 
     matched_error_cls = None

@@ -209,6 +209,13 @@ def upgrade():
         "vcs_releases",
         sa.Column("provider", sa.String(255), nullable=False, server_default="github"),
     )
+    if op.get_context().dialect.name == "postgresql":
+        op.alter_column(
+            "vcs_releases",
+            "errors",
+            type_=sa.dialects.postgresql.JSONB,
+            postgresql_using="errors::text::jsonb",
+        )
 
     op.drop_constraint(
         op.f("uq_github_releases_release_id"), table_name="vcs_releases", type_="unique"
@@ -309,6 +316,13 @@ def downgrade():
         postgresql_using="provider_id::integer",
     )
     op.drop_column("github_releases", "provider")
+    if op.get_context().dialect.name == "postgresql":
+        op.alter_column(
+            "github_releases",
+            "errors",
+            type_=sa.dialects.postgresql.JSON,
+            postgresql_using="errors::text::json",
+        )
     op.create_unique_constraint(
         op.f("uq_github_releases_release_id"),
         table_name="github_releases",

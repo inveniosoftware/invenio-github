@@ -26,7 +26,6 @@
 
 import uuid
 from enum import Enum
-from typing import List
 
 from invenio_accounts.models import User
 from invenio_db import db
@@ -34,7 +33,6 @@ from invenio_i18n import lazy_gettext as _
 from invenio_webhooks.models import Event
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import Mapped
 from sqlalchemy_utils.models import Timestamp
 from sqlalchemy_utils.types import ChoiceType, JSONType, UUIDType
 

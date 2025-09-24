@@ -209,13 +209,18 @@ class VCSService:
 
         # Create user associations that exist in the VCS but not in the DB
         for user_identity in vcs_user_identities:
-            if not any(db_user.id == user_identity.id_user for db_user in db_repo.users):
+            if not any(
+                db_user.id == user_identity.id_user for db_user in db_repo.users
+            ):
                 db_repo.add_user(user_identity.id_user)
                 is_changed = True
 
         # Remove user associations that exist in the DB but not in the VCS
         for db_user in db_repo.users:
-            if not any(user_identity.id_user == db_user.id for user_identity in vcs_user_identities):
+            if not any(
+                user_identity.id_user == db_user.id
+                for user_identity in vcs_user_identities
+            ):
                 db_repo.remove_user(db_user.id)
                 is_changed = True
 
@@ -500,9 +505,9 @@ class VCSRelease:
     @cached_property
     def user_identity(self):
         """Generates release owner's user identity."""
-        identity = get_identity(self.db_repo.user)
+        identity = get_identity(self.db_repo.enabled_by_user)
         identity.provides.add(authenticated_user)
-        identity.user = self.db_repo.user
+        identity.user = self.db_repo.enabled_by_user
         return identity
 
     @cached_property
