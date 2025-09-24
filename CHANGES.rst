@@ -26,6 +26,21 @@
 Changes
 =======
 
+Version v4.0.0 (release 2025-XX-XX)
+
+- global!: renamed package to `invenio-vcs` to reflect the extended functionality.
+- models!: renamed tables to `vcs_` instead of `github_`, and added columns to identify the provider (e.g. `github`)
+  - Created an Alembic migration to automate this upgrade. Please note that on large instances (i.e. more than ~50k repos) this migration is likely to lead to severe stability issues and a full lock on a number of tables for several minutes. Instead of the automated migration, please refer to the upgrade guide in this module's documentation.
+- models!: moved the user's full list of repositories from the `extra_data` column of `oauthclient_remoteaccount` to `vcs_repositories`, even for non-activated repos. Activated repos are instead signified by non-null `hook` and `enabled_by_id` values. User access to repos is stored in the new `vcs_repository_users` table with the access rights propagated during the sync.
+  - The Alembic migration also moves the JSON data into the table automatically, but this is a slow operation that scales linearly with the size of the `oauthclient_remoteaccount`. If it is too slow, please refer to the upgrade guide for a manual faster method.
+- refactor!: support for multiple VCS providers through a refactored module architecture. Contrib providers can now be created by implementing abstract classes `RepositoryServiceProviderFactory` and `RepositoryServiceProvider`. Other than the contrib provider implementations, this module is now fully provider-agnostic.
+  - New provider implementations may be created either in this module or anywhere else in the codebase by implementing the relevant abstract classes.
+- feat: support for GitHub and GitLab via provider implementations.
+- config!: moved provider-specific config options into the constructor arguments of the relevant class. Providers can now be declared as a list of class instances.
+  - Please see the documentation for details on the new configuration format.
+
+BREAKING CHANGE: various major updates will require changes to the database tables and the config. Please see the upgrade guide for more details.
+
 Version v3.0.1 (released 2025-07-30)
 
 - api: fix set alternate zipball URL when tag and branch having same name

@@ -85,6 +85,7 @@ def upgrade():
         columns=["provider", "name"],
     )
 
+    """
     # Migrate data from the OAuth remote `extra_data` field to the repositories table
     # where we will now store everything directly.
     #
@@ -187,6 +188,8 @@ def upgrade():
             .filter_by(id=remote_account["id"])
             .values(extra_data={"last_sync": remote_account["extra_data"]["last_sync"]})
         )
+
+    """
 
     # We initially set this to nullable=True so we can create the column without an error
     # (it would be null for existing records) but after the SQLAlchemy operations above we
