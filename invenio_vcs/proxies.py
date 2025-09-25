@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2023-2025 CERN.
-# Copyright (C) 2024-2025 Graz University of Technology.
+# Copyright (C) 2023 CERN.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -23,10 +22,9 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-"""Invenio module that adds GitHub integration to the platform."""
+"""Proxy for current previewer."""
 
-from .ext import InvenioGitHub
+from flask import current_app
+from werkzeug.local import LocalProxy
 
-__version__ = "3.0.1"
-
-__all__ = ("__version__", "InvenioGitHub")
+current_vcs = LocalProxy(lambda: current_app.extensions["invenio-vcs"])

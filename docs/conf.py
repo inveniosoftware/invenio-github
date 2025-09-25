@@ -25,7 +25,7 @@
 
 """Sphinx configuration."""
 
-from invenio_github import __version__
+from invenio_vcs import __version__
 
 # -- General configuration ------------------------------------------------
 
@@ -61,8 +61,8 @@ source_suffix = ".rst"
 master_doc = "index"
 
 # General information about the project.
-project = "Invenio-GitHub"
-copyright = "2016, CERN"
+project = "Invenio-VCS"
+copyright = "2025, CERN"
 author = "CERN"
 
 # The version info for the project you're documenting, acts as replacement for
@@ -123,15 +123,15 @@ todo_include_todos = False
 html_theme = "alabaster"
 
 html_theme_options = {
-    "description": "Invenio module that adds GitHub integration to the platform.",
+    "description": "Invenio module that adds VCS integration to the platform.",
     "github_user": "inveniosoftware",
-    "github_repo": "invenio-github",
+    "github_repo": "invenio-vcs",
     "github_button": False,
     "github_banner": True,
     "show_powered_by": False,
     "extra_nav_links": {
-        "invenio-github@GitHub": "https://github.com/inveniosoftware/invenio-github",
-        "invenio-github@PyPI": "https://pypi.python.org/pypi/invenio-github/",
+        "invenio-vcs@GitHub": "https://github.com/inveniosoftware/invenio-github",
+        "invenio-vcs@PyPI": "https://pypi.python.org/pypi/invenio-github/",
     },
 }
 
@@ -236,7 +236,7 @@ html_sidebars = {
 # html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "invenio-github_namedoc"
+htmlhelp_basename = "invenio-vcs_namedoc"
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -257,8 +257,8 @@ latex_elements = {
 latex_documents = [
     (
         master_doc,
-        "invenio-github.tex",
-        "invenio-github Documentation",
+        "invenio-vcs.tex",
+        "invenio-vcs Documentation",
         "CERN",
         "manual",
     ),
@@ -289,9 +289,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [
-    (master_doc, "invenio-github", "invenio-github Documentation", [author], 1)
-]
+man_pages = [(master_doc, "invenio-vcs", "invenio-vcs Documentation", [author], 1)]
 
 # If true, show URL addresses after external links.
 # man_show_urls = False
@@ -305,10 +303,10 @@ man_pages = [
 texinfo_documents = [
     (
         master_doc,
-        "invenio-github",
-        "Invenio-GitHub Documentation",
+        "invenio-vcs",
+        "Invenio-VCS Documentation",
         author,
-        "invenio-github",
+        "invenio-vcs",
         "Invenio module that adds GitHub integration to the platform.",
         "Miscellaneous",
     ),

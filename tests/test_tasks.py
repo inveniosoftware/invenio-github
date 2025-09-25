@@ -26,10 +26,10 @@ from invenio_oauthclient.models import RemoteAccount
 from invenio_webhooks.models import Event
 from mock import patch
 
-from invenio_github.api import GitHubAPI
-from invenio_github.models import Release, ReleaseStatus, Repository
-from invenio_github.tasks import process_release, refresh_accounts
-from invenio_github.utils import iso_utcnow
+from invenio_vcs.api import GitHubAPI
+from invenio_vcs.models import Release, ReleaseStatus, Repository
+from invenio_vcs.tasks import process_release, refresh_accounts
+from invenio_vcs.utils import iso_utcnow
 
 from . import fixtures
 
