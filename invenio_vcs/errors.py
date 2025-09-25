@@ -28,11 +28,11 @@
 from invenio_i18n import gettext as _
 
 
-class GitHubError(Exception):
+class VCSError(Exception):
     """General GitHub error."""
 
 
-class RepositoryAccessError(GitHubError):
+class RepositoryAccessError(VCSError):
     """Repository access permissions error."""
 
     message = _("The user cannot access the github repository")
@@ -46,7 +46,7 @@ class RepositoryAccessError(GitHubError):
         self.repo_id = repo_id
 
 
-class RepositoryDisabledError(GitHubError):
+class RepositoryDisabledError(VCSError):
     """Repository access permissions error."""
 
     message = _("This repository is not enabled for webhooks.")
@@ -57,7 +57,7 @@ class RepositoryDisabledError(GitHubError):
         self.repo = repo
 
 
-class RepositoryNotFoundError(GitHubError):
+class RepositoryNotFoundError(VCSError):
     """Repository not found error."""
 
     message = _("The repository does not exist.")
@@ -68,7 +68,7 @@ class RepositoryNotFoundError(GitHubError):
         self.repo = repo
 
 
-class InvalidSenderError(GitHubError):
+class InvalidSenderError(VCSError):
     """Invalid release sender error."""
 
     message = _("Invalid sender for event")
@@ -80,7 +80,7 @@ class InvalidSenderError(GitHubError):
         self.user = user
 
 
-class ReleaseAlreadyReceivedError(GitHubError):
+class ReleaseAlreadyReceivedError(VCSError):
     """Invalid release sender error."""
 
     message = _("The release has already been received.")
@@ -91,7 +91,7 @@ class ReleaseAlreadyReceivedError(GitHubError):
         self.release = release
 
 
-class CustomGitHubMetadataError(GitHubError):
+class CustomGitHubMetadataError(VCSError):
     """Invalid Custom GitHub Metadata file."""
 
     message = _("The metadata file is not valid JSON.")
@@ -102,7 +102,7 @@ class CustomGitHubMetadataError(GitHubError):
         self.file = file
 
 
-class GithubTokenNotFound(GitHubError):
+class GithubTokenNotFound(VCSError):
     """Oauth session token was not found."""
 
     message = _("The oauth session token was not found.")
@@ -113,7 +113,7 @@ class GithubTokenNotFound(GitHubError):
         self.user = user
 
 
-class RemoteAccountNotFound(GitHubError):
+class RemoteAccountNotFound(VCSError):
     """Remote account for the user is not setup."""
 
     message = _("RemoteAccount not found for user")
@@ -124,7 +124,7 @@ class RemoteAccountNotFound(GitHubError):
         self.user = user
 
 
-class RemoteAccountDataNotSet(GitHubError):
+class RemoteAccountDataNotSet(VCSError):
     """Remote account extra data for the user is not set."""
 
     message = _("RemoteAccount extra data not set for user.")
@@ -135,7 +135,7 @@ class RemoteAccountDataNotSet(GitHubError):
         self.user = user
 
 
-class ReleaseNotFound(GitHubError):
+class ReleaseNotFound(VCSError):
     """Release does not exist."""
 
     message = _("Release does not exist.")
@@ -145,21 +145,28 @@ class ReleaseNotFound(GitHubError):
         super().__init__(message or self.message)
 
 
-class UnexpectedGithubResponse(GitHubError):
+class UnexpectedProviderResponse(VCSError):
     """Request to Github API returned an unexpected error."""
 
-    message = _("Github API returned an unexpected error.")
+    message = _("Provider API returned an unexpected error.")
 
     def __init__(self, message=None):
         """Constructor."""
         super().__init__(message or self.message)
 
 
-class ReleaseZipballFetchError(GitHubError):
+class ReleaseZipballFetchError(VCSError):
     """Error fetching release zipball file."""
 
     message = _("Error fetching release zipball file.")
 
     def __init__(self, message=None):
         """Constructor."""
+        super().__init__(message or self.message)
+
+
+class UserInfoNoneError(VCSError):
+    message = _("Provider did not return user profile information.")
+
+    def __init__(self, message=None) -> None:
         super().__init__(message or self.message)

@@ -22,7 +22,7 @@
     as an Intergovernmental Organization or submit itself to any jurisdiction.
 
 ================
- Invenio-GitHub
+ Invenio-VCS
 ================
 
 .. image:: https://img.shields.io/travis/inveniosoftware/invenio-github.svg

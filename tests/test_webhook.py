@@ -27,8 +27,8 @@ import json
 # from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_webhooks.models import Event
 
-from invenio_github.api import GitHubAPI
-from invenio_github.models import ReleaseStatus, Repository
+from invenio_vcs.api import GitHubAPI
+from invenio_vcs.models import ReleaseStatus, Repository
 
 
 def test_webhook_post(app, db, tester_id, remote_token, github_api):
@@ -40,7 +40,7 @@ def test_webhook_post(app, db, tester_id, remote_token, github_api):
     hook = 1234
     tag = "v1.0"
 
-    repo = Repository.get(github_id=repo_id, name=repo_name)
+    repo = Repository.get(github_id=repo_id, full_name=repo_name)
     if not repo:
         repo = Repository.create(tester_id, repo_id, repo_name)
 
@@ -79,7 +79,7 @@ def test_webhook_post_fail(app, tester_id, remote_token, github_api):
     hook = 1234
 
     # Create a repository
-    repo = Repository.get(github_id=repo_id, name=repo_name)
+    repo = Repository.get(github_id=repo_id, full_name=repo_name)
     if not repo:
         repo = Repository.create(tester_id, repo_id, repo_name)
 

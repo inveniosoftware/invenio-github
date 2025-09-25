@@ -47,12 +47,12 @@ recursive-include docs *.py
 recursive-include docs *.rst
 recursive-include docs *.txt
 recursive-include docs Makefile
-recursive-include invenio_github *.html
-recursive-include invenio_github *.js
-recursive-include invenio_github *.json
-recursive-include invenio_github *.less
-recursive-include invenio_github *.mo
-recursive-include invenio_github *.po
-recursive-include invenio_github *.pot
-recursive-include invenio_github *.py
+recursive-include invenio_vcs *.html
+recursive-include invenio_vcs *.js
+recursive-include invenio_vcs *.json
+recursive-include invenio_vcs *.less
+recursive-include invenio_vcs *.mo
+recursive-include invenio_vcs *.po
+recursive-include invenio_vcs *.pot
+recursive-include invenio_vcs *.py
 include .git-blame-ignore-revs

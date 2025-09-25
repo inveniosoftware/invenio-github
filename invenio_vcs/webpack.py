@@ -16,7 +16,7 @@ theme = WebpackThemeBundle(
         "semantic-ui": dict(
             entry={
                 # Add your webpack entrypoints
-                "invenio-github-init": "./js/invenio_github/index.js",
+                "invenio-vcs-init": "./js/invenio_vcs/index.js",
             },
             dependencies={"@babel/runtime": "^7.9.0"},
         ),
