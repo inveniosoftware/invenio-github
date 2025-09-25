@@ -86,15 +86,13 @@ class InvenioVCS(object):
 
 def finalize_app_ui(app):
     """Finalize app."""
-    if app.config.get("VCS_INTEGRATION_ENABLED", False):
-        init_menu(app)
-        init_webhooks(app)
+    init_menu(app)
+    init_webhooks(app)
 
 
 def finalize_app_api(app):
     """Finalize app."""
-    if app.config.get("VCS_INTEGRATION_ENABLED", False):
-        init_webhooks(app)
+    init_webhooks(app)
 
 
 def init_menu(app):

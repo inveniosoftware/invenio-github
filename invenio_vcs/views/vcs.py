@@ -65,9 +65,8 @@ def create_ui_blueprint(app):
         template_folder="../templates",
         url_prefix="/account/settings/vcs/<provider>",
     )
-    if app.config.get("VCS_INTEGRATION_ENABLED", False):
-        with app.app_context():  # Todo: Temporary fix, it should be removed when inveniosoftware/invenio-theme#355 is merged
-            register_ui_routes(blueprint)
+    with app.app_context():  # Todo: Temporary fix, it should be removed when inveniosoftware/invenio-theme#355 is merged
+        register_ui_routes(blueprint)
     return blueprint
 
 
@@ -76,8 +75,7 @@ def create_api_blueprint(app):
     blueprint_api = Blueprint(
         "invenio_vcs_api", __name__, url_prefix="/user/vcs/<provider>"
     )
-    if app.config.get("VCS_INTEGRATION_ENABLED", False):
-        register_api_routes(blueprint_api)
+    register_api_routes(blueprint_api)
     return blueprint_api
 
 
