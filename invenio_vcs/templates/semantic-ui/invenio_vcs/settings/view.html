@@ -1,0 +1,322 @@
+{# -*- coding: utf-8 -*-
+
+  This file is part of Invenio.
+  Copyright (C) 2023 CERN.
+
+  Invenio is free software; you can redistribute it and/or modify it
+  under the terms of the MIT License; see LICENSE file for more details.
+#}
+
+{%- import "invenio_vcs/settings/helpers.html" as helpers with context %}
+{%- from "invenio_vcs/helpers.html" import doi_badge with context -%}
+
+{%- extends config.VCS_SETTINGS_TEMPLATE %}
+
+{%- block settings_content %}
+  {% set active = true %}
+
+  {%- block repo_details_header scoped %}
+    <section class="repository-item" aria-label="{{ _('Header') }}">
+      <div class="ui segment">
+        <div class="ui grid">
+          <div class="ten wide middle aligned column">
+            <div class="flex wrap align-items-center">
+              <div class="ui small header m-0">
+                <a
+                  class="mt-5 mb-5"
+                  href="{{ url_for('invenio_vcs.get_repositories', provider=provider) }}"
+                  aria-label="{{ _('Go back to all repositories') }}"
+                >
+                  {{ _("Repositories") }}
+                </a>
+                <span class="breadcrumb-icon">
+                  <i class="right angle icon mr-0" aria-hidden="true"></i>
+                </span>
+                <h2 class="ui small header mt-5 mb-5 inline-computer rel-mr-1">
+                  <i class="{{ vocabulary["icon"] }} small icon mr-5" aria-hidden="true"></i>{{ repo.full_name }}
+                </h2>
+              </div>
+            </div>
+          </div>
+          <div class="six wide right aligned middle aligned column">
+            {{ helpers.repo_switch(repo, repo.provider_id, provider) }}
+          </div>
+        </div>
+
+        <div>
+          <div class="repo-switch-message ui compact icon message hidden rel-mt-1">
+            <i class="icon" aria-hidden="true"></i>
+            <p role="alert" class="content m-0"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  {%- endblock %}
+
+  {{
+    helpers.panel_start(
+      _('Releases'),
+      btn_text=_('Create release'),
+      btn_icon=vocabulary["icon"] + ' icon',
+      btn_href=new_release_url,
+    )
+  }}
+  <div class="ui segment {{ 'p-0' if releases }}">
+    {%- if not releases %}
+      {%- if repo.enabled %}
+
+        {%- block enabled_repo_get_started scoped %}
+          <div class="ui centered container">
+            <h2 class="ui large header mt-10">{{ _("Get started!") }}</h2>
+            <p class="rel-mt-1">{{ _("Go to %(name)s and make your first release.", name=vocabulary["name"]) }}</p>
+            <a class="ui positive large icon button rel-mt-1 mr-0" href="{{ new_release_url }}" target="_blank">
+              <i class="{{ vocabulary["icon"] }} icon" aria-hidden="true"></i>
+              {{ repo.full_name }}
+            </a>
+          </div>
+        {%- endblock enabled_repo_get_started %}
+
+      {%- else -%}
+
+        {%- block disabled_repo_getstarted scoped %}
+          <div class="ui grid repository-item">
+            <div class="centered sixteen wide column">
+              <h2 class="ui large header mt-10">{{ _("Get started!") }}</h2>
+            </div>
+            <div class="two column stackable tablet-mobile row">
+              <div class="column">
+                <h2 class="ui medium header">1 {{ _("Flip the switch") }}</h2>
+                <div class="ui divider"></div>
+                <p>
+                  {{ _("Toggle the switch below to turn on/off automatic preservation of your repository.") }}
+                </p>
+                <div class="text-align-center rel-mt-1">
+                  {{ helpers.repo_switch(repo, repo.provider_id) }}
+                </div>
+
+                <div class="repo-switch-message ui compact icon message hidden rel-mt-1">
+                  <i class="icon" aria-hidden="true"></i>
+                  <p role="alert" class="content m-0"></p>
+                </div>
+              </div>
+
+              <div class="column">
+                <h2 class="ui medium header">2 {{ _("Create a release") }}</h2>
+                <div class="ui divider"></div>
+                <p>
+                  {{ _('Go to {} and create a release. {}
+                  will automatically download a .zip-ball of each new release and register a DOI.')
+                  .format(vocabulary["name"], config.THEME_SITENAME | default('Invenio')) }}
+                </p>
+
+                <div class="text-align-center rel-mt-1">
+                  <a class="ui positive medium icon button" href="{{ new_release_url }}">
+                    <i class="{{ vocabulary["icon"] }} icon"></i>
+                    {{ repo.full_name }}
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        {%- endblock disabled_repo_getstarted %}
+
+      {%- endif -%}
+    {%- else %}
+      {%- block repo_releases scoped %}
+        <ul class="ui segments no-border no-border-radius-top no-style-list m-0 p-0">
+
+          {%- for release in releases %}
+
+            {% set release_status = release.db_release.status.title %}
+            {% set release_status_color = release.db_release.status.color %}
+            {% set release_status_icon_color = release_status_color %}
+            {% set release_tag = release.db_release.tag %}
+            {% set release_url = release.generic_release.html_url %}
+            {% set release_name = release_tag %}
+            {% if release_status_color == "warning" %}
+              {% set release_status_icon_color = "warning-color" %}
+            {% endif %}
+
+            <li class="ui segment {{ 'no-border-radius-top' if loop.last else 'no-border-radius' }} left-border {{ release_status_color }} m-0">
+              {%- block release_header scoped %}
+                <div class="ui accordion">
+                  <div class="ui stackable grid title">
+
+                    {%- block release_title scoped %}
+                      <div class="release-title twelve wide column">
+                        <div role="button" tabindex="0" aria-controls="accordion-content-{{loop.index}}" class="trigger" aria-expanded="false">
+                          <i class="tag icon tab-menu-accordion {{ release_status_icon_color }}" aria-hidden="true"></i>
+                          <span class="ui tiny header {{ release_status_color }}">
+                            {{ release_tag }} &nbsp; {%- if release.record %}{{ release.record.data["metadata"]["title"] }}{%- endif %}
+                          </span>
+                        </div>
+
+                        {%- if release.record %}
+                          {%- set release_doi = release.record.pids.get('doi', {}).get('identifier') %}
+                        {%- endif %}
+
+                        {%- if release_doi %}
+                          <div class="mt-5">
+                            <a href={{release.record_url}}>
+                              <i class="barcode icon tab-menu-accordion" aria-hidden="true"></i> DOI: {{ release_doi }}
+                            </a>
+                          </div>
+                        {%- endif %}
+
+                        <p class="rel-mt-1">
+                          <a
+                            href="{{ release_url }}"
+                            target="_blank"
+                            aria-label="{{ _('See release on %(name)s', name=vocabulary["name"]) }}"
+                          >
+                            <i class="{{ vocabulary["icon"] }} icon tab-menu-accordion" aria-hidden="true"></i>{{ release_name or release_tag }}
+                          </a>
+                        </p>
+                      </div>
+                    {%- endblock release_title %}
+
+                    {%- block release_status scoped %}
+                      <div class="four wide right aligned column">
+                        <div>
+                          <i class="{{ release.db_release.status.icon }} {{ release_status_icon_color }} tab-menu-accordion"></i>
+                          <span class="ui tiny header {{ release_status_color }}">
+                            {{ release.db_release.status.title }}
+                          </span>
+                        </div>
+                        <p class="rel-mt-1">
+                          <small>{{ release.db_release.created|naturaltime }}</small>
+                        </p>
+                      </div>
+                    {%- endblock release_status %}
+                  </div>
+
+                  {%- block release_details_content scoped %}
+                    <section id="accordion-content-{{loop.index}}" class="content rel-mt-2">
+                      <div class="rdm-tab-container">
+                        {%- block release_details_tabs scoped %}
+                          <div role="tablist" class="ui tabular menu rdm-tab-menu">
+                            <div id="citation-{{ loop.index }}-tab" role="tab" tabindex="0" aria-selected="{{ active }}" class="{{ 'active' if active }} item" data-tab="citation-{{ loop.index }}">
+                              {{ _("Citation File") }}
+                            </div>
+                            {% set active = false %}
+
+                            <div id="payload-{{ loop.index }}-tab" role="tab" tabindex="0" aria-selected="{{ active }}" class="{{ 'active' if active }} item" data-tab="payload-{{ loop.index }}">
+                              {{ _("Payload") }}
+                            </div>
+                            {% set active = false %}
+
+                            {%- block metadata_tab scoped %}
+                            {%- endblock metadata_tab %}
+
+                            {%- if release.db_release.errors %}
+                              <div id="errors-{{ loop.index }}-tab" role="tab" tabindex="0" aria-selected="{{ active }}" class="{{ 'active' if active }} item" data-tab="errors-{{ loop.index }}">
+                                {{ _("Errors") }}
+                              </div>
+                              {% set active = false %}
+                            {%- endif %}
+                          </div>
+                        {%- endblock release_details_tabs %}
+
+                        {% set active = true %}
+                        {%- block release_details_tabs_content %}
+                          <div id="citation-{{ loop.index }}-tab-panel" role="tabpanel" class="ui tab rel-p-1 {{ 'active' if active }}" data-tab="citation-{{ loop.index }}">
+                            {%- block releasetab_cff %}
+                              {% set repo_name = value %}
+                              <div class="flex align-items-center justify-space-between rel-mb-1">
+                                <h3 class="ui header m-0">{{ _("Citation File") }}</h3>
+                                <a class="ui basic button" href="{{ new_citation_file_url }}">
+                                  <i class="{{ vocabulary["icon"] }} icon"></i>{{ _("Create CITATION.cff") }}
+                                </a>
+                              </div>
+                              <p>
+                                <a href="https://citation-file-format.github.io/">CITATION.cff</a> {{ _('files are plain text files with human-
+                                  and machine-readable citation information for software. Code developers can include them in their repositories to let others know how to correctly cite their software.') }}
+                              </p>
+                              <p>{{ _("An example of the CITATION.cff for this release can be found below:") }}</p>
+                              <div class="ui message scroll-overflow">
+                                <pre>
+cff-version: 1.1.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: Joe
+  given-names: Johnson
+orcid: https://orcid.org/0000-0000-0000-0000
+title:  {%- if release.record %}{{ release.record.data["metadata"]["title"] }}{%- endif %}
+version: {{ release_tag }}
+date-released: {{ release.event.payload.get("release", {}).get("published_at", "")[:10] if release.event else '2021-07-28' }}
+                                </pre>
+                              </div>
+                            {%- endblock releasetab_cff %}
+                          </div>
+
+                          {% set active = false %}
+
+                          <div id="payload-{{ loop.index }}-tab-panel" role="tabpanel" class="ui tab rel-p-1 {{ 'active' if active }}" data-tab="payload-{{ loop.index }}">
+                            {%- block releasetab_payload %}
+                              {%- if release.event %}
+                                <div class="flex align-items-center justify-space-between">
+                                  <h3 class="ui header m-0">{{ _("%(name)s Payload", name=vocabulary["name"]) }}</h3>
+                                  <small class="text-align-right">{{ _("Received") }} {{ release.event.created|datetimeformat }}.</small>
+                                </div>
+
+                                <div class="ui message scroll-overflow">
+                                  <pre>{{ release.event.payload|tojson(indent=4) }}</pre>
+                                </div>
+                              {%- endif %}
+                            {%- endblock releasetab_payload %}
+                          </div>
+
+                          {% set active = false %}
+
+                          {%- block metadata_tab_content %}
+                          {%- endblock metadata_tab_content %}
+
+                          <div id="errors-{{ loop.index }}-tab-panel" role="tabpanel" class="ui tab {{ 'active' if active }}" data-tab="errors-{{ loop.index }}">
+                            {%- block releasetab_errors %}
+                              {%- if release.db_release.errors %}
+                                <div class="ui grid">
+                                  <div class="row">
+                                    <div class="column">
+                                      <h4>{{ _("Errors") }}</h4>
+                                    </div>
+                                  </div>
+                                  <div class="row">
+                                    <div class="column">
+                                      <div class="ui message">
+                                        <pre>{{ release.db_release.errors|tojson(indent=4) }}</pre>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              {%- endif %}
+                            {%- endblock releasetab_errors %}
+                          </div>
+                          {% set active = false %}
+                        {%- endblock release_details_tabs_content %}
+
+                      </div>
+                    </section>
+                  {%- endblock release_details_content %}
+
+                </div>
+              {%- endblock release_header %}
+            </li>
+            {%- set is_last = loop.last %}
+
+            {%- block release_footer scoped %}
+              {%- if not is_last %}{%- endif %}
+            {%- endblock release_footer %}
+
+          {%- endfor %}
+        </ul>
+      {%- endblock repo_releases %}
+    {%- endif %}
+  </div>
+  {{ helpers.panel_end() }}
+{%- endblock %}
+
+{%- block javascript %}
+  {{ super() }}
+  {{ webpack['invenio-vcs-init.js'] }}
+{%- endblock javascript %}
