@@ -250,7 +250,7 @@ class GitHubAPI(object):
             # and ensure that each task finishes within the time limit on Zenodo
             batch_size = 20
             for i in range(0, len(repos), batch_size):
-                sync_hooks_task.delay(self.user_id, repos[i : i + batch_size])
+                sync_hooks_task.delay(self.user_id, repos[i * batch_size : (i + 1) * batch_size])
 
     def _valid_webhook(self, url):
         """Check if webhook url is valid.
