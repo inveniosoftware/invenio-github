@@ -248,7 +248,7 @@ class GitHubAPI(object):
             db.session.commit()
             # Create a task for several batches of repositories to speed up the process
             # and ensure that each task finishes within the time limit on Zenodo
-            batch_size = 20
+            batch_size = current_app.config["GITHUB_WEBHOOK_SYNC_BATCH_SIZE"]
             for i in range(0, len(repos), batch_size):
                 sync_hooks_task.delay(self.user_id, repos[i : i + batch_size])
 
