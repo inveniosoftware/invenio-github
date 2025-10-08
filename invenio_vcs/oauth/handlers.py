@@ -23,7 +23,10 @@ if typing.TYPE_CHECKING:
 
 
 class OAuthHandlers:
+    """Provider-agnostic handler overrides to ensure VCS events are executed at certain points throughout the OAuth lifecyle."""
+
     def __init__(self, provider_factory: "RepositoryServiceProviderFactory") -> None:
+        """Instance are non-user-specific."""
         self.provider_factory = provider_factory
 
     def account_setup_handler(self, remote, token, resp):
@@ -39,7 +42,7 @@ class OAuthHandlers:
             current_app.logger.warning(str(e), exc_info=True)
 
     def disconnect_handler(self, remote):
-        """Disconnect callback handler for GitHub."""
+        """Disconnect callback handler for the provider."""
         # User must be authenticated
         if not current_user.is_authenticated:
             return current_app.login_manager.unauthorized()
@@ -59,11 +62,11 @@ class OAuthHandlers:
         if token:
             extra_data = token.remote_account.extra_data
 
-            # Delete the token that we issued for GitHub to deliver webhooks
+            # Delete the token that we issued for vcs to deliver webhooks
             webhook_token_id = extra_data.get("tokens", {}).get("webhook")
             ProviderToken.query.filter_by(id=webhook_token_id).delete()
 
-            # Disable every GitHub webhooks from our side
+            # Disable every vcs webhooks from our side
             repos = svc.user_enabled_repositories.all()
             repos_with_hooks = []
             for repo in repos:

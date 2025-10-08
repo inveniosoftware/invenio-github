@@ -1,3 +1,11 @@
+# -*- coding: utf-8 -*-
+# This file is part of Invenio.
+# Copyright (C) 2025 CERN.
+#
+# Invenio is free software; you can redistribute it and/or modify it
+# under the terms of the MIT License; see LICENSE file for more details.
+"""Higher-level operations for the view handlers and upstream code to use."""
+
 from abc import abstractmethod
 from contextlib import contextmanager
 from dataclasses import asdict
@@ -11,8 +19,7 @@ from invenio_db import db
 from invenio_i18n import gettext as _
 from invenio_oauth2server.models import Token as ProviderToken
 from invenio_oauthclient import oauth_link_external_id
-from invenio_oauthclient.models import RemoteAccount
-from sqlalchemy import delete, select
+from sqlalchemy import delete
 from sqlalchemy.exc import NoResultFound
 from werkzeug.utils import cached_property
 
@@ -43,21 +50,31 @@ if TYPE_CHECKING:
 
 
 class VCSService:
+    """
+    High level glue operations that operate on both the VCS and the DB.
+
+    Because provider instances are user-specific, this class is too.
+    """
+
     def __init__(self, provider: "RepositoryServiceProvider") -> None:
+        """Please construct the service using the `for_provider_and_user` method instead."""
         self.provider = provider
 
     @staticmethod
     def for_provider_and_user(provider_id: str, user_id: int):
+        """Construct VCSService for a locally configured provider and a user with a DB-queried access token."""
         return VCSService(get_provider_by_id(provider_id).for_user(user_id))
 
     @staticmethod
     def for_provider_and_token(provider_id: str, user_id: int, access_token: str):
+        """Construct VCSService for a locally configured provider and a user with a predefined access token."""
         return VCSService(
             get_provider_by_id(provider_id).for_access_token(user_id, access_token)
         )
 
     @cached_property
     def is_authenticated(self):
+        """Whether we have a valid VCS API token for the user. Should (almost) always return True."""
         return self.provider.session_token is not None
 
     @property
@@ -102,7 +119,7 @@ class VCSService:
         return current_vcs.release_api_class(release_object, self.provider)
 
     def list_repo_releases(self, repo):
-        # Retrieve releases and sort them by creation date
+        """Retrieve releases and sort them by creation date."""
         release_instances = []
         for release_object in repo.releases.order_by(Release.created):
             release_instances.append(
@@ -111,6 +128,7 @@ class VCSService:
         return release_instances
 
     def get_repo_default_branch(self, repo_id):
+        """Return the locally-synced default branch."""
         db_repo = self.user_available_repositories.filter(
             Repository.provider_id == repo_id
         ).first()
@@ -121,7 +139,7 @@ class VCSService:
         return db_repo.default_branch
 
     def get_last_sync_time(self):
-        """Retrieves the last sync delta time from github's client extra data.
+        """Retrieves the last sync delta time from VCS's client extra data.
 
         Time is computed as the delta between now and the last sync time.
         """
@@ -156,7 +174,7 @@ class VCSService:
         Repo has access if any of the following is True:
 
         - user is the owner of the repo
-        - user has access to the repo in GitHub (stored in RemoteAccount.extra_data.repos)
+        - user has access to the repo in the VCS
         """
         if self.provider.user_id and repo:
             user_is_collaborator = any(
@@ -179,6 +197,7 @@ class VCSService:
     def sync_repo_users(self, db_repo: Repository):
         """
         Synchronises the member users of the repository.
+
         This retrieves a list of the IDs of users from the VCS who have sufficient access to the
         repository (i.e. being able to access all details and create/manage webhooks).
         The user IDs are compared locally to find Invenio users who have connected their VCS account.
@@ -187,7 +206,6 @@ class VCSService:
 
         :return: boolean of whether any changed were made to the DB
         """
-
         vcs_user_ids = self.provider.list_repository_user_ids(db_repo.provider_id)
         if vcs_user_ids is None:
             return
@@ -235,8 +253,8 @@ class VCSService:
 
         .. note::
 
-            Syncing happens from GitHub's direction only. This means that we
-            consider the information on GitHub as valid, and we overwrite our
+            Syncing happens from the VCS' direction only. This means that we
+            consider the information on VCS as valid, and we overwrite our
             own state based on this information.
         """
         vcs_repos = self.provider.list_repositories()
@@ -330,13 +348,13 @@ class VCSService:
             )
 
     def sync_repo_hook(self, repo_id):
-        """Sync a GitHub repo's hook with the locally stored repo."""
+        """Sync a VCS repo's hook with the locally stored repo."""
         # Get the hook that we may have set in the past
         hook = self.provider.get_first_valid_webhook(repo_id)
         vcs_repo = self.provider.get_repository(repo_id)
         assert vcs_repo is not None
 
-        # If hook on GitHub exists, get or create corresponding db object and
+        # If hook on the VCS exists, get or create corresponding db object and
         # enable the hook. Otherwise remove the old hook information.
         db_repo = Repository.get(self.provider.factory.id, provider_id=repo_id)
 
@@ -359,17 +377,17 @@ class VCSService:
                 self.mark_repo_disabled(db_repo)
 
     def mark_repo_disabled(self, db_repo: Repository):
-        """Disables an user repository."""
+        """Marks a repository as disabled."""
         db_repo.hook = None
         db_repo.enabled_by_user_id = None
 
     def mark_repo_enabled(self, db_repo: Repository, hook_id: str):
-        """Enables an user repository."""
+        """Marks a repository as enabled."""
         db_repo.hook = hook_id
         db_repo.enabled_by_user_id = self.provider.user_id
 
     def init_account(self):
-        """Setup a new GitHub account."""
+        """Setup a new VCS account."""
         if not self.provider.remote_account:
             raise RemoteAccountNotFound(
                 self.provider.user_id, _("Remote account was not found for user.")
@@ -405,6 +423,7 @@ class VCSService:
         db.session.add(self.provider.remote_account)
 
     def enable_repository(self, repository_id):
+        """Creates the hook for a repository and marks it as enabled."""
         db_repo = self.user_available_repositories.filter(
             Repository.provider_id == repository_id
         ).first()
@@ -421,6 +440,7 @@ class VCSService:
         return True
 
     def disable_repository(self, repository_id, hook_id=None):
+        """Deletes the hook for a repository and marks it as disabled."""
         db_repo = self.user_available_repositories.filter(
             Repository.provider_id == repository_id
         ).first()
@@ -441,7 +461,14 @@ class VCSService:
 
 
 class VCSRelease:
-    """A GitHub release."""
+    """
+    Represents a release and common high-level operations that can be performed on it.
+
+    This class is often overriden upstream (e.g. in `invenio-rdm-records`) to specify
+    what a 'publish' event should do on a given Invenio implementation.
+    This module does not attempt to publish a record or anything similar, as `invenio-vcs`
+    is designed to work on any Invenio instance (not just RDM).
+    """
 
     def __init__(self, release: Release, provider: "RepositoryServiceProvider"):
         """Constructor."""
@@ -466,6 +493,7 @@ class VCSRelease:
 
     @cached_property
     def _generic_release_and_repo(self):
+        """Converts the VCS-specific payload into a tuple of (GenericRelease, GenericRepository)."""
         return self.provider.factory.webhook_event_to_generic(self.payload)
 
     @cached_property
@@ -514,10 +542,9 @@ class VCSRelease:
     def contributors(self):
         """Get list of contributors to a repository.
 
-        The list of contributors is fetched from Github API, filtered for type "User" and sorted by contributions.
+        The list of contributors is fetched from the VCS, filtered for type "User" and sorted by contributions.
 
         :returns: a generator of objects that contains contributors information.
-        :raises UnexpectedGithubResponse: when Github API returns a status code other than 200.
         """
         max_contributors = current_app.config.get("VCS_MAX_CONTRIBUTORS_NUMBER", 30)
         return self.provider.list_repository_contributors(
@@ -581,17 +608,17 @@ class VCSRelease:
 
     @contextmanager
     def fetch_zipball_file(self):
-        """Fetch release zipball file using the current github session."""
+        """Fetch release zipball file using the current VCS session."""
         timeout = current_app.config.get("VCS_ZIPBALL_TIMEOUT", 300)
         zipball_url = self.resolve_zipball_url()
         return self.provider.fetch_release_zipball(zipball_url, timeout)
 
     def publish(self):
-        """Publish a GitHub release."""
+        """Publish a VCS release."""
         raise NotImplementedError
 
     def process_release(self):
-        """Processes a github release."""
+        """Processes a VCS release."""
         raise NotImplementedError
 
     def resolve_record(self):
@@ -616,5 +643,5 @@ class VCSRelease:
 
     @property
     def record_url(self):
-        """Release self url (e.g. github HTML url)."""
+        """Release self url (e.g. VCS HTML url)."""
         raise NotImplementedError

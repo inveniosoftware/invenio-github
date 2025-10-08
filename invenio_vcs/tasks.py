@@ -1,27 +1,12 @@
 # -*- coding: utf-8 -*-
-#
 # This file is part of Invenio.
-# Copyright (C) 2023 CERN.
+# Copyright (C) 2025 CERN.
 # Copyright (C) 2024 KTH Royal Institute of Technology.
 #
-# Invenio is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Invenio is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Invenio. If not, see <http://www.gnu.org/licenses/>.
-#
-# In applying this licence, CERN does not waive the privileges and immunities
-# granted to it by virtue of its status as an Intergovernmental Organization
-# or submit itself to any jurisdiction.
+# Invenio is free software; you can redistribute it and/or modify it
+# under the terms of the MIT License; see LICENSE file for more details.
 
-"""Task for managing GitHub integration."""
+"""Task for managing vcs integration."""
 
 import datetime
 from typing import TYPE_CHECKING
@@ -34,7 +19,7 @@ from invenio_oauthclient.models import RemoteAccount
 from invenio_oauthclient.proxies import current_oauthclient
 
 from invenio_vcs.config import get_provider_by_id
-from invenio_vcs.errors import CustomGitHubMetadataError, RepositoryAccessError
+from invenio_vcs.errors import CustomVCSMetadataError, RepositoryAccessError
 from invenio_vcs.models import Release, ReleaseStatus
 from invenio_vcs.proxies import current_vcs
 
@@ -51,7 +36,7 @@ def _get_err_obj(msg):
 
 
 def release_gh_metadata_handler(release: "VCSRelease", ex):
-    """Handler for CustomGithubMetadataError."""
+    """Handler for CustomvcsMetadataError."""
     release.db_release.errors = _get_err_obj(str(ex))
     db.session.commit()
 
@@ -63,7 +48,7 @@ def release_default_exception_handler(release: "VCSRelease", ex):
 
 
 DEFAULT_ERROR_HANDLERS = [
-    (CustomGitHubMetadataError, release_gh_metadata_handler),
+    (CustomVCSMetadataError, release_gh_metadata_handler),
     (Exception, release_default_exception_handler),
 ]
 
@@ -86,14 +71,14 @@ def disconnect_provider(provider_id, user_id, access_token, repo_hooks):
             for repo_id, repo_hook in repo_hooks:
                 if svc.disable_repository(repo_id, repo_hook):
                     current_app.logger.info(
-                        _("Deleted hook from github repository."),
+                        _("Deleted hook from vcs repository."),
                         extra={"hook": repo_hook, "repo": repo_id},
                     )
 
             # If we finished our clean-up successfully, we can revoke the token
             svc.provider.revoke_token(access_token)
     except Exception as exc:
-        # Retry in case GitHub may be down...
+        # Retry in case vcs may be down...
         disconnect_provider.retry(exc=exc)
 
 
