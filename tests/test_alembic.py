@@ -23,8 +23,9 @@ def test_alembic(base_app, database):
 
     # Check that this package's SQLAlchemy models have been properly registered
     tables = [x for x in db.metadata.tables]
-    assert "github_repositories" in tables
-    assert "github_releases" in tables
+    assert "vcs_repositories" in tables
+    assert "vcs_releases" in tables
+    assert "vcs_repository_users" in tables
 
     # Check that Alembic agrees that there's no further tables to create.
     assert len(ext.alembic.compare_metadata()) == 0

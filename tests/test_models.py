@@ -20,11 +20,16 @@
 # granted to it by virtue of its status as an Intergovernmental Organization
 # or submit itself to any jurisdiction.
 
-"""Test cases for badge creation."""
+"""Test cases for VCS models."""
 
-from invenio_github.models import Repository
+from invenio_vcs.models import Repository
 
 
 def test_repository_unbound(app):
-    """Test create_badge method."""
-    assert Repository(name="org/repo", github_id=1).latest_release() is None
+    """Test unbound repository."""
+    assert (
+        Repository(
+            full_name="org/repo", provider_id="1", provider="test"
+        ).latest_release()
+        is None
+    )

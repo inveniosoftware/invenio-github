@@ -27,32 +27,63 @@ import json
 # from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_webhooks.models import Event
 
-from invenio_github.api import GitHubAPI
-from invenio_github.models import ReleaseStatus, Repository
+from invenio_vcs.generic_models import (
+    GenericOwner,
+    GenericOwnerType,
+    GenericRelease,
+    GenericRepository,
+    GenericWebhook,
+)
+from invenio_vcs.models import ReleaseStatus, Repository
+from invenio_vcs.utils import utcnow
+from tests.contrib_fixtures.patcher import TestProviderPatcher
 
 
-def test_webhook_post(app, db, tester_id, remote_token, github_api):
-    """Test webhook POST success."""
-    from . import fixtures
+def test_webhook_post(
+    app,
+    db,
+    tester_id,
+    test_generic_repositories: list[GenericRepository],
+    test_generic_webhooks: list[GenericWebhook],
+    test_generic_release: GenericRelease,
+    test_generic_owner: GenericOwner,
+    provider_patcher: TestProviderPatcher,
+):
+    generic_repo = test_generic_repositories[0]
+    generic_webhook = next(
+        h for h in test_generic_webhooks if h.repository_id == generic_repo.id
+    )
 
-    repo_id = 3
-    repo_name = "arepo"
-    hook = 1234
-    tag = "v1.0"
-
-    repo = Repository.get(github_id=repo_id, name=repo_name)
-    if not repo:
-        repo = Repository.create(tester_id, repo_id, repo_name)
-
-    api = GitHubAPI(tester_id)
+    db_repo = Repository.get(
+        provider=provider_patcher.provider_factory().id, provider_id=generic_repo.id
+    )
+    if not db_repo:
+        db_repo = Repository.create(
+            provider=provider_patcher.provider_factory().id,
+            provider_id=generic_repo.id,
+            html_url=generic_repo.html_url,
+            default_branch=generic_repo.default_branch,
+            full_name=generic_repo.full_name,
+            description=generic_repo.description,
+            license_spdx=generic_repo.license_spdx,
+        )
 
     # Enable repository webhook.
-    api.enable_repo(repo, hook)
+    db_repo.hook = generic_webhook.id
+    db_repo.enabled_by_user_id = tester_id
+    db.session.add(db_repo)
+    db.session.commit()
 
-    payload = json.dumps(fixtures.PAYLOAD("auser", repo_name, repo_id, tag))
+    payload = json.dumps(
+        provider_patcher.test_webhook_payload(
+            generic_repo, test_generic_release, test_generic_owner
+        )
+    )
     headers = [("Content-Type", "application/json")]
     with app.test_request_context(headers=headers, data=payload):
-        event = Event.create(receiver_id="github", user_id=tester_id)
+        event = Event.create(
+            receiver_id=provider_patcher.provider_factory().id, user_id=tester_id
+        )
         # Add event to session. Otherwise defaults are not added (e.g. response and response_code)
         db.session.add(event)
         db.session.commit()
@@ -60,47 +91,71 @@ def test_webhook_post(app, db, tester_id, remote_token, github_api):
 
     assert event.response_code == 202
     # Validate that a release was created
-    assert repo.releases.count() == 1
-    release = repo.releases.first()
+    assert db_repo.releases.count() == 1
+    release = db_repo.releases.first()
     assert release.status == ReleaseStatus.PUBLISHED
-    assert release.release_id == event.payload["release"]["id"]
-    assert release.tag == tag
+    assert release.provider_id == test_generic_release.id
+    assert release.tag == test_generic_release.tag_name
     # This uuid is a fake one set by TestGithubRelease fixture
     assert str(release.record_id) == "445aaacd-9de1-41ab-af52-25ab6cb93df7"
     assert release.errors is None
 
 
-def test_webhook_post_fail(app, tester_id, remote_token, github_api):
-    """Test webhook POST failure."""
-    from . import fixtures
+def test_webhook_post_fail(
+    app,
+    tester_id,
+    test_generic_repositories: list[GenericRepository],
+    test_generic_webhooks: list[GenericWebhook],
+    provider_patcher: TestProviderPatcher,
+):
+    generic_repo = test_generic_repositories[0]
+    generic_webhook = next(
+        h for h in test_generic_webhooks if h.repository_id == generic_repo.id
+    )
 
-    repo_id = 3
-    repo_name = "arepo"
-    hook = 1234
-
-    # Create a repository
-    repo = Repository.get(github_id=repo_id, name=repo_name)
-    if not repo:
-        repo = Repository.create(tester_id, repo_id, repo_name)
-
-    api = GitHubAPI(tester_id)
+    db_repo = Repository.get(
+        provider=provider_patcher.provider_factory().id, provider_id=generic_repo.id
+    )
+    if not db_repo:
+        db_repo = Repository.create(
+            provider=provider_patcher.provider_factory().id,
+            provider_id=generic_repo.id,
+            html_url=generic_repo.html_url,
+            default_branch=generic_repo.default_branch,
+            full_name=generic_repo.full_name,
+            description=generic_repo.description,
+            license_spdx=generic_repo.license_spdx,
+        )
 
     # Enable repository webhook.
-    api.enable_repo(repo, hook)
+    db_repo.hook = generic_webhook.id
+    db_repo.enabled_by_user_id = tester_id
 
     # Create an invalid payload (fake repo)
     fake_payload = json.dumps(
-        fixtures.PAYLOAD("fake_user", "fake_repo", 1000, "v1000.0")
+        provider_patcher.test_webhook_payload(
+            GenericRepository(
+                id="123",
+                full_name="fake_repo",
+                default_branch="fake_branch",
+                html_url="https://example.com",
+            ),
+            GenericRelease(
+                id="123",
+                tag_name="v123.345",
+                created_at=utcnow(),
+                html_url="https://example.com",
+            ),
+            GenericOwner(id="123", path_name="fake_user", type=GenericOwnerType.Person),
+        )
     )
     headers = [("Content-Type", "application/json")]
     with app.test_request_context(headers=headers, data=fake_payload):
         # user_id = request.oauth.access_token.user_id
-        event = Event.create(receiver_id="github", user_id=tester_id)
+        event = Event.create(
+            receiver_id=provider_patcher.provider_factory().id, user_id=tester_id
+        )
         event.process()
 
     # Repo does not exist
     assert event.response_code == 404
-
-    # Create an invalid payload (fake user)
-    # TODO 'fake_user' does not match the invenio user 'extra_data'. Should this fail?
-    # TODO what should happen if an event is received and the account is not synced?

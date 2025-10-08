@@ -21,69 +21,69 @@
 # or submit itself to any jurisdiction.
 
 from time import sleep
+from unittest.mock import patch
 
 from invenio_oauthclient.models import RemoteAccount
 from invenio_webhooks.models import Event
-from mock import patch
 
-from invenio_github.api import GitHubAPI
-from invenio_github.models import Release, ReleaseStatus, Repository
-from invenio_github.tasks import process_release, refresh_accounts
-from invenio_github.utils import iso_utcnow
-
-from . import fixtures
+from invenio_vcs.generic_models import (
+    GenericOwner,
+    GenericRelease,
+    GenericRepository,
+)
+from invenio_vcs.models import Release, ReleaseStatus
+from invenio_vcs.providers import RepositoryServiceProvider
+from invenio_vcs.service import VCSService
+from invenio_vcs.tasks import process_release, refresh_accounts
+from invenio_vcs.utils import iso_utcnow
+from tests.contrib_fixtures.patcher import TestProviderPatcher
 
 
 def test_real_process_release_task(
-    app, db, location, tester_id, remote_token, github_api
+    db,
+    tester_id,
+    vcs_service: VCSService,
+    test_generic_repositories: list[GenericRepository],
+    test_generic_release: GenericRelease,
+    test_generic_owner: GenericOwner,
+    provider_patcher: TestProviderPatcher,
 ):
-    # Initialise account
-    api = GitHubAPI(tester_id)
-    api.init_account()
-    api.sync()
+    vcs_service.sync()
 
-    # Get remote account extra data
-    extra_data = remote_token.remote_account.extra_data
+    generic_repo = test_generic_repositories[0]
+    vcs_service.enable_repository(generic_repo.id)
+    db_repo = vcs_service.get_repository(repo_id=generic_repo.id)
 
-    assert 1 in extra_data["repos"]
-    assert "repo-1" in extra_data["repos"][1]["full_name"]
-    assert 2 in extra_data["repos"]
-    assert "repo-2" in extra_data["repos"][2]["full_name"]
-
-    repo_name = "repo-1"
-    repo_id = 1
-
-    repo = Repository.create(tester_id, repo_id, repo_name)
-    api.enable_repo(repo, 12345)
     event = Event(
-        receiver_id="github",
+        # Receiver ID is same as provider ID
+        receiver_id=vcs_service.provider.factory.id,
         user_id=tester_id,
-        payload=fixtures.PAYLOAD("auser", "repo-1", 1),
+        payload=provider_patcher.test_webhook_payload(
+            generic_repo, test_generic_release, test_generic_owner
+        ),
     )
 
-    release_object = Release(
-        release_id=event.payload["release"]["id"],
-        tag=event.payload["release"]["tag_name"],
-        repository=repo,
+    db_release = Release(
+        provider=vcs_service.provider.factory.id,
+        provider_id=test_generic_release.id,
+        tag=test_generic_release.tag_name,
+        repository=db_repo,
         event=event,
         status=ReleaseStatus.RECEIVED,
     )
-    db.session.add(release_object)
+    db.session.add(db_release)
     db.session.commit()
 
-    process_release.delay(release_object.release_id)
-    assert repo.releases.count() == 1
-    release = repo.releases.first()
+    process_release.delay(vcs_service.provider.factory.id, db_release.provider_id)
+    assert db_repo.releases.count() == 1
+    release = db_repo.releases.first()
     assert release.status == ReleaseStatus.PUBLISHED
     # This uuid is a fake one set by TestGithubRelease fixture
     assert str(release.record_id) == "445aaacd-9de1-41ab-af52-25ab6cb93df7"
 
 
-def test_refresh_accounts(app, db, tester_id, remote_token, github_api):
-    """Test account refresh task."""
-
+def test_refresh_accounts(db, test_user, vcs_provider: RepositoryServiceProvider):
     def mocked_sync(hooks=True, async_hooks=True):
-        """Mock sync function and update the remote account."""
         account = RemoteAccount.query.all()[0]
         account.extra_data.update(
             dict(
@@ -92,15 +92,15 @@ def test_refresh_accounts(app, db, tester_id, remote_token, github_api):
         )
         db.session.commit()
 
-    with patch("invenio_github.api.GitHubAPI.sync", side_effect=mocked_sync):
+    with patch("invenio_vcs.service.VCSService.sync", side_effect=mocked_sync):
         updated = RemoteAccount.query.all()[0].updated
         expiration_threshold = {"seconds": 1}
         sleep(2)
-        refresh_accounts.delay(expiration_threshold)
+        refresh_accounts.delay(vcs_provider.factory.id, expiration_threshold)
 
         last_update = RemoteAccount.query.all()[0].updated
         assert updated != last_update
 
-        refresh_accounts.delay(expiration_threshold)
+        refresh_accounts.delay(vcs_provider.factory.id, expiration_threshold)
 
         assert last_update == RemoteAccount.query.all()[0].updated
