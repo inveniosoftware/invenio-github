@@ -4,6 +4,7 @@
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
+"""Contrib provider implementation for GitHub."""
 
 import json
 
@@ -16,7 +17,7 @@ from invenio_i18n import gettext as _
 from invenio_oauthclient.contrib.github import GitHubOAuthSettingsHelper
 from werkzeug.utils import cached_property
 
-from invenio_vcs.errors import ReleaseZipballFetchError, UnexpectedProviderResponse
+from invenio_vcs.errors import ReleaseZipballFetchError
 from invenio_vcs.generic_models import (
     GenericContributor,
     GenericOwner,
@@ -33,6 +34,8 @@ from invenio_vcs.providers import (
 
 
 class GitHubProviderFactory(RepositoryServiceProviderFactory):
+    """Contrib implementation factory for GitHub."""
+
     def __init__(
         self,
         base_url,
@@ -43,6 +46,7 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
         credentials_key="GITHUB_APP_CREDENTIALS",
         config={},
     ):
+        """Initialise with GitHub-specific defaults."""
         super().__init__(
             GitHubProvider,
             base_url=base_url,
@@ -65,6 +69,12 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
 
     @property
     def remote_config(self):
+        """
+        Use the existing GitHub OAuth client implementation in invenio-oauthclient with some minor modifications.
+
+        We are keeping this client in invenio-oauthclient for backwards-compatibility and because some installations
+        may already be using GitHub OAuth as a login method without the full integration.
+        """
         request_token_params = {
             # General `repo` scope is required for reading collaborators
             # https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps
@@ -89,9 +99,11 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
 
     @property
     def config(self):
+        """Returns the GitHub-specific config dict."""
         return self._config
 
     def webhook_is_create_release_event(self, event_payload):
+        """Three possible event types can correspond to a create release event."""
         action = event_payload.get("action")
         is_draft_release = event_payload.get("release", {}).get("draft")
 
@@ -103,10 +115,13 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
 
     @staticmethod
     def _extract_license(gh_repo_dict):
-        # The GitHub API returns the `license` as a simple key of the ShortRepository.
-        # But for some reason github3py does not include a mapping for this.
-        # So the only way to access it without making an additional request is to convert
-        # the repo to a dict.
+        """
+        The GitHub API returns the `license` as a simple key of the ShortRepository.
+
+        But for some reason github3py does not include a mapping for this.
+        So the only way to access it without making an additional request is to convert
+        the repo to a dict.
+        """
         license_obj = gh_repo_dict.get("license")
         if license_obj is not None:
             spdx = license_obj["spdx_id"]
@@ -117,6 +132,7 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
         return None
 
     def webhook_event_to_generic(self, event_payload):
+        """Convert the webhook payload to a generic release and repository without making additional API calls and using just the payload data."""
         release_published_at = event_payload["release"].get("published_at")
         if release_published_at is not None:
             release_published_at = dateutil.parser.parse(release_published_at)
@@ -149,20 +165,26 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
         return (release, repo)
 
     def url_for_tag(self, repository_name, tag_name):
+        """URL to view a tag."""
         return "{}/{}/tree/{}".format(self.base_url, repository_name, tag_name)
 
     def url_for_new_release(self, repository_name):
+        """URL for creating a new release."""
         return "{}/{}/releases/new".format(self.base_url, repository_name)
 
     def url_for_new_file(self, repository_name, branch_name, file_name):
+        """URL for creating a new file in the web editor."""
         return "{}/{}/new/{}?filename={}".format(
             self.base_url, repository_name, branch_name, file_name
         )
 
 
 class GitHubProvider(RepositoryServiceProvider):
+    """Contrib user-specific implementation for GitHub."""
+
     @cached_property
     def _gh(self):
+        """Initialise the GitHub API object (either for public or enterprise self-hosted GitHub)."""
         _gh = None
         if self.factory.base_url == "https://github.com":
             _gh = github3.login(token=self.access_token)
@@ -171,10 +193,12 @@ class GitHubProvider(RepositoryServiceProvider):
                 url=self.factory.base_url, token=self.access_token
             )
 
+        # login can return None if it's unsuccessful.
         assert _gh is not None
         return _gh
 
     def list_repositories(self):
+        """List the user's top repos."""
         repos: dict[str, GenericRepository] = {}
         for repo in self._gh.repositories():
             assert isinstance(repo, ShortRepository)
@@ -192,6 +216,7 @@ class GitHubProvider(RepositoryServiceProvider):
         return repos
 
     def list_repository_webhooks(self, repository_id):
+        """List a repo's webhooks."""
         assert repository_id.isdigit()
         repo = self._gh.repository_with_id(int(repository_id))
         if repo is None:
@@ -209,6 +234,7 @@ class GitHubProvider(RepositoryServiceProvider):
         return hooks
 
     def list_repository_user_ids(self, repository_id: str):
+        """List the admin collaborator User IDs of a repository."""
         assert repository_id.isdigit()
         repo = self._gh.repository_with_id(int(repository_id))
         if repo is None:
@@ -224,6 +250,7 @@ class GitHubProvider(RepositoryServiceProvider):
         return user_ids
 
     def get_repository(self, repository_id):
+        """Get a single repository."""
         assert repository_id.isdigit()
 
         repo = self._gh.repository_with_id(int(repository_id))
@@ -240,6 +267,7 @@ class GitHubProvider(RepositoryServiceProvider):
         )
 
     def create_webhook(self, repository_id):
+        """Create a webhook using some custom GitHub-specific config options."""
         assert repository_id.isdigit()
 
         hook_config = dict(
@@ -264,6 +292,7 @@ class GitHubProvider(RepositoryServiceProvider):
         return str(hook.id)
 
     def delete_webhook(self, repository_id, hook_id=None):
+        """Delete a webhook."""
         assert repository_id.isdigit()
 
         repo = self._gh.repository_with_id(int(repository_id))
@@ -285,58 +314,42 @@ class GitHubProvider(RepositoryServiceProvider):
         return False
 
     def get_own_user(self):
+        """Get the currently logged in user."""
         user = self._gh.me()
         if user is not None:
-            return GenericUser(user.id, user.login, user.name)
+            return GenericUser(str(user.id), user.login, user.name)
 
         return None
 
     def list_repository_contributors(self, repository_id, max):
+        """List and sort (by contribution count) the contributors of a repo."""
         assert repository_id.isdigit()
 
-        repo = self._gh.repository_with_id(repository_id)
+        repo = self._gh.repository_with_id(int(repository_id))
         if repo is None:
             return None
 
-        contributors_iter = repo.contributors(number=max)
-        # Consume the iterator to materialize the request and have a `last_status``.
-        contributors = list(contributors_iter)
-        status = contributors_iter.last_status
-        if status == 200:
-            # Sort by contributions and filter only users.
-            sorted_contributors = sorted(
-                (c for c in contributors if c.type == "User"),
-                key=lambda x: x.contributions_count,
-                reverse=True,
+        contributors = []
+        for c in repo.contributors(number=max):
+            contributions_count = c.contributions_count
+            c = c.refresh()
+            contributors.append(
+                GenericContributor(
+                    id=str(c.id),
+                    username=c.login,
+                    display_name=c.name,
+                    contributions_count=contributions_count,
+                    company=c.company,
+                )
             )
 
-            contributors = []
-            for c in sorted_contributors:
-                contributions_count = c.contributions_count
-                c = c.refresh()
-                contributors.append(
-                    GenericContributor(
-                        id=c.id,
-                        username=c.login,
-                        display_name=c.name,
-                        contributions_count=contributions_count,
-                        company=c.company,
-                    )
-                )
-
-            return contributors
-        else:
-            raise UnexpectedProviderResponse(
-                _(
-                    "Provider returned unexpected code: %(status)s for release in repo %(repo_id)s"
-                )
-                % {"status": status, "repo_id": repository_id}
-            )
+        return contributors
 
     def get_repository_owner(self, repository_id):
+        """Get the owner of a repo."""
         assert repository_id.isdigit()
 
-        repo = self._gh.repository_with_id(repository_id)
+        repo = self._gh.repository_with_id(int(repository_id))
         if repo is None:
             return None
 
@@ -347,13 +360,14 @@ class GitHubProvider(RepositoryServiceProvider):
         )
 
         return GenericOwner(
-            id=repo.owner.id,
+            id=str(repo.owner.id),
             path_name=repo.owner.login,
-            display_name=repo.owner.full_name,
             type=owner_type,
+            # GitHub API does not return the display name for the owner
         )
 
     def resolve_release_zipball_url(self, release_zipball_url):
+        """Handle some GitHub-specific quirks related to URL authentication."""
         url = release_zipball_url
 
         # Execute a HEAD request to the zipball url to test if it is accessible.
@@ -388,23 +402,26 @@ class GitHubProvider(RepositoryServiceProvider):
         return response.url
 
     def fetch_release_zipball(self, release_zipball_url, timeout):
+        """Fetch a specific release artifact file using a raw authenticated API request."""
         with self._gh.session.get(
             release_zipball_url, stream=True, timeout=timeout
         ) as resp:
             yield resp.raw
 
-    def retrieve_remote_file(self, repository_id, tag_name, file_name):
+    def retrieve_remote_file(self, repository_id, ref_name, file_name):
+        """Retrieve a specific file from the repo via the API."""
         assert repository_id.isdigit()
 
         try:
-            resp = self._gh.repository_with_id(repository_id).file_contents(
-                path=file_name, ref=tag_name
+            resp = self._gh.repository_with_id(int(repository_id)).file_contents(
+                path=file_name, ref=ref_name
             )
             return resp.decoded
         except github3.exceptions.NotFoundError:
             return None
 
     def revoke_token(self, access_token):
+        """Delete the specified access token using a custom API request."""
         client_id, client_secret = self._gh.session.retrieve_client_credentials()
         url = self._gh._build_url("applications", str(client_id), "token")
         with self._gh.session.temporary_basic_auth(client_id, client_secret):

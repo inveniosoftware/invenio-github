@@ -4,6 +4,10 @@
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
+#
+# Some of the code in this file was taken from https://codebase.helmholtz.cloud/rodare/invenio-gitlab
+# and relicensed under MIT with permission from the authors.
+"""Contrib provider implementation for GitLab."""
 
 from __future__ import annotations
 
@@ -33,6 +37,8 @@ from invenio_vcs.providers import (
 
 
 def _gl_response_error_handler(f):
+    """Handle common error codes returned by the API."""
+
     def inner_function(*args, **kwargs):
         try:
             return f(*args, **kwargs)
@@ -51,6 +57,8 @@ def _gl_response_error_handler(f):
 
 
 class GitLabProviderFactory(RepositoryServiceProviderFactory):
+    """Contrib implementation factory for GitLab."""
+
     def __init__(
         self,
         base_url: str,
@@ -61,6 +69,7 @@ class GitLabProviderFactory(RepositoryServiceProviderFactory):
         credentials_key="GITLAB_APP_CREDENTIALS",
         config={},
     ):
+        """Initialise with GitLab-specific defaults."""
         super().__init__(
             GitLabProvider,
             base_url=base_url,
@@ -78,6 +87,7 @@ class GitLabProviderFactory(RepositoryServiceProviderFactory):
         self._config.update(config)
 
     def _account_info_handler(self, remote, resp: dict):
+        """Helper for the OAuth client."""
         gl = gitlab.Gitlab(
             self.base_url,
             oauth_token=resp["access_token"],
@@ -85,9 +95,11 @@ class GitLabProviderFactory(RepositoryServiceProviderFactory):
         gl.auth()
         user_attrs = gl.user.attributes
         handlers = current_oauthclient.signup_handlers[remote.name]
+        # Pass through `info_serializer` which converts the user to an Invenio user (and performs additional validation).
         return handlers["info_serializer"](resp, user_attrs)
 
     def _account_info_serializer(self, remote, resp, user_info, **kwargs):
+        """Helper for the OAuth client."""
         return dict(
             user=dict(
                 email=user_info["email"],
@@ -102,6 +114,7 @@ class GitLabProviderFactory(RepositoryServiceProviderFactory):
 
     @property
     def remote_config(self):
+        """Custom OAuth client config for GitLab."""
         return dict(
             title=self.name,
             description=self.description,
@@ -126,20 +139,25 @@ class GitLabProviderFactory(RepositoryServiceProviderFactory):
 
     @property
     def config(self):
+        """Returns the GitLab-specific config dict."""
         return self._config
 
     def url_for_tag(self, repository_name, tag_name) -> str:
+        """The URL for viewing a tag."""
         return "{}/{}/-/tags/{}".format(self.base_url, repository_name, tag_name)
 
     def url_for_new_file(self, repository_name, branch_name, file_name) -> str:
+        """The URL for creating a new file in the web editor."""
         return "{}/{}/-/new/{}/?file_name={}".format(
             self.base_url, repository_name, branch_name, file_name
         )
 
     def url_for_new_release(self, repository_name) -> str:
+        """The URL for creating a new release."""
         return "{}/{}/-/releases/new".format(self.base_url, repository_name)
 
     def webhook_is_create_release_event(self, event_payload: dict[str, Any]):
+        """Identify if the webhook payload is one we want to use."""
         # https://archives.docs.gitlab.com/17.11/user/project/integrations/webhook_events/#release-events
 
         # GitLab does not have unpublished/draft releases the way GitHub does. However, it does have
@@ -158,6 +176,7 @@ class GitLabProviderFactory(RepositoryServiceProviderFactory):
     def webhook_event_to_generic(
         self, event_payload: dict[str, Any]
     ) -> tuple[GenericRelease, GenericRepository]:
+        """Convert a webhook event."""
         # https://archives.docs.gitlab.com/18.0/user/project/integrations/webhook_events/#release-events
         # https://archives.docs.gitlab.com/17.11/user/project/integrations/webhook_events/#release-events
         # https://archives.docs.gitlab.com/16.11/ee/user/project/integrations/webhook_events.html#release-events
@@ -174,9 +193,7 @@ class GitLabProviderFactory(RepositoryServiceProviderFactory):
                 tarball_url = url
 
         release = GenericRelease(
-            # GitLab does not expose the in-database ID of releases through the webhook payload or the REST API
-            # It does exist internally but it's never sent to us
-            id=event_payload["tag"],
+            id=str(event_payload["id"]),
             tag_name=event_payload["tag"],
             html_url=event_payload["url"],
             name=event_payload["name"],
@@ -192,6 +209,7 @@ class GitLabProviderFactory(RepositoryServiceProviderFactory):
 
     @staticmethod
     def _extract_license(proj_attrs: dict[str, Any]):
+        """Extract the SPDX ID from the license of a dict-ified project."""
         license_obj = proj_attrs.get("license")
         if license_obj is not None:
             return license_obj["key"].upper()
@@ -199,6 +217,7 @@ class GitLabProviderFactory(RepositoryServiceProviderFactory):
 
     @staticmethod
     def _proj_to_generic(proj_attrs: dict[str, Any]):
+        """Convert a dict-ified project to a GenericRepository."""
         return GenericRepository(
             id=str(proj_attrs["id"]),
             full_name=proj_attrs["path_with_namespace"],
@@ -210,14 +229,18 @@ class GitLabProviderFactory(RepositoryServiceProviderFactory):
 
 
 class GitLabProvider(RepositoryServiceProvider):
+    """Contrib user-specific implementation for GitLab."""
+
     @cached_property
     def _gl(self):
+        """Construct the GitLab API client and make a test auth request (which populates essential data)."""
         gl = gitlab.Gitlab(self.factory.base_url, oauth_token=self.access_token)
         gl.auth()
         return gl
 
     @_gl_response_error_handler
     def list_repositories(self) -> dict[str, GenericRepository] | None:
+        """List all projects."""
         repos: dict[str, GenericRepository] = {}
         for project in self._gl.projects.list(
             iterator=True,
@@ -238,6 +261,7 @@ class GitLabProvider(RepositoryServiceProvider):
 
     @_gl_response_error_handler
     def get_repository(self, repository_id: str) -> GenericRepository | None:
+        """Get a single project."""
         assert repository_id.isdigit()
         proj = self._gl.projects.get(int(repository_id))
         return GitLabProviderFactory._proj_to_generic(proj.asdict())
@@ -246,6 +270,7 @@ class GitLabProvider(RepositoryServiceProvider):
     def list_repository_contributors(
         self, repository_id: str, max: int
     ) -> list[GenericContributor] | None:
+        """Get and enrich the contributor list as much as possible with the limited data returned by the API."""
         assert repository_id.isdigit()
         proj = self._gl.projects.get(int(repository_id), lazy=True)
 
@@ -290,15 +315,16 @@ class GitLabProvider(RepositoryServiceProvider):
 
     @_gl_response_error_handler
     def get_repository_owner(self, repository_id: str):
+        """Get the owner of the project."""
         assert repository_id.isdigit()
         proj = self._gl.projects.get(int(repository_id))
         return GenericOwner(
-            id=str(proj.namespace.id),
-            path_name=proj.namespace.path,
-            display_name=proj.namespace.name,
+            id=str(proj.namespace["id"]),
+            path_name=proj.namespace["path"],
+            display_name=proj.namespace["name"],
             type=(
                 GenericOwnerType.Person
-                if proj.namespace.kind == "user"
+                if proj.namespace["kind"] == "user"
                 else GenericOwnerType.Organization
             ),
         )
@@ -307,6 +333,7 @@ class GitLabProvider(RepositoryServiceProvider):
     def list_repository_webhooks(
         self, repository_id: str
     ) -> list[GenericWebhook] | None:
+        """Convert the repository's webhooks to a generic list."""
         assert repository_id.isdigit()
         proj = self._gl.projects.get(int(repository_id), lazy=True)
         hooks: list[GenericWebhook] = []
@@ -321,16 +348,18 @@ class GitLabProvider(RepositoryServiceProvider):
         return hooks
 
     def list_repository_user_ids(self, repository_id: str) -> list[str] | None:
-        # https://docs.gitlab.com/api/members/#list-all-members-of-a-group-or-project-including-inherited-and-invited-members
+        """See https://docs.gitlab.com/api/members/#list-all-members-of-a-group-or-project-including-inherited-and-invited-members."""
         user_ids: list[str] = []
-        for member in self._gl.projects.get(repository_id, lazy=True).members_all.list(
-            iterator=True
-        ):
-            user_ids.append(str(member.id))
+        for member in self._gl.projects.get(
+            int(repository_id), lazy=True
+        ).members_all.list(iterator=True):
+            if member.access_level >= gitlab.const.MAINTAINER_ACCESS:
+                user_ids.append(str(member.id))
         return user_ids
 
     @_gl_response_error_handler
     def create_webhook(self, repository_id: str) -> str | None:
+        """Create a webhook with a metadata description to avoid confusion."""
         assert repository_id.isdigit()
         proj = self._gl.projects.get(int(repository_id), lazy=True)
 
@@ -348,6 +377,7 @@ class GitLabProvider(RepositoryServiceProvider):
 
     @_gl_response_error_handler
     def delete_webhook(self, repository_id: str, hook_id=None) -> bool:
+        """Delete the hook from the project if it exists."""
         assert repository_id.isdigit()
         if hook_id is not None:
             assert hook_id.isdigit()
@@ -366,6 +396,7 @@ class GitLabProvider(RepositoryServiceProvider):
 
     @_gl_response_error_handler
     def get_own_user(self) -> GenericUser | None:
+        """Return the currently signed in user."""
         user = self._gl.user
         if user is None:
             return None
@@ -376,11 +407,12 @@ class GitLabProvider(RepositoryServiceProvider):
         )
 
     def resolve_release_zipball_url(self, release_zipball_url: str) -> str | None:
-        # No further resolution needs to be done for GitLab, so this is a no-op
+        """No further resolution needs to be done for GitLab, so this is a no-op."""
         return release_zipball_url
 
     @_gl_response_error_handler
     def fetch_release_zipball(self, release_zipball_url: str, timeout: int):
+        """Make a raw request with the API token to download the file."""
         resp = self._gl.http_get(
             release_zipball_url, raw=True, streamed=True, timeout=timeout
         )
@@ -389,12 +421,16 @@ class GitLabProvider(RepositoryServiceProvider):
             yield resp.raw
 
     @_gl_response_error_handler
-    def retrieve_remote_file(self, repository_id: str, tag_name: str, file_name: str):
+    def retrieve_remote_file(self, repository_id: str, ref_name: str, file_name: str):
+        """Download and decode the given file using the API."""
         assert repository_id.isdigit()
-        proj = self._gl.projects.get(repository_id, lazy=True)
-        file = proj.files.get(file_path=file_name, ref=tag_name)
-        return file.decode()
+        proj = self._gl.projects.get(int(repository_id), lazy=True)
+        try:
+            file = proj.files.get(file_path=file_name, ref=ref_name)
+            return file.decode()
+        except gitlab.GitlabGetError:
+            return None
 
     def revoke_token(self, access_token: str):
-        # TODO: GitLab implements RFC7009 for OAuth Token Revocation. We might need to do this via OAuth instead of the GitLab API.
+        """TODO: GitLab implements RFC7009 for OAuth Token Revocation. We might need to do this via OAuth instead of the GitLab API."""
         pass

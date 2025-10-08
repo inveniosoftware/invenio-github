@@ -1,3 +1,12 @@
+# -*- coding: utf-8 -*-
+# This file is part of Invenio.
+# Copyright (C) 2025 CERN.
+#
+# Invenio is free software; you can redistribute it and/or modify it
+# under the terms of the MIT License; see LICENSE file for more details.
+
+"""Abstract classes to be implemented for each provider."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -27,7 +36,9 @@ from invenio_vcs.oauth.handlers import OAuthHandlers
 
 class RepositoryServiceProviderFactory(ABC):
     """
-    A factory to create user-specific VCS providers. This class is instantiated once per instance,
+    A factory to create user-specific VCS providers.
+
+    This class is instantiated once per instance,
     usually in the `invenio.cfg` file. It contains general settings and methods that are impossible
     to generalise and must be specified on a provider-specific level.
 
@@ -47,6 +58,7 @@ class RepositoryServiceProviderFactory(ABC):
         repository_name: str,
         repository_name_plural: str,
     ):
+        """Initialize the repository service provider factory."""
         self.provider = provider
         self.base_url = base_url
         self.webhook_receiver_url = webhook_receiver_url
@@ -63,6 +75,7 @@ class RepositoryServiceProviderFactory(ABC):
     def remote_config(self) -> dict[str, Any]:
         """
         Returns a dictionary as the config of the OAuth remote app for this provider.
+
         The config of the app is usually based on the config variables provided
         in the constructor.
         """
@@ -70,52 +83,49 @@ class RepositoryServiceProviderFactory(ABC):
 
     @property
     def oauth_handlers(self):
+        """OAuth client handlers (for invenio-oauthclient) specific to the provider."""
         return OAuthHandlers(self)
 
     @cached_property
     def remote(self):
+        """The corresponding remote OAuth client app."""
         return LocalProxy(lambda: current_oauthclient.oauth.remote_apps[self.id])
 
     @property
     @abstractmethod
     def config(self) -> dict:
-        """
-        Returns a configuration dictionary with options that are specific to a gvien provider.
-        """
+        """Returns a configuration dictionary with options that are specific to a given provider."""
         raise NotImplementedError
 
     @abstractmethod
     def url_for_tag(self, repository_name, tag_name) -> str:
         """
-        Generates the URL for the UI page showing the file tree for the latest commit with a
-        given named tag. This is not the page showing the details of a corresponding release.
+        Generates the URL for the UI page showing the file tree for the latest commit with a given named tag.
+
+        This is not the page showing the details of a corresponding release.
         """
         raise NotImplementedError
 
     @abstractmethod
     def url_for_new_release(self, repository_name) -> str:
-        """
-        Generates the URL for the UI page through which the user can create a new release
-        for a specific repository.
-        """
+        """Generates the URL for the UI page through which the user can create a new release for a specific repository."""
         raise NotImplementedError
 
     @abstractmethod
     def url_for_new_file(self, repository_name, branch_name, file_name) -> str:
         """
-        Generates the URL for the UI pages through which a new file with a specific name
-        on a specific branch in a specific repository can be created. Usually,
-        this allows the user to type the file contents directly or upload an existing
-        file.
+        Generates the URL for the UI pages through which a new file with a specific name on a specific branch in a specific repository can be created.
+
+        Usually, this allows the user to type the file contents directly or upload an existing file.
         """
         raise NotImplementedError
 
     @abstractmethod
     def webhook_is_create_release_event(self, event_payload: dict[str, Any]):
         """
-        Returns whether the raw JSON payload of a webhook event is an event corresponding
-        to the publication of a webhook. Returning False will end further processing of the
-        event.
+        Returns whether the raw JSON payload of a webhook event is an event corresponding to the publication of a webhook.
+
+        Returning False will end further processing of the event.
         """
         raise NotImplementedError
 
@@ -123,20 +133,20 @@ class RepositoryServiceProviderFactory(ABC):
     def webhook_event_to_generic(
         self, event_payload: dict[str, Any]
     ) -> tuple[GenericRelease, GenericRepository]:
-        """
-        Returns the data of the release and repository as extracted from the raw JSON payload
-        of a webhook event, in generic form.
-        """
+        """Returns the data of the release and repository as extracted from the raw JSON payload of a webhook event, in generic form."""
         raise NotImplementedError
 
     def for_user(self, user_id: int):
+        """Creates a provider for a specific user, taking the access token from the DB."""
         return self.provider(self, user_id)
 
     def for_access_token(self, user_id: int, access_token: str):
+        """Creates a provider for a specific user, taking the access token directly as an argument."""
         return self.provider(self, user_id, access_token=access_token)
 
     @property
     def vocabulary(self):
+        """UI terminology (and icon) for the provider."""
         return {
             "id": self.id,
             "name": self.name,
@@ -148,8 +158,9 @@ class RepositoryServiceProviderFactory(ABC):
 
 class RepositoryServiceProvider(ABC):
     """
-    The methods to interact with the API of a VCS provider. This class is user-specific
-    and is always created from a `RepositoryServiceProviderFactory`.
+    The methods to interact with the API of a VCS provider.
+
+    This class is user-specific and is always created from a `RepositoryServiceProviderFactory`.
 
     While some of the default method implementations (such as `access_token`) make access to
     the DB, overrides of the unimplemented methods should avoid doing so to minimise
@@ -161,16 +172,18 @@ class RepositoryServiceProvider(ABC):
     def __init__(
         self, factory: RepositoryServiceProviderFactory, user_id: int, access_token=None
     ) -> None:
+        """
+        Internal method for constructing the provider.
+
+        It's recommended to use `for_user` in the factory instead.
+        """
         self.factory = factory
         self.user_id = user_id
         self._access_token = access_token
 
     @cached_property
     def remote_account(self):
-        """
-        Returns the OAuth Remote Account corresponding to the user's authentication
-        with the provider
-        """
+        """Returns the OAuth Remote Account corresponding to the user's authentication with the provider."""
         return RemoteAccount.get(self.user_id, self.factory.remote.consumer_key)
 
     @cached_property
@@ -201,8 +214,9 @@ class RepositoryServiceProvider(ABC):
     @cached_property
     def webhook_url(self):
         """
-        Returns a formatted version of the webhook receiver URL specified in the provider
-        factory. The `{token}` variable in this URL string is replaced with the user-specific
+        Returns a formatted version of the webhook receiver URL specified in the provider factory.
+
+        The `{token}` variable in this URL string is replaced with the user-specific
         webhook token.
         """
         if not self.remote_account.extra_data.get("tokens", {}).get("webhook"):
@@ -237,8 +251,9 @@ class RepositoryServiceProvider(ABC):
     @abstractmethod
     def list_repositories(self) -> dict[str, GenericRepository] | None:
         """
-        Returns a dictionary of {repository_id: GenericRepository} for the current
-        user. This should return _all_ repositories for which the user has permission
+        Returns a dictionary of {repository_id: GenericRepository} for the current user.
+
+        This should return _all_ repositories for which the user has permission
         to create and delete webhooks.
 
         This means this function could return extremely large dictionaries in some cases,
@@ -252,6 +267,7 @@ class RepositoryServiceProvider(ABC):
     ) -> list[GenericWebhook] | None:
         """
         Returns an arbitrarily ordered list of the current webhooks of a repository.
+
         This list should only include active webhooks which generate events for which
         the corresponding `RepositoryServiceProviderFactory.webhook_is_create_release_event`
         would return True.
@@ -259,6 +275,7 @@ class RepositoryServiceProvider(ABC):
         raise NotImplementedError
 
     def get_first_valid_webhook(self, repository_id: str) -> GenericWebhook | None:
+        """Get the first webhook for which `is_valid_webhook` is true."""
         webhooks = self.list_repository_webhooks(repository_id)
         if webhooks is None:
             return None
@@ -269,10 +286,7 @@ class RepositoryServiceProvider(ABC):
 
     @abstractmethod
     def get_repository(self, repository_id: str) -> GenericRepository | None:
-        """
-        Returns the details of a specific repository by ID, or None if the
-        repository does not exist or the user has no permission to view it.
-        """
+        """Returns the details of a specific repository by ID, or None if the repository does not exist or the user has no permission to view it."""
         raise NotImplementedError
 
     @abstractmethod
@@ -281,9 +295,11 @@ class RepositoryServiceProvider(ABC):
     ) -> list[GenericContributor] | None:
         """
         Returns the list of entities that have contributed to a given repository.
-        This list may contain entities that are not currently or never have been
+
+        This list may contain entities that are not currently or have never been
         registered users of the VCS provider (e.g. in the case of repos imported
-        from a remote source).
+        from a remote source). The order of the list is arbitrary, and it may include
+        non-human contributors (e.g. automated tools or organisations).
 
         Returns None if the repository does not exist or the user has no permission
         to view it or its contributors.
@@ -293,9 +309,9 @@ class RepositoryServiceProvider(ABC):
     @abstractmethod
     def list_repository_user_ids(self, repository_id: str) -> list[str] | None:
         """
-        Returns a list of the IDs of valid users registered with the VCS provider
-        that have sufficient permission to create/delete webhooks on the given
-        repository. This list should contain all users for which the corresponding
+        Returns a list of the IDs of valid users registered with the VCS provider that have sufficient permission to create/delete webhooks on the given repository.
+
+        This list should contain all users for which the corresponding
         repo would be included in a `list_repositories` call.
 
         Returns None if the repository does not exist or the user has no permission
@@ -307,6 +323,7 @@ class RepositoryServiceProvider(ABC):
     def get_repository_owner(self, repository_id: str) -> GenericOwner | None:
         """
         Returns the 'owner' of a repository, which is either a user or a group/organization.
+
         Returns None if the repository does not exist or the user does not have permission
         to find out its owner.
         """
@@ -316,6 +333,7 @@ class RepositoryServiceProvider(ABC):
     def create_webhook(self, repository_id: str) -> str | None:
         """
         Creates a new webhook for a given repository, trigerred by a "create release" event.
+
         The URL destination is specified by `RepositoryServiceProvider.webhook_url`.
         Events must be delivered via an HTTP POST request with a JSON payload.
 
@@ -329,6 +347,7 @@ class RepositoryServiceProvider(ABC):
     def delete_webhook(self, repository_id: str, hook_id: str | None = None) -> bool:
         """
         Deletes a webhook from the specified repository.
+
         If `hook_id` is specified, the webhook with that ID must be deleted.
         Otherwise, all webhooks with URLs for which `is_valid_webhook` would return
         True should be deleted.
@@ -342,14 +361,15 @@ class RepositoryServiceProvider(ABC):
     @abstractmethod
     def get_own_user(self) -> GenericUser | None:
         """
-        Returns information about the user for which this class has been instantiated,
-        or None if the user does not exist (e.g. if the user ID is incorrectly specified).
+        Returns information about the user for which this class has been instantiated, or None if the user does not exist.
+
+        For example, if the user ID is incorrectly specified.
         """
         raise NotImplementedError
 
     @abstractmethod
     def resolve_release_zipball_url(self, release_zipball_url: str) -> str | None:
-        # TODO: why do we have this
+        """TODO: why do we have this."""
         raise NotImplementedError
 
     @abstractmethod
@@ -358,6 +378,7 @@ class RepositoryServiceProvider(ABC):
     ) -> Generator[HTTPResponse]:
         """
         Returns the HTTP response for downloading the contents of a zipball from a given release.
+
         This is provider-specific functionality as it will require attaching an auth token
         to the request for private repos (and even public repos to avoid rate limits sometimes).
         """
@@ -368,12 +389,13 @@ class RepositoryServiceProvider(ABC):
         self, repository_id: str, ref_name: str, file_name: str
     ) -> bytes | None:
         """
-        Downloads the contents of a specific file in a repo for a given ref (which could be
-        a tag, a commit ref, a branch name, etc). Returns the raw bytes, or None if the
-        repo/file does not exist or the user doesn't have permission to view it.
+        Downloads the contents of a specific file in a repo for a given ref (which could be a tag, a commit ref, a branch name, etc).
+
+        Returns the raw bytes, or None if the repo/file does not exist or the user doesn't have permission to view it.
         """
         raise NotImplementedError
 
     @abstractmethod
     def revoke_token(self, access_token: str):
+        """Revoke the validity of a specific access token permanently."""
         raise NotImplementedError
