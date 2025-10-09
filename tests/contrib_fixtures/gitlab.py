@@ -2,8 +2,11 @@
 #
 # Copyright (C) 2025 CERN.
 #
-# Invenio-Github is free software; you can redistribute it and/or modify
+# Invenio-VCS is free software; you can redistribute it and/or modify
 # it under the terms of the MIT License; see LICENSE file for more details.
+#
+# Some of the code in this file was taken from https://codebase.helmholtz.cloud/rodare/invenio-gitlab
+# and relicensed under MIT with permission from the authors.
 """Fixture test impl for GitLab."""
 
 from typing import Any, Iterator

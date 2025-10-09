@@ -2,9 +2,9 @@
 #
 # Copyright (C) 2025 CERN.
 #
-# Invenio-Github is free software; you can redistribute it and/or modify
+# Invenio-VCS is free software; you can redistribute it and/or modify
 # it under the terms of the MIT License; see LICENSE file for more details.
-"""Test invenio-vcs providers."""
+"""Test invenio-vcs provider layer."""
 
 from invenio_vcs.generic_models import (
     GenericContributor,

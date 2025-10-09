@@ -3,9 +3,9 @@
 # Copyright (C) 2023 CERN.
 # Copyright (C) 2024 Graz University of Technology.
 #
-# Invenio-Github is free software; you can redistribute it and/or modify
+# Invenio-vcs is free software; you can redistribute it and/or modify
 # it under the terms of the MIT License; see LICENSE file for more details.
-"""Test invenio-github alembic."""
+"""Test invenio-vcs alembic."""
 
 import pytest
 from invenio_db.utils import alembic_test_context, drop_alembic_version_table
