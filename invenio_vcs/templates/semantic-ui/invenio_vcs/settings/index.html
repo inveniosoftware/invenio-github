@@ -24,9 +24,9 @@
           btn_id='sync_repos',
           btn_name='sync-repos',
           btn_help_text=_('(updated {})').format(last_sync|naturaltime),
-          btn_provider=provider,
+          provider=provider,
           loaded_message_id='sync-result-message',
-          id="github-view",
+          id="vcs-view",
         )
       }}
 
@@ -68,9 +68,8 @@
               <h4 class="ui medium header">2 {{ _("Create a release") }}</h4>
               <div class="ui divider"></div>
               <p>
-                {{ _('Go to GitHub and <a href="https://help.github.com/articles/creating-releases" target="_blank">create a release <i class="small icon external" aria-hidden="true"></i></a>. {}
-                will automatically download a .zip-ball of each new release and register a DOI.')
-                .format(config.THEME_SITENAME | default('System')) }}
+                {{ _('Go to %(name)s and <a href="https://help.github.com/articles/creating-releases" target="_blank">create a release <i class="small icon external" aria-hidden="true"></i></a>. %(site_name)s will automatically download a .zip-ball of each new release and register a DOI.',
+                name=vocabulary["name"], site_name=config.THEME_SITENAME | default('System')) }}
               </p>
             </div>
 
@@ -78,8 +77,8 @@
               <h4 class="ui medium header">3 {{ _("Get the badge") }}</h4>
               <div class="ui divider"></div>
               <p>
-                {{ _('After your first release, a DOI badge that you can include in GitHub
-                README will appear next to your repository below.') }}
+                {{ _('After your first release, a DOI badge that you can include in your %(name)s
+                README will appear next to your repository below.', name=vocabulary["name"]) }}
               </p>
 
               <div class="flex align-items-center justify-center rel-mt-1">
@@ -124,6 +123,7 @@
       {%- block repositories_tooltip %}
         <p class="ui segment m-0">
           <small>
+            <!-- TODO: what do we do about this? -->
             {{ _('If your organization\'s repositories do not show up in the list, please
             ensure you have enabled <a href="https://help.github.com/articles/approving-third-party-applications-for-your-organization/" target="_blank">third-party
             access <i class="small icon external" aria-hidden="true"></i></a> to the {} application. Private repositories are not supported.')
@@ -134,11 +134,11 @@
 
       {%- if not repos %}
         <p class="ui segment">
-          {{_('You have no repositories on GitHub.') }}
+          {{_('You have no repositories on %(name)s.', vocabulary["name"]) }}
           <br />
           <br />
-          {{_('Go to <a href="https://github.com/new" target="_blank">%(name)s <i class="small icon external" aria-hidden="true"></i></a> and create your first or
-          click Sync-button to synchronize latest changes from %(name)s.', name=vocabulary["name"])}}
+          {{_('Go to <a href="%(url)s" target="_blank">%(name)s <i class="small icon external" aria-hidden="true"></i></a> and create your first or
+          click the Sync button to synchronize the latest changes from %(name)s.', name=vocabulary["name"], url=new_repo_url)}}
         </p>
       {%- else %}
         <ul class="ui segments no-border no-border-radius-top no-style-list m-0 p-0">
@@ -153,9 +153,9 @@
       {{ helpers.panel_end() }}
     {%- endblock %}
 
-  {#- If the user has not connected his GitHub account... #}
+  {#- If the user has not connected their VCS account... #}
   {%- else %}
-    {%- block connect_to_github %}
+    {%- block connect_to_vcs_account %}
       {{ helpers.panel_start(_('%(name)s', name=vocabulary["name"]), icon=vocabulary["icon"] + " icon") }}
       <div class="ui segment">
         <div class="ui centered container">

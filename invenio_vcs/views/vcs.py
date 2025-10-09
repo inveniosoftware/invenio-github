@@ -22,7 +22,7 @@
 # granted to it by virtue of its status as an Intergovernmental Organization
 # or submit itself to any jurisdiction.
 
-"""GitHub blueprint for Invenio platform."""
+"""VCS views blueprint for Invenio platform."""
 
 from functools import wraps
 
@@ -34,7 +34,7 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from invenio_vcs.service import VCSService
 
-from ..errors import GithubTokenNotFound, RepositoryAccessError, RepositoryNotFoundError
+from ..errors import RepositoryAccessError, RepositoryNotFoundError, VCSTokenNotFound
 
 
 def request_session_token():
@@ -47,7 +47,7 @@ def request_session_token():
             svc = VCSService.for_provider_and_user(provider, current_user.id)
             if svc.is_authenticated:
                 return f(*args, **kwargs)
-            raise GithubTokenNotFound(
+            raise VCSTokenNotFound(
                 current_user, _("VCS provider session token is required")
             )
 
@@ -91,6 +91,7 @@ def register_ui_routes(blueprint):
             connected=False,
             provider=provider,
             vocabulary=svc.provider.factory.vocabulary,
+            new_repo_url=svc.provider.factory.url_for_new_repo(),
         )
 
         if svc.is_authenticated:
@@ -158,7 +159,7 @@ def register_api_routes(blueprint):
         """Synchronizes user repos.
 
         Currently:
-            POST /api/user/github/repositories/sync
+            POST /api/user/vcs/<provider>/repositories/sync
         Previously:
             POST /account/settings/github/hook
         """
@@ -174,27 +175,12 @@ def register_api_routes(blueprint):
 
     @login_required
     @request_session_token()
-    @blueprint.route("/", methods=["POST"])
-    def init_user_github(provider):
-        """Initialises github account for an user."""
-        try:
-            svc = VCSService.for_provider_and_user(provider, current_user.id)
-            svc.init_account()
-            svc.sync(async_hooks=False)
-            db.session.commit()
-        except Exception as exc:
-            current_app.logger.exception(str(exc))
-            abort(400)
-        return "", 200
-
-    @login_required
-    @request_session_token()
     @blueprint.route("/repositories/<repository_id>/enable", methods=["POST"])
     def enable_repository(provider, repository_id):
         """Enables one repository.
 
         Currently:
-            POST /api/user/github/repositories/<repository_id>/enable
+            POST /api/user/vcs/<provider>/repositories/<repository_id>/enable
         Previously:
             POST /account/settings/github/hook
         """
@@ -224,7 +210,7 @@ def register_api_routes(blueprint):
         """Disables one repository.
 
         Currently:
-            POST /api/user/github/repositories/<repository_id>/disable
+            POST /api/user/vcs/<provider>/repositories/<repository_id>/disable
         Previously:
             DELETE /account/settings/github/hook
         """

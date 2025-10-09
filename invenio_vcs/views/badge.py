@@ -44,7 +44,7 @@ blueprint = Blueprint(
 
 @blueprint.route("/<repo_provider_id>.svg")
 def index(provider, repo_provider_id):
-    """Generate a badge for a specific GitHub repository (by github ID)."""
+    """Generate a badge for a specific vcs repository (by vcs ID)."""
     repo = Repository.query.filter(
         Repository.provider_id == repo_provider_id, Repository.provider == provider
     ).one_or_none()
@@ -72,7 +72,7 @@ def index(provider, repo_provider_id):
 # Kept for backward compatibility
 @blueprint.route("/<int:user_id>/<path:repo_name>.svg")
 def index_old(provider, user_id, repo_name):
-    """Generate a badge for a specific GitHub repository (by name)."""
+    """Generate a badge for a specific vcs repository (by name)."""
     repo = Repository.query.filter(
         Repository.full_name == repo_name, Repository.provider == provider
     ).one_or_none()
@@ -101,7 +101,7 @@ def index_old(provider, user_id, repo_name):
 @blueprint.route("/latestdoi/<provider_id>")
 def latest_doi(provider, provider_id):
     """Redirect to the newest record version."""
-    # Without user_id, we can't use GitHubAPI. Therefore, we fetch the latest release using the Repository model directly.
+    # Without user_id, we can't use VCSService. Therefore, we fetch the latest release using the Repository model directly.
     repo = Repository.query.filter(
         Repository.provider_id == provider_id, Repository.provider == provider
     ).one_or_none()

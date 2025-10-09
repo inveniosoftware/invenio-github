@@ -38,7 +38,7 @@
           {%- endif %}
 
           {%- if release_record_doi %}
-            {{ doi_badge(release_record_doi, doi_url=conceptid_doi_url, github_id=repo_id) }}
+            {{ doi_badge(release_record_doi, doi_url=conceptid_doi_url, provider=provider, provider_id=repo_id) }}
           {%- endif %}
         </div>
 
