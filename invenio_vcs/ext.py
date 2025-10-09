@@ -121,6 +121,7 @@ def init_menu(app):
 
 
 def init_webhooks(app):
+    """Register the webhook receivers based on the configured VCS providers."""
     state = app.extensions.get("invenio-webhooks")
     if state is not None:
         for provider in get_provider_list(app):
