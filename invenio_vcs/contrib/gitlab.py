@@ -156,6 +156,10 @@ class GitLabProviderFactory(RepositoryServiceProviderFactory):
         """The URL for creating a new release."""
         return "{}/{}/-/releases/new".format(self.base_url, repository_name)
 
+    def url_for_new_repo(self) -> str:
+        """The URL for creating a new repository."""
+        return "{}/projects/new".format(self.base_url)
+
     def webhook_is_create_release_event(self, event_payload: dict[str, Any]):
         """Identify if the webhook payload is one we want to use."""
         # https://archives.docs.gitlab.com/17.11/user/project/integrations/webhook_events/#release-events

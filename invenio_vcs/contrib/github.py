@@ -34,7 +34,7 @@ from invenio_vcs.providers import (
 
 
 class GitHubProviderFactory(RepositoryServiceProviderFactory):
-    """Contrib implementation factory for GitHub."""
+    """Contrib implementation factory for VCS."""
 
     def __init__(
         self,
@@ -177,6 +177,10 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
         return "{}/{}/new/{}?filename={}".format(
             self.base_url, repository_name, branch_name, file_name
         )
+
+    def url_for_new_repo(self) -> str:
+        """URL for creating a new repository."""
+        return "{}/new".format(self.base_url)
 
 
 class GitHubProvider(RepositoryServiceProvider):

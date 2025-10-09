@@ -121,6 +121,11 @@ class RepositoryServiceProviderFactory(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def url_for_new_repo(self) -> str:
+        """Generates the URL for the UI page through which a new repository can be created."""
+        raise NotImplementedError
+
+    @abstractmethod
     def webhook_is_create_release_event(self, event_payload: dict[str, Any]):
         """
         Returns whether the raw JSON payload of a webhook event is an event corresponding to the publication of a webhook.
