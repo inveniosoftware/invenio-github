@@ -20,7 +20,7 @@
 # granted to it by virtue of its status as an Intergovernmental Organization
 # or submit itself to any jurisdiction.
 
-"""Test GitHub hook."""
+"""Test vcs hook."""
 
 import json
 
@@ -96,7 +96,7 @@ def test_webhook_post(
     assert release.status == ReleaseStatus.PUBLISHED
     assert release.provider_id == test_generic_release.id
     assert release.tag == test_generic_release.tag_name
-    # This uuid is a fake one set by TestGithubRelease fixture
+    # This uuid is a fake one set by TestVCSRelease fixture
     assert str(release.record_id) == "445aaacd-9de1-41ab-af52-25ab6cb93df7"
     assert release.errors is None
 

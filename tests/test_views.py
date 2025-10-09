@@ -2,9 +2,10 @@
 #
 # Copyright (C) 2023 CERN.
 #
-# Invenio-Github is free software; you can redistribute it and/or modify
+# Invenio-VCS is free software; you can redistribute it and/or modify
 # it under the terms of the MIT License; see LICENSE file for more details.
-"""Test invenio-github views."""
+"""Test invenio-vcs views."""
+
 from flask import url_for
 from flask_security import login_user
 from invenio_accounts.testutils import login_user_via_session

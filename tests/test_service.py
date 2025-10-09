@@ -2,9 +2,9 @@
 #
 # Copyright (C) 2023-2025 CERN.
 #
-# Invenio-Github is free software; you can redistribute it and/or modify
+# Invenio-VCS is free software; you can redistribute it and/or modify
 # it under the terms of the MIT License; see LICENSE file for more details.
-"""Test invenio-github api."""
+"""Test invenio-vcs service layer."""
 
 import json
 
@@ -79,9 +79,6 @@ def test_vcs_service_get_repository(
     assert repository.provider_id == test_generic_repositories[0].id
 
 
-# GithubRelease api tests
-
-
 def test_release_api(
     app,
     test_user,
@@ -110,7 +107,7 @@ def test_release_api(
             status=ReleaseStatus.RECEIVED,
         )
 
-        # Idea is to test the public interface of GithubRelease
+        # Idea is to test the public interface of VCSRelease
         r = VCSRelease(release, vcs_service.provider)
 
         # Validate that public methods raise NotImplementedError
