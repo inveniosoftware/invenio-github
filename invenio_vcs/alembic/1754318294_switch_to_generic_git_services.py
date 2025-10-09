@@ -1,11 +1,11 @@
-#
+# -*- coding: utf-8 -*-
 # This file is part of Invenio.
 # Copyright (C) 2025 CERN.
 #
 # Invenio is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
 
-"""Switch to generic git services"""
+"""Switch to a generic VCS module (not GitHub-specific)."""
 
 import uuid
 from datetime import datetime, timezone
@@ -253,12 +253,12 @@ def upgrade():
 
 
 def downgrade():
-    """Downgrade database."""
+    """Downgrade database.
 
-    # Currently, the downgrade can only be peformed **without data**. The tables are transformed but
-    # data will not be successfully migrated. The upgrade migration has a large amount of custom logic
-    # for migrating the data into the new format, and this is not replicated/reversed for downgrading.
-
+    Currently, the downgrade can only be peformed **without data**. The tables are transformed but
+    data will not be successfully migrated. The upgrade migration has a large amount of custom logic
+    for migrating the data into the new format, and this is not replicated/reversed for downgrading.
+    """
     op.alter_column(
         "vcs_repositories",
         "enabled_by_id",

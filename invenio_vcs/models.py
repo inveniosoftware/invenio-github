@@ -22,7 +22,7 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-"""Models for GitHub integration."""
+"""Models for the VCS integration."""
 
 import uuid
 from enum import Enum
@@ -124,7 +124,7 @@ repository_user_association = db.Table(
 
 
 class Repository(db.Model, Timestamp):
-    """Information about a GitHub repository."""
+    """Information about a vcs repository."""
 
     __tablename__ = "vcs_repositories"
 
@@ -153,7 +153,7 @@ class Repository(db.Model, Timestamp):
         db.String(255),
         nullable=False,
     )
-    """Unique GitHub identifier for a repository.
+    """Unique VCS provider identifier for a repository.
 
     .. note::
 
@@ -161,13 +161,14 @@ class Repository(db.Model, Timestamp):
         (eg. 'inveniosoftware/invenio-github') in order to track repositories.
         This however leads to problems, since repository names can change and
         thus render the stored repository name useless. In order to tackle this
-        issue, the `github_id` should be used to track repositories, which is a
+        issue, the `provider_id` should be used to track repositories, which is a
         unique identifier that GitHub uses for each repository and doesn't
         change on renames/transfers.
 
         In order to be able to keep deleted repositories with releases that
         have been published, it is possible to keep an entry without a
-        `github_id`, that only has a `name`.
+        `provider_id`, that only has a `name`. This only applies to the default
+        `github` provider on migrated pre-VCS instances.
     """
 
     provider = db.Column(db.String(255), nullable=False)
@@ -219,26 +220,29 @@ class Repository(db.Model, Timestamp):
         return obj
 
     def add_user(self, user_id: int):
+        """Add permission for a user to access the repository."""
         user = User(id=user_id)
         user = db.session.merge(user)
         self.users.append(user)
 
     def remove_user(self, user_id: int):
+        """Remove permission for a user to access the repository."""
         user = User(id=user_id)
         user = db.session.merge(user)
         self.users.remove(user)
 
     @classmethod
     def get(cls, provider, provider_id=None, full_name=None):
-        """Return a repository given its name or github id.
+        """Return a repository given its name or provider id.
 
-        :param integer github_id: GitHub repository identifier.
-        :param str name: GitHub repository full name.
+        :param str provider: Registered ID of the VCS provider.
+        :param str provider_id: VCS provider repository identifier.
+        :param str name: Repository full name.
         :returns: The repository object.
         :raises: :py:exc:`~sqlalchemy.orm.exc.NoResultFound`: if the repository
                  doesn't exist.
         :raises: :py:exc:`~sqlalchemy.orm.exc.MultipleResultsFound`: if
-                 multiple repositories with the specified GitHub id and/or name
+                 multiple repositories with the specified provider id and/or name
                  exist.
         """
         repo = None
@@ -273,7 +277,7 @@ class Repository(db.Model, Timestamp):
 
 
 class Release(db.Model, Timestamp):
-    """Information about a GitHub release."""
+    """Information about a VCS release."""
 
     __tablename__ = "vcs_releases"
 
@@ -299,7 +303,7 @@ class Release(db.Model, Timestamp):
     """Release identifier."""
 
     provider_id = db.Column(db.String(255), nullable=True)
-    """Unique GitHub release identifier."""
+    """Unique VCS provider release identifier."""
 
     provider = db.Column(db.String(255), nullable=False)
     """Which VCS provider the release is hosted by (and therefore the context in which to consider the provider_id)"""
