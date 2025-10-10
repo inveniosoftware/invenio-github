@@ -25,6 +25,5 @@
 API Docs
 ========
 
-invenio_github
---------------
-
+.. automodule:: invenio_vcs.ext
+   :members:
