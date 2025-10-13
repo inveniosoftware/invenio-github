@@ -60,5 +60,4 @@ Special config values
 
 These optional values can be passed as keys of the ``config`` dictionary in the ``GitHubProviderFactory`` constructor.
 
-* ``shared_secret``: signing secret for the webhook payload. See the `GitHub documentation <https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries>`_ for more details. Currently, one instance-wide secret is used for all webhooks. In addition, an internal per-repository access token is automatically attached to the webhook URL to validate access.
-* ``insecure_ssl``: a boolean to indicate whether GitHub should accept self-signed or otherwise insecure SSl/TLS certificates when attempting to deliver the webhook.
+* ``shared_validation_token``: Validation secret token for the webhook payload. See the `GitLab documentation <https://docs.gitlab.com/user/project/integrations/webhooks/#create-a-webhook>`_ for more details. Currently, one instance-wide token is used for all webhooks. In addition, an internal per-repository access token is automatically attached to the webhook URL to validate access.
