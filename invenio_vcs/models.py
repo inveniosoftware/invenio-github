@@ -33,6 +33,7 @@ from invenio_i18n import lazy_gettext as _
 from invenio_webhooks.models import Event
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy_utils.models import Timestamp
 from sqlalchemy_utils.types import ChoiceType, JSONType, UUIDType
 
@@ -312,10 +313,11 @@ class Release(db.Model, Timestamp):
     """Release tag."""
 
     errors = db.Column(
-        JSONType().with_variant(
-            # TODO postgresql specific. Limits the usage of the DB engine.
-            postgresql.JSON(none_as_null=True),
-            "postgresql",
+        MutableDict.as_mutable(
+            db.JSON()
+            .with_variant(postgresql.JSONB(), "postgresql")
+            .with_variant(JSONType(), "sqlite")
+            .with_variant(JSONType(), "mysql")
         ),
         nullable=True,
     )
