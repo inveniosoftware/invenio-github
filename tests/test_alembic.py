@@ -3,9 +3,9 @@
 # Copyright (C) 2023 CERN.
 # Copyright (C) 2024 Graz University of Technology.
 #
-# Invenio-Github is free software; you can redistribute it and/or modify
+# Invenio-vcs is free software; you can redistribute it and/or modify
 # it under the terms of the MIT License; see LICENSE file for more details.
-"""Test invenio-github alembic."""
+"""Test invenio-vcs alembic."""
 
 import pytest
 from invenio_db.utils import alembic_test_context, drop_alembic_version_table
@@ -23,8 +23,9 @@ def test_alembic(base_app, database):
 
     # Check that this package's SQLAlchemy models have been properly registered
     tables = [x for x in db.metadata.tables]
-    assert "github_repositories" in tables
-    assert "github_releases" in tables
+    assert "vcs_repositories" in tables
+    assert "vcs_releases" in tables
+    assert "vcs_repository_users" in tables
 
     # Check that Alembic agrees that there's no further tables to create.
     assert len(ext.alembic.compare_metadata()) == 0

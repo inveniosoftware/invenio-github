@@ -1,55 +1,56 @@
 # -*- coding: utf-8 -*-
 #
-# This file is part of Invenio.
 # Copyright (C) 2023-2025 CERN.
-# Copyright (C) 2025 Graz University of Technology.
 #
-# Invenio is free software; you can redistribute it
-# and/or modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the
-# License, or (at your option) any later version.
-#
-# Invenio is distributed in the hope that it will be
-# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Invenio; if not, write to the
-# Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307, USA.
-#
-# In applying this license, CERN does not
-# waive the privileges and immunities granted to it by virtue of its status
-# as an Intergovernmental Organization or submit itself to any jurisdiction.
-
+# Invenio-VCS is free software; you can redistribute it and/or modify
+# it under the terms of the MIT License; see LICENSE file for more details.
 """Pytest configuration."""
 
 from __future__ import absolute_import, print_function
 
 from collections import namedtuple
+from typing import Any
 
-import github3
 import pytest
 from invenio_app.factory import create_api
-from invenio_oauthclient.contrib.github import REMOTE_APP as GITHUB_REMOTE_APP
-from invenio_oauthclient.contrib.github import REMOTE_REST_APP as GITHUB_REMOTE_REST_APP
 from invenio_oauthclient.models import RemoteToken
 from invenio_oauthclient.proxies import current_oauthclient
-from mock import MagicMock, patch
+
+from invenio_vcs.contrib.github import GitHubProviderFactory
+from invenio_vcs.contrib.gitlab import GitLabProviderFactory
+from invenio_vcs.generic_models import (
+    GenericContributor,
+    GenericOwner,
+    GenericOwnerType,
+    GenericRelease,
+    GenericRepository,
+    GenericUser,
+    GenericWebhook,
+)
+from invenio_vcs.providers import RepositoryServiceProvider
+from invenio_vcs.service import VCSService
+from invenio_vcs.utils import utcnow
+from tests.contrib_fixtures.github import GitHubPatcher
+from tests.contrib_fixtures.gitlab import GitLabPatcher
+from tests.contrib_fixtures.patcher import TestProviderPatcher
 
 from .fixtures import (
-    ZIPBALL,
-    TestGithubRelease,
-    github_file_contents,
-    github_repo_metadata,
-    github_user_metadata,
+    TestVCSRelease,
 )
 
 
 @pytest.fixture(scope="module")
 def app_config(app_config):
     """Test app config."""
+    vcs_github = GitHubProviderFactory(
+        base_url="https://github.com",
+        webhook_receiver_url="http://localhost:5000/api/receivers/github/events/?access_token={token}",
+    )
+    vcs_gitlab = GitLabProviderFactory(
+        base_url="https://gitlab.com",
+        webhook_receiver_url="http://localhost:5000/api/receivers/gitlab/events/?access_token={token}",
+    )
+
     app_config.update(
         # HTTPretty doesn't play well with Redis.
         # See gabrielfalcao/HTTPretty#110
@@ -63,21 +64,24 @@ def app_config(app_config):
             consumer_key="changeme",
             consumer_secret="changeme",
         ),
-        GITHUB_SHARED_SECRET="changeme",
-        GITHUB_INSECURE_SSL=False,
-        GITHUB_INTEGRATION_ENABLED=True,
-        GITHUB_METADATA_FILE=".invenio.json",
-        GITHUB_WEBHOOK_RECEIVER_URL="http://localhost:5000/api/receivers/github/events/?access_token={token}",
-        GITHUB_WEBHOOK_RECEIVER_ID="github",
-        GITHUB_RELEASE_CLASS=TestGithubRelease,
+        GITLAB_APP_CREDENTIALS=dict(
+            consumer_key="changeme",
+            consumer_secret="changeme",
+        ),
+        VCS_RELEASE_CLASS=TestVCSRelease,
+        VCS_PROVIDERS=[vcs_github, vcs_gitlab],
+        # TODO: delete this to avoid duplication
+        VCS_INTEGRATION_ENABLED=True,
         LOGIN_DISABLED=False,
         OAUTHLIB_INSECURE_TRANSPORT=True,
         OAUTH2_CACHE_TYPE="simple",
         OAUTHCLIENT_REMOTE_APPS=dict(
-            github=GITHUB_REMOTE_APP,
+            github=vcs_github.remote_config,
+            gitlab=vcs_gitlab.remote_config,
         ),
         OAUTHCLIENT_REST_REMOTE_APPS=dict(
-            github=GITHUB_REMOTE_REST_APP,
+            github=vcs_github.remote_config,
+            gitlab=vcs_gitlab.remote_config,
         ),
         SECRET_KEY="test_key",
         SERVER_NAME="testserver.localdomain",
@@ -98,9 +102,6 @@ def app_config(app_config):
         FILES_REST_DEFAULT_STORAGE_CLASS="L",
         THEME_FRONTPAGE=False,
     )
-    app_config["OAUTHCLIENT_REMOTE_APPS"]["github"]["params"]["request_token_params"][
-        "scope"
-    ] = "user:email,admin:repo_hook,read:org"
     return app_config
 
 
@@ -131,10 +132,10 @@ def running_app(app, location, cache):
 
 
 @pytest.fixture()
-def test_user(app, db, github_remote_app):
+def test_user(app, db, remote_apps):
     """Creates a test user.
 
-    Links the user to a github RemoteToken.
+    Links the user to a VCS RemoteToken.
     """
     datastore = app.extensions["security"].datastore
     user = datastore.create_user(
@@ -142,33 +143,29 @@ def test_user(app, db, github_remote_app):
         password="tester",
     )
 
-    # Create GitHub link for user
-    token = RemoteToken.get(user.id, github_remote_app.consumer_key)
-    if not token:
-        RemoteToken.create(
-            user.id,
-            github_remote_app.consumer_key,
-            "test",
-            "",
-        )
+    # Create provider links for user
+    for app in remote_apps:
+        token = RemoteToken.get(user.id, app.consumer_key)
+        if not token:
+            # This auto-creates the missing RemoteAccount
+            RemoteToken.create(
+                user.id,
+                app.consumer_key,
+                "test",
+                "",
+            )
+
     db.session.commit()
     return user
 
 
 @pytest.fixture()
-def github_remote_app():
-    """Returns github remote app."""
-    return current_oauthclient.oauth.remote_apps["github"]
-
-
-@pytest.fixture()
-def remote_token(test_user, github_remote_app):
-    """Returns github RemoteToken for user."""
-    token = RemoteToken.get(
-        test_user.id,
-        github_remote_app.consumer_key,
-    )
-    return token
+def remote_apps():
+    """An example list of configured OAuth apps."""
+    return [
+        current_oauthclient.oauth.remote_apps["github"],
+        current_oauthclient.oauth.remote_apps["gitlab"],
+    ]
 
 
 @pytest.fixture
@@ -190,121 +187,157 @@ def tester_id(test_user):
 
 
 @pytest.fixture()
-def test_repo_data_one():
-    """Test repository."""
-    return {"name": "repo-1", "id": 1}
+def test_generic_repositories():
+    """Provider-common dataset of test repositories."""
+    return [
+        GenericRepository(
+            id="1",
+            full_name="repo-1",
+            default_branch="main",
+            html_url="https://example.com/example/example1",
+            description="Lorem ipsum",
+            license_spdx="MIT",
+        ),
+        GenericRepository(
+            id="2",
+            full_name="repo-2",
+            default_branch="main",
+            html_url="https://example.com/example/example2",
+            description="Lorem ipsum",
+            license_spdx="MIT",
+        ),
+        GenericRepository(
+            id="3",
+            full_name="repo-3",
+            default_branch="main",
+            html_url="https://example.com/example/example3",
+            description="Lorem ipsum",
+            license_spdx="MIT",
+        ),
+    ]
 
 
 @pytest.fixture()
-def test_repo_data_two():
-    """Test repository."""
-    return {"name": "repo-2", "id": 2}
+def test_generic_contributors():
+    """Provider-common dataset of test contributors (same for all repos)."""
+    return [
+        GenericContributor(
+            id="1", username="user1", company="Lorem", display_name="Lorem"
+        ),
+        GenericContributor(
+            id="2", username="user2", contributions_count=10, display_name="Lorem"
+        ),
+    ]
 
 
 @pytest.fixture()
-def test_repo_data_three():
-    """Test repository."""
-    return {"name": "arepo", "id": 3}
+def test_collaborators():
+    """Provider-common dataset of test collaborators (same for all repos).
+
+    We don't have a built-in generic type for this so we'll use a dictionary.
+    """
+    return [
+        {"id": "1", "username": "user1", "admin": True},
+        {"id": "2", "username": "user2", "admin": False},
+    ]
 
 
 @pytest.fixture()
-def github_api(
-    running_app,
-    db,
-    test_repo_data_one,
-    test_repo_data_two,
-    test_repo_data_three,
+def test_generic_webhooks():
+    """Provider-common dataset of test webhooks (same for all repos)."""
+    return [
+        GenericWebhook(id="1", repository_id="1", url="https://example.com"),
+        GenericWebhook(id="2", repository_id="2", url="https://example.com"),
+    ]
+
+
+@pytest.fixture()
+def test_generic_user():
+    """Provider-common user to own the repositories."""
+    return GenericUser(id="1", username="user1", display_name="Test User")
+
+
+@pytest.fixture()
+def test_generic_owner(test_generic_user: GenericUser):
+    """GenericOwner representation of the test generic user."""
+    return GenericOwner(
+        test_generic_user.id,
+        test_generic_user.username,
+        GenericOwnerType.Person,
+        display_name=test_generic_user.display_name,
+    )
+
+
+@pytest.fixture()
+def test_generic_release():
+    """Provider-common example release."""
+    return GenericRelease(
+        id="1",
+        tag_name="v1.0",
+        created_at=utcnow(),
+        html_url="https://example.com/v1.0",
+        name="Example release",
+        body="Lorem ipsum dolor sit amet",
+        published_at=utcnow(),
+        tarball_url="https://example.com/v1.0.tar",
+        zipball_url="https://example.com/v1.0.zip",
+    )
+
+
+@pytest.fixture()
+def test_file():
+    """Provider-common example file within a repository (no generic interface available for this)."""
+    return {"path": "test.py", "content": "test"}
+
+
+_provider_patchers: list[type[TestProviderPatcher]] = [GitHubPatcher, GitLabPatcher]
+
+
+def provider_id(p: type[TestProviderPatcher]):
+    """Extract the provider ID to use as the test case ID."""
+    return p.provider_factory().id
+
+
+@pytest.fixture(params=_provider_patchers, ids=provider_id)
+def vcs_provider(
+    request: pytest.FixtureRequest,
     test_user,
+    test_generic_repositories: list[GenericRepository],
+    test_generic_contributors: list[GenericContributor],
+    test_collaborators: list[dict[str, Any]],
+    test_generic_webhooks: list[GenericWebhook],
+    test_generic_user: GenericUser,
+    test_file: dict[str, Any],
 ):
-    """Github API mock."""
-    mock_api = MagicMock()
-    mock_api.session = MagicMock()
-    mock_api.me.return_value = github3.users.User(
-        github_user_metadata(login="auser", email="auser@inveniosoftware.org"),
-        mock_api.session,
+    """Call the patcher for the provider and run the test case 'inside' its patch context."""
+    patcher_class: type[TestProviderPatcher] = request.param
+    patcher = patcher_class(test_user)
+    # The patch call returns a generator that yields the provider within the patch context.
+    # Use yield from to delegate to the patcher's generator, ensuring tests run within the patch context.
+    yield from patcher.patch(
+        test_generic_repositories,
+        test_generic_contributors,
+        test_collaborators,
+        test_generic_webhooks,
+        test_generic_user,
+        test_file,
     )
 
-    repo_1 = github3.repos.Repository(
-        github_repo_metadata(
-            "auser", test_repo_data_one["name"], test_repo_data_one["id"]
-        ),
-        mock_api.session,
+
+@pytest.fixture()
+def vcs_service(vcs_provider: RepositoryServiceProvider):
+    """Return an initialised (but not synced) service object for a provider."""
+    svc = VCSService(vcs_provider)
+    svc.init_account()
+    return svc
+
+
+@pytest.fixture()
+def provider_patcher(vcs_provider: RepositoryServiceProvider):
+    """Return the raw patcher object corresponding to the current test's provider."""
+    for patcher in _provider_patchers:
+        if patcher.provider_factory().id == vcs_provider.factory.id:
+            return patcher
+    raise ValueError(
+        f"Patcher corresponding to ID {vcs_provider.factory.id} not found."
     )
-    repo_1.hooks = MagicMock(return_value=[])
-    repo_1.file_contents = MagicMock(return_value=None)
-    # Mock hook creation to retun the hook id '12345'
-    hook_instance = MagicMock()
-    hook_instance.id = 12345
-    repo_1.create_hook = MagicMock(return_value=hook_instance)
-
-    repo_2 = github3.repos.Repository(
-        github_repo_metadata(
-            "auser", test_repo_data_two["name"], test_repo_data_two["id"]
-        ),
-        mock_api.session,
-    )
-
-    repo_2.hooks = MagicMock(return_value=[])
-    repo_2.create_hook = MagicMock(return_value=hook_instance)
-
-    file_path = "test.py"
-
-    def mock_file_content():
-        # File contents mocking
-        owner = "auser"
-        repo = test_repo_data_two["name"]
-        ref = ""
-
-        # Dummy data to be encoded as the file contents
-        data = "dummy".encode("ascii")
-        return github_file_contents(owner, repo, file_path, ref, data)
-
-    file_data = mock_file_content()
-
-    def mock_file_contents(path, ref=None):
-        if path == file_path:
-            # Mock github3.contents.Content with file_data
-            return MagicMock(decoded=file_data)
-        return None
-
-    repo_2.file_contents = MagicMock(side_effect=mock_file_contents)
-
-    repo_3 = github3.repos.Repository(
-        github_repo_metadata(
-            "auser", test_repo_data_three["name"], test_repo_data_three["id"]
-        ),
-        mock_api.session,
-    )
-    repo_3.hooks = MagicMock(return_value=[])
-    repo_3.file_contents = MagicMock(return_value=None)
-
-    repos = {1: repo_1, 2: repo_2, 3: repo_3}
-    repos_by_name = {r.full_name: r for r in repos.values()}
-    mock_api.repositories.return_value = repos.values()
-
-    def mock_repo_with_id(id):
-        return repos.get(id)
-
-    def mock_repo_by_name(owner, name):
-        return repos_by_name.get("/".join((owner, name)))
-
-    def mock_head_status_by_repo_url(url, **kwargs):
-        url_specific_refs_tags = (
-            "https://github.com/auser/repo-2/zipball/refs/tags/v1.0-tag-and-branch"
-        )
-        if url.endswith("v1.0-tag-and-branch") and url != url_specific_refs_tags:
-            return MagicMock(
-                status_code=300, links={"alternate": {"url": url_specific_refs_tags}}
-            )
-        else:
-            return MagicMock(status_code=200, url=url)
-
-    mock_api.repository_with_id.side_effect = mock_repo_with_id
-    mock_api.repository.side_effect = mock_repo_by_name
-    mock_api.markdown.side_effect = lambda x: x
-    mock_api.session.head.side_effect = mock_head_status_by_repo_url
-    mock_api.session.get.return_value = MagicMock(raw=ZIPBALL())
-
-    with patch("invenio_github.api.GitHubAPI.api", new=mock_api):
-        with patch("invenio_github.api.GitHubAPI._sync_hooks"):
-            yield mock_api
