@@ -432,3 +432,15 @@ by running the following SQL commands:
    DROP TABLE github_repositories;
    DROP TABLE github_releases;
    COMMIT;
+
+Mark the relevant migration as having been manually performed:
+
+.. code-block:: bash
+
+  invenio alembic stamp invenio_github@1754318294
+
+.. note::
+
+   The Alembic branch name ``invenio_github`` is unchanged despite all the other renamed references.
+   Changing the name of an Alembic branch is not supported and would introduce too many bugs to make it
+   worthwhile.
