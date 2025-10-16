@@ -134,7 +134,7 @@
 
       {%- if not repos %}
         <p class="ui segment">
-          {{_('You have no repositories on %(name)s.', vocabulary["name"]) }}
+          {{ _('You have no repositories on %(name)s.', name=vocabulary["name"]) }}
           <br />
           <br />
           {{_('Go to <a href="%(url)s" target="_blank">%(name)s <i class="small icon external" aria-hidden="true"></i></a> and create your first or
