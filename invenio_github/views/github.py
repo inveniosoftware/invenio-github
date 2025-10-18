@@ -155,7 +155,7 @@ def register_api_routes(blueprint):
         """
         try:
             github = GitHubAPI(user_id=current_user.id)
-            github.sync(async_hooks=False)
+            github.sync()
             db.session.commit()
         except Exception as exc:
             current_app.logger.exception(str(exc))
@@ -171,7 +171,7 @@ def register_api_routes(blueprint):
         try:
             github = GitHubAPI(user_id=current_user.id)
             github.init_account()
-            github.sync(async_hooks=False)
+            github.sync()
             db.session.commit()
         except Exception as exc:
             current_app.logger.exception(str(exc))

@@ -7,12 +7,14 @@
 """Test invenio-github api."""
 
 import json
+import time
+from unittest.mock import patch
 
 import pytest
 from invenio_webhooks.models import Event
 
 from invenio_github.api import GitHubAPI, GitHubRelease
-from invenio_github.models import Release, ReleaseStatus
+from invenio_github.models import Release, ReleaseStatus, Repository
 
 from .fixtures import PAYLOAD as github_payload_fixture
 
@@ -117,3 +119,131 @@ def test_release_branch_tag_conflict(app, test_user, github_api):
         assert resolved_url == ref_tag_url
         # Check that the original zipball URL from the event payload is not the same
         assert rel_api.release_zipball_url != ref_tag_url
+
+
+def test_sync_basic(app, test_user, github_api):
+    """Test basic sync functionality."""
+    api = GitHubAPI(test_user.id)
+    api.init_account()
+
+    # Test sync without hooks
+    api.sync(hooks=False)
+
+    # Verify account extra data is updated
+    assert api.account.extra_data["repos"] is not None
+    assert api.account.extra_data["last_sync"] is not None
+
+
+def test_sync_updates_repo_names(app, test_user, github_api, db):
+    """Test that sync updates repository names when they change on GitHub."""
+
+    api = GitHubAPI(test_user.id)
+    api.init_account()
+
+    # Create a repository with old name
+    repo = Repository.create(test_user.id, 1, "old-name/repo")
+    db.session.add(repo)
+    db.session.commit()
+
+    old_repo = Repository.query.filter_by(github_id=1).first()
+    assert old_repo.name == "old-name/repo"
+
+    # Sync (GitHub API mock should return updated name)
+    api.sync(hooks=False)
+
+    # Check if repository name was updated
+    updated_repo = Repository.query.filter_by(github_id=1).first()
+    assert updated_repo.name == "auser/repo-1"
+
+
+def test_sync_updates_account_extra_data(app, test_user, github_api):
+    """Test that sync properly updates account extra data."""
+    api = GitHubAPI(test_user.id)
+    api.init_account()
+
+    assert "last_sync" in api.account.extra_data
+    old_last_sync = api.account.extra_data["last_sync"]
+
+    # Sync
+    api.sync(hooks=False)
+
+    # Verify extra data was updated
+    assert api.account.extra_data["repos"] is not None
+    assert api.account.extra_data["last_sync"] != old_last_sync
+
+
+def test_sync_updates_hooks_asynchronously(app, test_user, github_api_with_hooks, db):
+    """Test that sync properly updates hooks when async_hooks=True."""
+    api = GitHubAPI(test_user.id)
+    api.init_account()
+
+    num_repos = len(api.api.repositories())
+
+    # patch the GitHubAPI to simulate some delay in hook synchronization
+    delay = 0.2
+    expected_duration = delay * num_repos
+    with patch.object(
+        api, "sync_repo_hook", side_effect=lambda *args, **kwargs: time.sleep(delay)
+    ):
+        # Measure how long the Sync takes with async_hooks=True
+        start_time = time.time()
+        api.sync(async_hooks=True)
+        duration = time.time() - start_time
+        assert duration < expected_duration
+
+        # Measure how long the Sync takes with async_hooks=False
+        start_time = time.time()
+        api.sync(hooks=True, async_hooks=False)
+        duration = time.time() - start_time
+        # assert that sync_repo_hook was called once for each of the three repos
+        # during sync with async_hooks=False
+        assert api.sync_repo_hook.call_count == num_repos
+        # assert that the duration is at least three times the simulated delay
+        assert duration >= expected_duration
+
+
+def test_sync_repo_hook_creates_repo_when_hook_exists(app, test_user, github_api, db):
+    """Test that sync_repo_hook creates a repository when a valid hook exists on GitHub."""
+    api = GitHubAPI(test_user.id)
+    api.init_account()
+
+    repo_id = 1
+
+    # Sync repo hook - should create repository since hook exists in mocked GitHub
+    api.sync_repo_hook(repo_id)
+
+    # Commit changes to ensure repository is persisted
+    db.session.commit()
+
+    # Verify repository was created
+    repo = Repository.query.filter_by(github_id=repo_id).first()
+    assert repo is not None
+    assert repo.github_id == repo_id
+    assert repo.name == "auser/repo-1"
+    assert repo.user_id == test_user.id
+    assert repo.hook is not None
+
+
+def test_sync_repo_hook_enables_existing_repo_when_hook_exists(
+    app, test_user, github_api, db
+):
+    """Test that sync_repo_hook enables an existing disabled repository when hook exists."""
+    api = GitHubAPI(test_user.id)
+    api.init_account()
+
+    repo_id = 1
+    repo_name = "auser/repo-1"
+
+    # Create a disabled repository
+    repo = Repository.create(test_user.id, repo_id, repo_name)
+    repo.hook = 0
+    db.session.add(repo)
+    db.session.commit()
+
+    # Sync repo hook
+    api.sync_repo_hook(repo_id)
+
+    # Verify repository was enabled
+    updated_repo = Repository.query.filter_by(github_id=repo_id).first()
+    assert updated_repo.user_id == test_user.id
+    assert updated_repo.hook > 0

@@ -41,6 +41,16 @@ This configuration variable must be set explicitly. Example::
     context, doesn't work as expected.
 """
 
+GITHUB_WEBHOOK_SYNC_BATCH_SIZE = 20
+"""Number of repositories to be processed in a single batch when syncing hooks. 
+
+If the user has more than 20 repositories, multiple tasks will be created, 
+syncing them in parallel. Thereby the sync process should finish in a timely 
+manner and we avoid timeouts on platforms like Zenodo.
+
+Decrease this value if you experience task timeouts.
+"""
+
 GITHUB_SHARED_SECRET = "CHANGEME"
 """Shared secret between you and GitHub.
 
