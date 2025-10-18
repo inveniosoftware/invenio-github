@@ -75,7 +75,7 @@ if (sync_button) {
             resultMessage,
             "positive",
             "checkmark",
-            "Repositories synced successfully. Please reload the page after about a minute."
+            "Repositories synced successfully. Some items may still be updating, please reload the page in about a minute."
           );
           sync_button.classList.remove("disabled");
           setTimeout(function () {
