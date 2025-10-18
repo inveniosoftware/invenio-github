@@ -207,16 +207,25 @@ def test_repo_data_three():
     return {"name": "arepo", "id": 3}
 
 
-@pytest.fixture()
-def github_api(
-    running_app,
-    db,
-    test_repo_data_one,
-    test_repo_data_two,
-    test_repo_data_three,
-    test_user,
+def _create_github_api_mock(
+    test_repo_data_one, test_repo_data_two, test_repo_data_three
 ):
-    """Github API mock."""
+    """Create a GitHub API mock with common configuration.
+
+    Parameters
+    ----------
+    test_repo_data_one : dict
+        Test repository data for first repo
+    test_repo_data_two : dict
+        Test repository data for second repo
+    test_repo_data_three : dict
+        Test repository data for third repo
+
+    Returns
+    -------
+    MagicMock
+        Configured GitHub API mock object
+    """
     mock_api = MagicMock()
     mock_api.session = MagicMock()
     mock_api.me.return_value = github3.users.User(
@@ -230,11 +239,15 @@ def github_api(
         ),
         mock_api.session,
     )
-    repo_1.hooks = MagicMock(return_value=[])
-    repo_1.file_contents = MagicMock(return_value=None)
     # Mock hook creation to retun the hook id '12345'
     hook_instance = MagicMock()
     hook_instance.id = 12345
+    hook_instance.config = {
+        "url": "http://localhost:5000/api/receivers/github/events/?access_token=test"
+    }
+
+    repo_1.hooks = MagicMock(return_value=[hook_instance])
+    repo_1.file_contents = MagicMock(return_value=None)
     repo_1.create_hook = MagicMock(return_value=hook_instance)
 
     repo_2 = github3.repos.Repository(
@@ -305,6 +318,49 @@ def github_api(
     mock_api.session.head.side_effect = mock_head_status_by_repo_url
     mock_api.session.get.return_value = MagicMock(raw=ZIPBALL())
 
+    return mock_api
+
+
+@pytest.fixture()
+def github_api(
+    running_app,
+    db,
+    test_repo_data_one,
+    test_repo_data_two,
+    test_repo_data_three,
+    test_user,
+):
+    """Github API mock."""
+    mock_api = _create_github_api_mock(
+        test_repo_data_one, test_repo_data_two, test_repo_data_three
+    )
+
     with patch("invenio_github.api.GitHubAPI.api", new=mock_api):
         with patch("invenio_github.api.GitHubAPI._sync_hooks"):
+            with patch(
+                "invenio_github.api.GitHubAPI._valid_webhook", return_value=True
+            ):
+                yield mock_api
+
+
+@pytest.fixture()
+def github_api_with_hooks(
+    running_app,
+    db,
+    test_repo_data_one,
+    test_repo_data_two,
+    test_repo_data_three,
+    test_user,
+):
+    """Github API mock with _sync_hooks not patched.
+
+    This fixture is similar to github_api but allows _sync_hooks to run normally
+    instead of being mocked out.
+    """
+    mock_api = _create_github_api_mock(
+        test_repo_data_one, test_repo_data_two, test_repo_data_three
+    )
+
+    with patch("invenio_github.api.GitHubAPI.api", new=mock_api):
+        with patch("invenio_github.api.GitHubAPI._valid_webhook", return_value=True):
             yield mock_api

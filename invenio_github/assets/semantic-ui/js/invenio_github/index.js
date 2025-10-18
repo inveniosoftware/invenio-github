@@ -75,7 +75,7 @@ if (sync_button) {
             resultMessage,
             "positive",
             "checkmark",
-            "Repositories synced successfully. Please reload the page."
+            "Repositories synced successfully. Some items may still be updating, please reload the page in about a minute."
           );
           sync_button.classList.remove("disabled");
           setTimeout(function () {
@@ -95,7 +95,7 @@ if (sync_button) {
         }
       } catch (error) {
         loaderIcon.classList.remove("loading");
-        if(error.message === "timeout"){
+        if (error.message === "timeout") {
           addResultMessage(
             resultMessage,
             "warning",
@@ -110,7 +110,7 @@ if (sync_button) {
             "cancel",
             `There has been a problem: ${error}`
           );
-           setTimeout(function () {
+          setTimeout(function () {
             resultMessage.classList.add("hidden");
           }, 7000);
         }

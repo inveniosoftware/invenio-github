@@ -246,7 +246,11 @@ class GitHubAPI(object):
         else:
             # If hooks will run asynchronously, we need to commit any changes done so far
             db.session.commit()
-            sync_hooks_task.delay(self.user_id, repos)
+            # Create a task for several batches of repositories to speed up the process
+            # and ensure that each task finishes within the time limit on Zenodo
+            batch_size = current_app.config["GITHUB_WEBHOOK_SYNC_BATCH_SIZE"]
+            for i in range(0, len(repos), batch_size):
+                sync_hooks_task.delay(self.user_id, repos[i : i + batch_size])
 
     def _valid_webhook(self, url):
         """Check if webhook url is valid.
