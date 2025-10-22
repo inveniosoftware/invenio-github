@@ -22,7 +22,28 @@ from invenio_vcs.service import VCSService
 from ..errors import RepositoryAccessError, RepositoryNotFoundError, VCSTokenNotFound
 
 
-def request_session_token():
+def vcs_error_handler():
+    """Common error handling behaviour for VCS routes."""
+
+    def decorator(f):
+        @wraps(f)
+        def inner(*args, **kwargs):
+            try:
+                return f(*args, **kwargs)
+            except RepositoryAccessError:
+                abort(403)
+            except (NoResultFound, RepositoryNotFoundError):
+                abort(404)
+            except Exception as exc:
+                current_app.logger.exception(str(exc))
+                abort(400)
+
+        return inner
+
+    return decorator
+
+
+def require_vcs_connected():
     """Requests an oauth session token to be configured for the user."""
 
     def decorator(f):
@@ -33,7 +54,7 @@ def request_session_token():
             if svc.is_authenticated:
                 return f(*args, **kwargs)
             raise VCSTokenNotFound(
-                current_user, _("VCS provider session token is required")
+                current_user, _("Account must be connected to the VCS provider.")
             )
 
         return inner
@@ -69,6 +90,7 @@ def register_ui_routes(blueprint):
 
     @blueprint.route("/")
     @login_required
+    @vcs_error_handler()
     def get_repositories(provider):
         """Display list of the user's repositories."""
         svc = VCSService.for_provider_and_user(provider, current_user.id)
@@ -96,7 +118,8 @@ def register_ui_routes(blueprint):
 
     @blueprint.route("/repository/<path:repo_id>")
     @login_required
-    @request_session_token()
+    @require_vcs_connected()
+    @vcs_error_handler()
     def get_repository(provider, repo_id):
         """Displays one repository.
 
@@ -104,41 +127,34 @@ def register_ui_routes(blueprint):
         """
         svc = VCSService.for_provider_and_user(provider, current_user.id)
 
-        try:
-            repo = svc.get_repository(repo_id)
-            latest_release = svc.get_repo_latest_release(repo)
-            default_branch = svc.get_repo_default_branch(repo_id)
-            releases = svc.list_repo_releases(repo)
-            new_release_url = svc.provider.factory.url_for_new_release(repo.full_name)
-            new_citation_file_url = svc.provider.factory.url_for_new_file(
-                repo.full_name, default_branch or "main", "CITATION.cff"
-            )
+        repo = svc.get_repository(repo_id)
+        latest_release = svc.get_repo_latest_release(repo)
+        default_branch = svc.get_repo_default_branch(repo_id)
+        releases = svc.list_repo_releases(repo)
+        new_release_url = svc.provider.factory.url_for_new_release(repo.full_name)
+        new_citation_file_url = svc.provider.factory.url_for_new_file(
+            repo.full_name, default_branch or "main", "CITATION.cff"
+        )
 
-            return render_template(
-                current_app.config["VCS_TEMPLATE_VIEW"],
-                latest_release=latest_release,
-                provider=provider,
-                repo=repo,
-                releases=releases,
-                default_branch=default_branch,
-                new_release_url=new_release_url,
-                new_citation_file_url=new_citation_file_url,
-                vocabulary=svc.provider.factory.vocabulary,
-            )
-        except RepositoryAccessError:
-            abort(403)
-        except (NoResultFound, RepositoryNotFoundError):
-            abort(404)
-        except Exception as exc:
-            current_app.logger.exception(str(exc))
-            abort(400)
+        return render_template(
+            current_app.config["VCS_TEMPLATE_VIEW"],
+            latest_release=latest_release,
+            provider=provider,
+            repo=repo,
+            releases=releases,
+            default_branch=default_branch,
+            new_release_url=new_release_url,
+            new_citation_file_url=new_citation_file_url,
+            vocabulary=svc.provider.factory.vocabulary,
+        )
 
 
 def register_api_routes(blueprint):
     """Register API routes."""
 
     @login_required
-    @request_session_token()
+    @require_vcs_connected()
+    @vcs_error_handler()
     @blueprint.route("/repositories/sync", methods=["POST"])
     def sync_user_repositories(provider):
         """Synchronizes user repos.
@@ -148,18 +164,15 @@ def register_api_routes(blueprint):
         Previously:
             POST /account/settings/github/hook
         """
-        try:
-            svc = VCSService.for_provider_and_user(provider, current_user.id)
-            svc.sync(async_hooks=False)
-            db.session.commit()
-        except Exception as exc:
-            current_app.logger.exception(str(exc))
-            abort(400)
+        svc = VCSService.for_provider_and_user(provider, current_user.id)
+        svc.sync(async_hooks=False)
+        db.session.commit()
 
         return "", 200
 
     @login_required
-    @request_session_token()
+    @require_vcs_connected()
+    @vcs_error_handler()
     @blueprint.route("/repositories/<repository_id>/enable", methods=["POST"])
     def enable_repository(provider, repository_id):
         """Enables one repository.
@@ -169,27 +182,20 @@ def register_api_routes(blueprint):
         Previously:
             POST /account/settings/github/hook
         """
-        try:
-            svc = VCSService.for_provider_and_user(provider, current_user.id)
-            create_success = svc.enable_repository(repository_id)
+        svc = VCSService.for_provider_and_user(provider, current_user.id)
+        create_success = svc.enable_repository(repository_id)
 
-            db.session.commit()
-            if create_success:
-                return "", 201
-            else:
-                raise Exception(
-                    _("Failed to enable repository, hook creation not successful.")
-                )
-        except RepositoryAccessError:
-            abort(403)
-        except RepositoryNotFoundError:
-            abort(404)
-        except Exception as exc:
-            current_app.logger.exception(str(exc))
-            abort(400)
+        db.session.commit()
+        if create_success:
+            return "", 201
+        else:
+            raise Exception(
+                _("Failed to enable repository, hook creation not successful.")
+            )
 
     @login_required
-    @request_session_token()
+    @require_vcs_connected()
+    @vcs_error_handler()
     @blueprint.route("/repositories/<repository_id>/disable", methods=["POST"])
     def disable_repository(provider, repository_id):
         """Disables one repository.
@@ -199,21 +205,13 @@ def register_api_routes(blueprint):
         Previously:
             DELETE /account/settings/github/hook
         """
-        try:
-            svc = VCSService.for_provider_and_user(provider, current_user.id)
-            remove_success = svc.disable_repository(repository_id)
+        svc = VCSService.for_provider_and_user(provider, current_user.id)
+        remove_success = svc.disable_repository(repository_id)
 
-            db.session.commit()
-            if remove_success:
-                return "", 204
-            else:
-                raise Exception(
-                    _("Failed to disable repository, hook removal not successful.")
-                )
-        except RepositoryNotFoundError:
-            abort(404)
-        except RepositoryAccessError:
-            abort(403)
-        except Exception as exc:
-            current_app.logger.exception(str(exc))
-            abort(400)
+        db.session.commit()
+        if remove_success:
+            return "", 204
+        else:
+            raise Exception(
+                _("Failed to disable repository, hook removal not successful.")
+            )
