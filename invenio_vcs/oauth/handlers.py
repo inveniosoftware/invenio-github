@@ -57,7 +57,7 @@ class OAuthHandlers:
             oauth_unlink_external_id(dict(id=external_ids[0], method=external_method))
 
         svc = VCSService(self.provider_factory.for_user(current_user.id))
-        token = svc.provider.session_token
+        token = svc.provider.remote_token
 
         if token:
             extra_data = token.remote_account.extra_data
@@ -70,9 +70,9 @@ class OAuthHandlers:
             repos = svc.user_enabled_repositories.all()
             repos_with_hooks = []
             for repo in repos:
-                if repo.hook:
+                if repo.hook is not None:
                     repos_with_hooks.append((repo.provider_id, repo.hook))
-                svc.disable_repository(repo.provider_id)
+                svc.mark_repo_disabled(repo.provider_id)
 
             # Commit any changes before running the ascynhronous task
             db.session.commit()

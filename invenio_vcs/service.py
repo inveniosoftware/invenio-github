@@ -75,7 +75,7 @@ class VCSService:
     @cached_property
     def is_authenticated(self):
         """Whether we have a valid VCS API token for the user. Should (almost) always return True."""
-        return self.provider.session_token is not None
+        return self.provider.remote_token is not None
 
     @property
     def user_available_repositories(self):
@@ -168,7 +168,7 @@ class VCSService:
 
         return repo
 
-    def check_repo_access_permissions(self, repo: Repository):
+    def check_repo_access_permissions(self, db_repo: Repository):
         """Checks permissions from user on repo.
 
         Repo has access if any of the following is True:
@@ -176,22 +176,24 @@ class VCSService:
         - user is the owner of the repo
         - user has access to the repo in the VCS
         """
-        if self.provider.user_id and repo:
+        if self.provider.user_id and db_repo:
             user_is_collaborator = any(
-                user.id == self.provider.user_id for user in repo.users
+                user.id == self.provider.user_id for user in db_repo.users
             )
             if user_is_collaborator:
                 return True
 
         if self.provider.remote_account and self.provider.remote_account.extra_data:
             user_has_remote_access_count = self.user_available_repositories.filter(
-                Repository.provider_id == repo.provider_id
+                Repository.provider_id == db_repo.provider_id
             ).count()
             if user_has_remote_access_count == 1:
                 return True
 
         raise RepositoryAccessError(
-            user=self.provider.user_id, repo=repo.full_name, repo_id=repo.provider_id
+            user=self.provider.user_id,
+            repo=db_repo.full_name,
+            repo_id=db_repo.provider_id,
         )
 
     def sync_repo_users(self, db_repo: Repository):
@@ -428,9 +430,9 @@ class VCSService:
             Repository.provider_id == repository_id
         ).first()
         if db_repo is None:
-            raise RepositoryNotFoundError(
-                repository_id, _("Failed to enable repository.")
-            )
+            raise RepositoryNotFoundError(repository_id)
+
+        # No further access check needed: the repo was already in the user's available repo list.
 
         hook_id = self.provider.create_webhook(repository_id)
         if hook_id is None:
@@ -444,11 +446,8 @@ class VCSService:
         db_repo = self.user_available_repositories.filter(
             Repository.provider_id == repository_id
         ).first()
-
         if db_repo is None:
-            raise RepositoryNotFoundError(
-                repository_id, _("Failed to disable repository.")
-            )
+            raise RepositoryNotFoundError(repository_id)
 
         if not db_repo.enabled:
             raise RepositoryDisabledError(repository_id)
