@@ -16,7 +16,6 @@ from urllib.parse import urlparse
 from invenio_i18n import gettext as _
 from invenio_oauth2server.models import Token as ProviderToken
 from invenio_oauthclient import current_oauthclient
-from invenio_oauthclient.handlers import token_getter
 from invenio_oauthclient.models import RemoteAccount, RemoteToken
 from urllib3 import HTTPResponse
 from werkzeug.local import LocalProxy
@@ -192,29 +191,12 @@ class RepositoryServiceProvider(ABC):
         return RemoteAccount.get(self.user_id, self.factory.remote.consumer_key)
 
     @cached_property
-    def access_token(self):
-        """Return OAuth access token's value."""
+    def remote_token(self):
+        """Return OAuth remote token model."""
         if self._access_token is not None:
             return self._access_token
 
-        token = RemoteToken.get(self.user_id, self.factory.remote.consumer_key)
-        if not token:
-            # The token is not yet in DB, it is retrieved from the request session.
-            return self.factory.remote.get_request_token()[0]
-        return token.access_token
-
-    @property
-    def session_token(self):
-        """Return OAuth session token."""
-        session_token = token_getter(self.factory.remote)
-        if session_token:
-            token = RemoteToken.get(
-                self.user_id,
-                self.factory.remote.consumer_key,
-                access_token=session_token[0],
-            )
-            return token
-        return None
+        return RemoteToken.get(self.user_id, self.factory.remote.consumer_key)
 
     @cached_property
     def webhook_url(self):

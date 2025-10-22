@@ -21,6 +21,7 @@ from flask import current_app
 from invenio_oauthclient import current_oauthclient
 from werkzeug.utils import cached_property
 
+from invenio_vcs.errors import VCSTokenNotFound
 from invenio_vcs.generic_models import (
     GenericContributor,
     GenericOwner,
@@ -238,7 +239,11 @@ class GitLabProvider(RepositoryServiceProvider):
     @cached_property
     def _gl(self):
         """Construct the GitLab API client and make a test auth request (which populates essential data)."""
-        gl = gitlab.Gitlab(self.factory.base_url, oauth_token=self.access_token)
+        if self.remote_token is None:
+            raise VCSTokenNotFound
+        gl = gitlab.Gitlab(
+            self.factory.base_url, oauth_token=self.remote_token.access_token
+        )
         gl.auth()
         return gl
 

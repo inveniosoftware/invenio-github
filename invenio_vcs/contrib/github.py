@@ -17,7 +17,7 @@ from invenio_i18n import gettext as _
 from invenio_oauthclient.contrib.github import GitHubOAuthSettingsHelper
 from werkzeug.utils import cached_property
 
-from invenio_vcs.errors import ReleaseZipballFetchError
+from invenio_vcs.errors import ReleaseZipballFetchError, VCSTokenNotFound
 from invenio_vcs.generic_models import (
     GenericContributor,
     GenericOwner,
@@ -189,12 +189,15 @@ class GitHubProvider(RepositoryServiceProvider):
     @cached_property
     def _gh(self):
         """Initialise the GitHub API object (either for public or enterprise self-hosted GitHub)."""
+        if self.remote_token is None:
+            raise VCSTokenNotFound
+
         _gh = None
         if self.factory.base_url == "https://github.com":
-            _gh = github3.login(token=self.access_token)
+            _gh = github3.login(token=self.remote_token.access_token)
         else:
             _gh = github3.enterprise_login(
-                url=self.factory.base_url, token=self.access_token
+                url=self.factory.base_url, token=self.remote_token.access_token
             )
 
         # login can return None if it's unsuccessful.
