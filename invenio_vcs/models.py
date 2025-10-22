@@ -169,13 +169,13 @@ class Repository(db.Model, Timestamp):
     hook = db.Column(db.String(255), nullable=True)
     """Hook identifier."""
 
-    enabled_by_id = db.Column(db.Integer, db.ForeignKey(User.id), nullable=True)
+    enabled_by_user_id = db.Column(db.Integer, db.ForeignKey(User.id), nullable=True)
 
     #
     # Relationships
     #
     users = db.relationship(User, secondary=repository_user_association)
-    enabled_by_user = db.relationship(User, foreign_keys=[enabled_by_id])
+    enabled_by_user = db.relationship(User, foreign_keys=[enabled_by_user_id])
 
     @classmethod
     def create(

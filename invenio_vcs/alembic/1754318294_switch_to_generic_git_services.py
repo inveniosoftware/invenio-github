@@ -67,7 +67,7 @@ def upgrade():
     op.add_column(
         "vcs_repositories", sa.Column("license_spdx", sa.String(255), nullable=True)
     )
-    op.alter_column("vcs_repositories", "user_id", new_column_name="enabled_by_id")
+    op.alter_column("vcs_repositories", "user_id", new_column_name="enabled_by_user_id")
     op.drop_index("ix_github_repositories_name")
     op.drop_index("ix_github_repositories_github_id")
 
@@ -115,7 +115,10 @@ def upgrade():
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("hook", sa.String(255), nullable=True),
         sa.Column(
-            "enabled_by_id", sa.Integer, sa.ForeignKey("account_user.id"), nullable=True
+            "enabled_by_user_id",
+            sa.Integer,
+            sa.ForeignKey("account_user.id"),
+            nullable=True,
         ),
         sa.Column("created", sa.DateTime, nullable=False),
         sa.Column("updated", sa.DateTime, nullable=False),
@@ -163,7 +166,7 @@ def upgrade():
                         license_spdx=None,
                         # This repo wasn't enabled
                         hook=None,
-                        enabled_by_id=None,
+                        enabled_by_user_id=None,
                         created=datetime.now(tz=timezone.utc),
                         updated=datetime.now(tz=timezone.utc),
                     )
@@ -187,6 +190,21 @@ def upgrade():
             .filter_by(id=remote_account["id"])
             .values(extra_data={"last_sync": remote_account["extra_data"]["last_sync"]})
         )
+
+    # Fill in HTML URL for orphaned repos to ensure we don't have any NULLs
+    vcs_repositories = session.execute(sa.select(vcs_repositories_table))
+    for vcs_repository in vcs_repositories.mappings():
+        if vcs_repository["html_url"] is None:
+            session.execute(
+                vcs_repositories_table.update()
+                .filter_by(id=vcs_repository["id"])
+                .values(
+                    html_url=f'https://github.com/{vcs_repository["name"]}',
+                    updated=datetime.now(tz=timezone.utc),
+                )
+            )
+
+    session.commit()
 
     # We initially set this to nullable=True so we can create the column without an error
     # (it would be null for existing records) but after the SQLAlchemy operations above we
@@ -261,7 +279,7 @@ def downgrade():
     """
     op.alter_column(
         "vcs_repositories",
-        "enabled_by_id",
+        "enabled_by_user_id",
         new_column_name="user_id",
     )
     op.drop_table("vcs_repository_users")
