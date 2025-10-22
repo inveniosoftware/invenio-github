@@ -95,7 +95,7 @@ In an SQL shell (e.g. ``psql`` for PostgreSQL), execute the following:
       provider_id character varying(255) NOT NULL,
       name character varying(255) NOT NULL,
       hook character varying(255),
-      enabled_by_id integer,
+      enabled_by_user_id integer,
       created timestamp without time zone NOT NULL,
       updated timestamp without time zone NOT NULL,
       provider character varying(255) DEFAULT 'github'::character varying NOT NULL,
@@ -107,7 +107,7 @@ In an SQL shell (e.g. ``psql`` for PostgreSQL), execute the following:
   ALTER TABLE ONLY vcs_repositories ADD CONSTRAINT pk_vcs_repositories PRIMARY KEY (id);
   ALTER TABLE ONLY vcs_repositories ADD CONSTRAINT uq_vcs_repositories_provider_name UNIQUE (provider, name);
   ALTER TABLE ONLY vcs_repositories ADD CONSTRAINT uq_vcs_repositories_provider_provider_id UNIQUE (provider, provider_id);
-  ALTER TABLE ONLY vcs_repositories ADD CONSTRAINT fk_vcs_repositories_enabled_by_id_accounts_user FOREIGN KEY (enabled_by_id) REFERENCES accounts_user(id);
+  ALTER TABLE ONLY vcs_repositories ADD CONSTRAINT fk_vcs_repositories_enabled_by_user_id_accounts_user FOREIGN KEY (enabled_by_user_id) REFERENCES accounts_user(id);
 
   CREATE TABLE vcs_releases (
       id uuid NOT NULL,
@@ -153,7 +153,7 @@ Next, you must perform some manual data migrations:
   of repos have outgrown.
   Previously, only *activated* repos were stored in the ``github_repositories`` table.
   Now, *all* repos are stored directly as rows of the ``vcs_repositories`` table.
-  Whether or not they're activated is indicated by the presence of non-null values for the ``hook`` and ``enabled_by_id`` columns.
+  Whether or not they're activated is indicated by the presence of non-null values for the ``hook`` and ``enabled_by_user_id`` columns.
 
   You must perform this migration, leaving only the ``"last_sync"`` value in the ``extra_data`` JSON column.
   Not all columns of the ``vcs_repositories`` table need to be filled during the migration.
@@ -228,7 +228,7 @@ You can set the database connection string via the ``UPGRADE_DB`` environment va
       sa.Column("name", sa.String(255), nullable=False),
       sa.Column("hook", sa.String(255), nullable=True),
       sa.Column(
-          "enabled_by_id", sa.Integer, sa.ForeignKey("account_user.id"), nullable=True
+          "enabled_by_user_id", sa.Integer, sa.ForeignKey("account_user.id"), nullable=True
       ),
       sa.Column("created", sa.DateTime, nullable=False),
       sa.Column("updated", sa.DateTime, nullable=False),
@@ -324,7 +324,7 @@ You can set the database connection string via the ``UPGRADE_DB`` environment va
                         license_spdx=None,
                         # This repo wasn't enabled
                         hook=None,
-                        enabled_by_id=None,
+                        enabled_by_user_id=None,
                         created=datetime.now(tz=timezone.utc),
                         updated=datetime.now(tz=timezone.utc),
                     )
@@ -371,7 +371,7 @@ You can set the database connection string via the ``UPGRADE_DB`` environment va
                       html_url=f"https://github.com/{old_db_repo["name"]}",
                       license_spdx=None,
                       hook=old_db_repo["hook"],
-                      enabled_by_id=old_db_repo["user_id"],
+                      enabled_by_user_id=old_db_repo["user_id"],
                       created=old_db_repo["created"],
                       updated=datetime.now(tz=timezone.utc),
                   )
@@ -383,7 +383,7 @@ You can set the database connection string via the ``UPGRADE_DB`` environment va
                   .values(
                       id=old_db_repo["id"],
                       hook=str(old_db_repo["hook"]),
-                      enabled_by_id=old_db_repo["user_id"],
+                      enabled_by_user_id=old_db_repo["user_id"],
                       created=old_db_repo["created"],
                   )
               )
