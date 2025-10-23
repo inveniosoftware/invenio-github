@@ -16,9 +16,9 @@
         <div class="flex align-items-center justify-space-between wrap mt-5 mb-5 rel-mr-1">
           <div class="flex align-items-center mb-5 mt-5">
             <a
-              href="{{ repo.html_url }}"
-              data-tooltip="{{ _('Go to %(name)s.', name=vocabulary["name"]) }}"
-              aria-label="{{ _('Visit repository on %(name)s:', name=vocabulary["name"]) }} {{ repo.full_name }}"
+              href="{{ repo_url(repo.full_name) }}"
+              data-tooltip="{{ _('View repository on %(name)s', name=vocabulary["name"]) }}"
+              aria-label="{{ _('View repository on %(name)s:', name=vocabulary["name"]) }} {{ repo.full_name }}"
               target="_blank"
             >
               <i class="{{ vocabulary["icon"] }} icon" aria-hidden="true"></i>

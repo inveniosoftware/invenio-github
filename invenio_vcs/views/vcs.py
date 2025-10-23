@@ -98,6 +98,7 @@ def register_ui_routes(blueprint):
             connected=False,
             provider=provider,
             vocabulary=svc.provider.factory.vocabulary,
+            repo_url=svc.provider.factory.url_for_repository,
             new_repo_url=svc.provider.factory.url_for_new_repo(),
         )
 
@@ -131,6 +132,7 @@ def register_ui_routes(blueprint):
         latest_release = svc.get_repo_latest_release(repo)
         default_branch = svc.get_repo_default_branch(repo_id)
         releases = svc.list_repo_releases(repo)
+        release_url = svc.provider.factory.url_for_release
         new_release_url = svc.provider.factory.url_for_new_release(repo.full_name)
         new_citation_file_url = svc.provider.factory.url_for_new_file(
             repo.full_name, default_branch or "main", "CITATION.cff"
@@ -143,6 +145,7 @@ def register_ui_routes(blueprint):
             repo=repo,
             releases=releases,
             default_branch=default_branch,
+            release_url=release_url,
             new_release_url=new_release_url,
             new_citation_file_url=new_citation_file_url,
             vocabulary=svc.provider.factory.vocabulary,
