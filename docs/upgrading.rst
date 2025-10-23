@@ -101,7 +101,6 @@ In an SQL shell (e.g. ``psql`` for PostgreSQL), execute the following:
       provider character varying(255) DEFAULT 'github'::character varying NOT NULL,
       default_branch character varying(255) DEFAULT 'master'::character varying NOT NULL,
       description character varying(10000),
-      html_url character varying(10000) NOT NULL,
       license_spdx character varying(255)
   );
   ALTER TABLE ONLY vcs_repositories ADD CONSTRAINT pk_vcs_repositories PRIMARY KEY (id);
@@ -222,7 +221,6 @@ You can set the database connection string via the ``UPGRADE_DB`` environment va
       sa.Column("provider_id", sa.String(255), nullable=True),
       sa.Column("provider", sa.String(255), nullable=True),
       sa.Column("description", sa.String(10000), nullable=True),
-      sa.Column("html_url", sa.String(10000), nullable=False),
       sa.Column("license_spdx", sa.String(255), nullable=True),
       sa.Column("default_branch", sa.String(255), nullable=False),
       sa.Column("name", sa.String(255), nullable=False),
@@ -317,8 +315,6 @@ You can set the database connection string via the ``UPGRADE_DB`` environment va
                         description=github_repo["description"],
                         name=github_repo["full_name"],
                         default_branch=github_repo["default_branch"],
-                        # So far we have only supported github.com so we can safely assume the URL
-                        html_url=f'https://github.com/{github_repo["full_name"]}',
                         # We have never stored this, it is queried at runtime right now. When the first
                         # sync happens after this migration, we will download all the license IDs from the VCS.
                         license_spdx=None,
@@ -337,7 +333,6 @@ You can set the database connection string via the ``UPGRADE_DB`` environment va
                           description=github_repo["description"],
                           name=github_repo["full_name"],
                           default_branch=github_repo["default_branch"],
-                          html_url=f'https://github.com/{github_repo["full_name"]}',
                           updated=datetime.now(tz=timezone.utc),
                       )
                   )
@@ -368,7 +363,6 @@ You can set the database connection string via the ``UPGRADE_DB`` environment va
                       provider="github",
                       name=old_db_repo["name"],
                       default_branch="main",
-                      html_url=f"https://github.com/{old_db_repo["name"]}",
                       license_spdx=None,
                       hook=old_db_repo["hook"],
                       enabled_by_user_id=old_db_repo["user_id"],
