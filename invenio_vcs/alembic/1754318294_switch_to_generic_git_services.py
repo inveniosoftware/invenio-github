@@ -53,16 +53,11 @@ def upgrade():
     op.add_column(
         "vcs_repositories",
         sa.Column(
-            "default_branch", sa.String(255), nullable=False, server_default="master"
+            "default_branch", sa.String(255), nullable=False, server_default="main"
         ),
     )
     op.add_column(
         "vcs_repositories", sa.Column("description", sa.String(10000), nullable=True)
-    )
-    op.add_column(
-        # Nullable for now (see below)
-        "vcs_repositories",
-        sa.Column("html_url", sa.String(10000), nullable=True),
     )
     op.add_column(
         "vcs_repositories", sa.Column("license_spdx", sa.String(255), nullable=True)
@@ -109,7 +104,6 @@ def upgrade():
         sa.Column("provider_id", sa.String(255), nullable=True),
         sa.Column("provider", sa.String(255), nullable=True),
         sa.Column("description", sa.String(10000), nullable=True),
-        sa.Column("html_url", sa.String(10000), nullable=False),
         sa.Column("license_spdx", sa.String(255), nullable=True),
         sa.Column("default_branch", sa.String(255), nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
@@ -159,8 +153,6 @@ def upgrade():
                         description=github_repo["description"],
                         name=github_repo["full_name"],
                         default_branch=github_repo["default_branch"],
-                        # So far we have only supported github.com so we can safely assume the URL
-                        html_url=f'https://github.com/{github_repo["full_name"]}',
                         # We have never stored this, it is queried at runtime right now. When the first
                         # sync happens after this migration, we will download all the license IDs from the VCS.
                         license_spdx=None,
@@ -179,7 +171,6 @@ def upgrade():
                         description=github_repo["description"],
                         name=github_repo["full_name"],
                         default_branch=github_repo["default_branch"],
-                        html_url=f'https://github.com/{github_repo["full_name"]}',
                         updated=datetime.now(tz=timezone.utc),
                     )
                 )
@@ -190,28 +181,6 @@ def upgrade():
             .filter_by(id=remote_account["id"])
             .values(extra_data={"last_sync": remote_account["extra_data"]["last_sync"]})
         )
-
-    # Fill in HTML URL for orphaned repos to ensure we don't have any NULLs
-    vcs_repositories = session.execute(sa.select(vcs_repositories_table))
-    for vcs_repository in vcs_repositories.mappings():
-        if vcs_repository["html_url"] is None:
-            session.execute(
-                vcs_repositories_table.update()
-                .filter_by(id=vcs_repository["id"])
-                .values(
-                    html_url=f'https://github.com/{vcs_repository["name"]}',
-                    updated=datetime.now(tz=timezone.utc),
-                )
-            )
-
-    session.commit()
-
-    # We initially set this to nullable=True so we can create the column without an error
-    # (it would be null for existing records) but after the SQLAlchemy operations above we
-    # have populated it so we can mark it non-nullable.
-    op.alter_column(
-        "vcs_repositories", "html_url", nullable=False, existing_nullable=True
-    )
 
     op.rename_table("github_releases", "vcs_releases")
     op.alter_column(
@@ -300,7 +269,6 @@ def downgrade():
     )
     op.drop_column("github_repositories", "provider")
     op.drop_column("github_repositories", "description")
-    op.drop_column("github_repositories", "html_url")
     op.drop_column("github_repositories", "license_spdx")
     op.drop_column("github_repositories", "default_branch")
     op.create_index(

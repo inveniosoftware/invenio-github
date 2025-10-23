@@ -159,7 +159,6 @@ class Repository(db.Model, Timestamp):
     """Which VCS provider the repository is hosted by (and therefore the context in which to consider the provider_id)"""
 
     description = db.Column(db.String(10000), nullable=True)
-    html_url = db.Column(db.String(10000), nullable=False)
     license_spdx = db.Column(db.String(255), nullable=True)
     default_branch = db.Column(db.String(255), nullable=False)
 
@@ -182,7 +181,6 @@ class Repository(db.Model, Timestamp):
         cls,
         provider,
         provider_id,
-        html_url,
         default_branch,
         full_name=None,
         description=None,
@@ -194,7 +192,6 @@ class Repository(db.Model, Timestamp):
             provider=provider,
             provider_id=provider_id,
             full_name=full_name,
-            html_url=html_url,
             default_branch=default_branch,
             description=description,
             license_spdx=license_spdx,
