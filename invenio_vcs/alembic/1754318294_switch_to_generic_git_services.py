@@ -238,14 +238,8 @@ def upgrade():
     op.drop_constraint(
         op.f("uq_github_releases_release_id"), table_name="vcs_releases", type_="unique"
     )
-    # A given provider cannot have duplicate repository IDs.
-    # These constraints are also inherently deleted when the `provider` column is dropped
-    op.create_unique_constraint(
-        constraint_name=op.f("uq_vcs_releases_provider_id_provider"),
-        table_name="vcs_releases",
-        columns=["provider_id", "provider"],
-    )
     # A specific repository from a given provider cannot have multiple releases of the same tag
+    # This constraint is also inherently deleted when the `provider` column is dropped
     op.create_unique_constraint(
         constraint_name=op.f("uq_vcs_releases_provider_id_provider_tag"),
         table_name="vcs_releases",

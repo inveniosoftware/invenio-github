@@ -14,7 +14,7 @@ from invenio_accounts.models import User
 from invenio_db import db
 from invenio_i18n import lazy_gettext as _
 from invenio_webhooks.models import Event
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import UniqueConstraint, delete, insert
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy_utils.models import Timestamp
@@ -205,15 +205,17 @@ class Repository(db.Model, Timestamp):
 
     def add_user(self, user_id: int):
         """Add permission for a user to access the repository."""
-        user = User(id=user_id)
-        user = db.session.merge(user)
-        self.users.append(user)
+        stmt = insert(repository_user_association).values(
+            repository_id=self.id, user_id=user_id
+        )
+        db.session.execute(stmt)
 
     def remove_user(self, user_id: int):
         """Remove permission for a user to access the repository."""
-        user = User(id=user_id)
-        user = db.session.merge(user)
-        self.users.remove(user)
+        stmt = delete(repository_user_association).filter_by(
+            repository_id=self.id, user_id=user_id
+        )
+        db.session.execute(stmt)
 
     @classmethod
     def get(cls, provider, provider_id=None, full_name=None):
@@ -266,11 +268,6 @@ class Release(db.Model, Timestamp):
     __tablename__ = "vcs_releases"
 
     __table_args__ = (
-        UniqueConstraint(
-            "provider",
-            "provider_id",
-            name="uq_vcs_releases_provider_id_provider",
-        ),
         UniqueConstraint(
             "provider_id",
             "provider",
