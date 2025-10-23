@@ -310,7 +310,6 @@ class VCSService:
                 corresponding_db_repo = Repository.create(
                     provider=self.provider.factory.id,
                     provider_id=vcs_repo.id,
-                    html_url=vcs_repo.html_url,
                     default_branch=vcs_repo.default_branch,
                     full_name=vcs_repo.full_name,
                     description=vcs_repo.description,
@@ -365,7 +364,6 @@ class VCSService:
                 db_repo = Repository.create(
                     provider=self.provider.factory.id,
                     provider_id=repo_id,
-                    html_url=vcs_repo.html_url,
                     default_branch=vcs_repo.default_branch,
                     full_name=vcs_repo.full_name,
                     description=vcs_repo.description,
