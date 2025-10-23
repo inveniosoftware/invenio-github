@@ -7,12 +7,9 @@
 
 """Switch to a generic VCS module (not GitHub-specific)."""
 
-import uuid
-from datetime import datetime, timezone
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy_utils import JSONType, UUIDType
 
 # revision identifiers, used by Alembic.
@@ -27,198 +24,53 @@ depends_on = None
 
 def upgrade():
     """Upgrade database."""
-    op.rename_table("github_repositories", "vcs_repositories")
-    op.alter_column(
+    op.create_table(
         "vcs_repositories",
-        "github_id",
-        new_column_name="provider_id",
-        type_=sa.String(length=255),
-        nullable=False,
-        existing_type=sa.Integer(),
-        existing_nullable=True,
-    )
-    op.alter_column(
-        "vcs_repositories",
-        "hook",
-        type_=sa.String(length=255),
-        nullable=True,
-        existing_type=sa.Integer(),
-        existing_nullable=True,
-    )
-    op.add_column(
-        "vcs_repositories",
-        # We use the provider name "github" by default as this is what we're already using across the codebase
-        sa.Column("provider", sa.String(255), nullable=False, server_default="github"),
-    )
-    op.add_column(
-        "vcs_repositories",
+        sa.Column("id", UUIDType()),
+        sa.Column("provider_id", sa.String(length=255), nullable=False),
         sa.Column(
-            "default_branch", sa.String(255), nullable=False, server_default="main"
+            "provider", sa.String(length=255), nullable=False, server_default="github"
         ),
-    )
-    op.add_column(
-        "vcs_repositories", sa.Column("description", sa.String(10000), nullable=True)
-    )
-    op.add_column(
-        "vcs_repositories", sa.Column("license_spdx", sa.String(255), nullable=True)
-    )
-    op.alter_column("vcs_repositories", "user_id", new_column_name="enabled_by_user_id")
-    op.drop_index("ix_github_repositories_name")
-    op.drop_index("ix_github_repositories_github_id")
-
-    # Because they rely on the `provider` column, these are automatically
-    # deleted when downgrading so we don't need a separate drop command
-    # for them.
-    op.create_unique_constraint(
-        constraint_name=op.f("uq_vcs_repositories_provider_provider_id"),
-        table_name="vcs_repositories",
-        columns=["provider", "provider_id"],
-    )
-    op.create_unique_constraint(
-        constraint_name=op.f("uq_vcs_repositories_provider_name"),
-        table_name="vcs_repositories",
-        columns=["provider", "name"],
-    )
-
-    # Migrate data from the OAuth remote `extra_data` field to the repositories table
-    # where we will now store everything directly.
-    #
-    # We need to recreate the SQLAlchemy models for `RemoteAccount` and `Repository` here but
-    # in a much more lightweight way. We cannot simply import the models because (a) they depend
-    # on the full Invenio app being initialised and all extensions available and (b) we need
-    # to work with the models as they stand precisely at this point in the migration chain
-    # rather than the model file itself which may be at a later commit.
-    #
-    # We only include here the columns, constraints, and relations that we actually need to
-    # perform the migration, therefore keeping these models as lightweight as possible.
-    remote_account_table = sa.table(
-        "oauthclient_remoteaccount",
-        sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("user_id", sa.Integer, sa.ForeignKey("account_user.id")),
-        sa.Column("client_id", sa.String(255)),
-        sa.Column("extra_data", MutableDict.as_mutable(JSONType)),
-    )
-    vcs_repositories_table = sa.table(
-        "vcs_repositories",
-        sa.Column("id", UUIDType, primary_key=True),
-        sa.Column("provider_id", sa.String(255), nullable=True),
-        sa.Column("provider", sa.String(255), nullable=True),
-        sa.Column("description", sa.String(10000), nullable=True),
-        sa.Column("license_spdx", sa.String(255), nullable=True),
-        sa.Column("default_branch", sa.String(255), nullable=False),
-        sa.Column("name", sa.String(255), nullable=False),
-        sa.Column("hook", sa.String(255), nullable=True),
+        sa.Column("name", sa.String(length=255), nullable=False),
         sa.Column(
-            "enabled_by_user_id",
-            sa.Integer,
-            sa.ForeignKey("account_user.id"),
-            nullable=True,
+            "default_branch",
+            sa.String(length=255),
+            nullable=False,
+            server_default="main",
         ),
-        sa.Column("created", sa.DateTime, nullable=False),
-        sa.Column("updated", sa.DateTime, nullable=False),
-    )
-
-    # This is the recommended way to run SQLAlchemy operations in a migration, see https://alembic.sqlalchemy.org/en/latest/ops.html#alembic.operations.Operations.execute
-    session = op.get_bind()
-
-    # We don't know the client ID as this is a config variable.
-    # So to find the RemoteAccounts that correspond to GitHub, we need to check for the existence
-    # of the `repos` key in the `extra_data` JSON. We cannot make this very efficient sadly, because
-    # (a) in Postgres we are using JSON not JSONB so there is no efficient JSON querying and (b) the
-    # instance might be using MySQL/SQLite where we store it as `TEXT`.
-
-    remote_accounts = session.execute(sa.select(remote_account_table))
-    for remote_account in remote_accounts.mappings():
-        if "repos" not in remote_account["extra_data"]:
-            continue
-
-        repos = remote_account["extra_data"]["repos"]
-
-        for id, github_repo in repos.items():
-            # `id` (the dict key) is a string because JSON keys must be strings
-
-            matching_db_repo_id = session.scalar(
-                sa.select(vcs_repositories_table).filter_by(provider_id=id)
-            )
-
-            if matching_db_repo_id is None:
-                # We are now storing _all_ repositories (even non-enabled ones) in the DB.
-                # The repo-user association will be created on the first sync after this migration, we need to download
-                # the list of users with access to the repo from the GitHub API.
-                session.execute(
-                    vcs_repositories_table.insert().values(
-                        id=uuid.uuid4(),
-                        provider_id=id,
-                        provider="github",
-                        description=github_repo["description"],
-                        name=github_repo["full_name"],
-                        default_branch=github_repo["default_branch"],
-                        # We have never stored this, it is queried at runtime right now. When the first
-                        # sync happens after this migration, we will download all the license IDs from the VCS.
-                        license_spdx=None,
-                        # This repo wasn't enabled
-                        hook=None,
-                        enabled_by_user_id=None,
-                        created=datetime.now(tz=timezone.utc),
-                        updated=datetime.now(tz=timezone.utc),
-                    )
-                )
-            else:
-                session.execute(
-                    vcs_repositories_table.update()
-                    .filter_by(id=matching_db_repo_id)
-                    .values(
-                        description=github_repo["description"],
-                        name=github_repo["full_name"],
-                        default_branch=github_repo["default_branch"],
-                        updated=datetime.now(tz=timezone.utc),
-                    )
-                )
-
-        # Remove `repos` from the existing `extra_data`, leaving only the last sync timestamp
-        session.execute(
-            remote_account_table.update()
-            .filter_by(id=remote_account["id"])
-            .values(extra_data={"last_sync": remote_account["extra_data"]["last_sync"]})
-        )
-
-    op.rename_table("github_releases", "vcs_releases")
-    op.alter_column(
-        "vcs_releases",
-        "release_id",
-        new_column_name="provider_id",
-        type_=sa.String(length=255),
-        nullable=False,
-        existing_type=sa.Integer(),
-        existing_nullable=True,
-    )
-    op.add_column(
-        "vcs_releases",
-        sa.Column("provider", sa.String(255), nullable=False, server_default="github"),
-    )
-    if op.get_context().dialect.name == "postgresql":
-        op.alter_column(
-            "vcs_releases",
-            "errors",
-            type_=sa.dialects.postgresql.JSONB,
-            postgresql_using="errors::text::jsonb",
-        )
-
-    op.drop_constraint(
-        op.f("uq_github_releases_release_id"), table_name="vcs_releases", type_="unique"
-    )
-    # A specific repository from a given provider cannot have multiple releases of the same tag
-    # This constraint is also inherently deleted when the `provider` column is dropped
-    op.create_unique_constraint(
-        constraint_name=op.f("uq_vcs_releases_provider_id_provider_tag"),
-        table_name="vcs_releases",
-        columns=["provider_id", "provider", "tag"],
+        sa.Column("description", sa.String(length=10000)),
+        sa.Column("license_spdx", sa.String(length=255)),
+        sa.Column("hook", sa.String(length=255)),
+        sa.Column("enabled_by_user_id", sa.Integer),
+        sa.Column("created", sa.DateTime(), nullable=False),
+        sa.Column("updated", sa.DateTime(), nullable=False),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_vcs_repositories")),
+        sa.ForeignKeyConstraint(
+            ["enabled_by_user_id"],
+            ["accounts_user.id"],
+            name=op.f("fk_vcs_repository_enabled_by_user_id_accounts_user"),
+        ),
+        sa.UniqueConstraint(
+            "provider",
+            "provider_id",
+            name=op.f("uq_vcs_repositories_provider_provider_id"),
+        ),
+        sa.UniqueConstraint(
+            "provider",
+            "name",
+            name=op.f("uq_vcs_repositories_provider_name"),
+        ),
     )
 
     op.create_table(
         "vcs_repository_users",
-        sa.Column("repository_id", UUIDType(), primary_key=True),
-        sa.Column("user_id", sa.Integer(), primary_key=True),
+        sa.Column("repository_id", UUIDType()),
+        sa.Column("user_id", sa.Integer()),
+        sa.Column("created", sa.DateTime(), nullable=False),
+        sa.Column("updated", sa.DateTime(), nullable=False),
+        sa.PrimaryKeyConstraint(
+            "repository_id", "user_id", name=op.f("pk_vcs_repository_users")
+        ),
         sa.ForeignKeyConstraint(
             ["repository_id"],
             ["vcs_repositories.id"],
@@ -230,82 +82,55 @@ def upgrade():
             name=op.f("fk_vcs_repository_users_user_id_accounts_user"),
         ),
     )
-    # ### end Alembic commands ###
+
+    op.create_table(
+        "vcs_releases",
+        sa.Column("id", UUIDType()),
+        sa.Column("provider_id", sa.String(length=255), nullable=False),
+        sa.Column(
+            "provider", sa.String(length=255), nullable=False, server_default="github"
+        ),
+        sa.Column("tag", sa.String(length=255), nullable=False),
+        sa.Column(
+            "errors",
+            sa.JSON()
+            .with_variant(sa.dialects.postgresql.JSONB(), "postgresql")
+            .with_variant(JSONType(), "sqlite")
+            .with_variant(JSONType(), "mysql"),
+        ),
+        sa.Column("repository_id", UUIDType(), nullable=False),
+        sa.Column("event_id", UUIDType(), nullable=True),
+        sa.Column("record_id", UUIDType()),
+        sa.Column("status", sa.CHAR(1)),
+        sa.Column("created", sa.DateTime(), nullable=False),
+        sa.Column("updated", sa.DateTime(), nullable=False),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_vcs_releases")),
+        sa.ForeignKeyConstraint(
+            ["event_id"],
+            ["webhooks_events.id"],
+            name=op.f("fk_vcs_releases_event_id_webhooks_events"),
+        ),
+        sa.ForeignKeyConstraint(
+            ["repository_id"],
+            ["vcs_repositories.id"],
+            name=op.f("fk_vcs_releases_repository_id_vcs_repositories"),
+        ),
+        sa.UniqueConstraint(
+            "provider",
+            "provider_id",
+            name=op.f("uq_vcs_releases_provider_id_provider"),
+        ),
+    )
+
+    op.create_index(
+        op.f("ix_vcs_releases_record_id"),
+        table_name="vcs_releases",
+        columns=["record_id"],
+    )
 
 
 def downgrade():
-    """Downgrade database.
-
-    Currently, the downgrade can only be peformed **without data**. The tables are transformed but
-    data will not be successfully migrated. The upgrade migration has a large amount of custom logic
-    for migrating the data into the new format, and this is not replicated/reversed for downgrading.
-    """
-    op.alter_column(
-        "vcs_repositories",
-        "enabled_by_user_id",
-        new_column_name="user_id",
-    )
+    """Downgrade database."""
+    op.drop_table("vcs_releases")
     op.drop_table("vcs_repository_users")
-
-    op.rename_table("vcs_repositories", "github_repositories")
-    op.alter_column(
-        "github_repositories",
-        "provider_id",
-        new_column_name="github_id",
-        type_=sa.Integer(),
-        nullable=True,
-        existing_type=sa.String(length=255),
-        existing_nullable=False,
-        postgresql_using="provider_id::integer",
-    )
-    op.alter_column(
-        "github_repositories",
-        "hook",
-        type_=sa.Integer(),
-        nullable=True,
-        existing_type=sa.String(length=255),
-        existing_nullable=True,
-        postgresql_using="hook::integer",
-    )
-    op.drop_column("github_repositories", "provider")
-    op.drop_column("github_repositories", "description")
-    op.drop_column("github_repositories", "license_spdx")
-    op.drop_column("github_repositories", "default_branch")
-    op.create_index(
-        op.f("ix_github_repositories_github_id"),
-        "github_repositories",
-        ["github_id"],
-        unique=True,
-    )
-    op.create_index(
-        op.f("ix_github_repositories_name"),
-        "github_repositories",
-        ["name"],
-        unique=True,
-    )
-
-    op.rename_table("vcs_releases", "github_releases")
-    op.alter_column(
-        "github_releases",
-        "provider_id",
-        new_column_name="release_id",
-        type_=sa.Integer(),
-        nullable=True,
-        existing_type=sa.String(length=255),
-        existing_nullable=False,
-        postgresql_using="provider_id::integer",
-    )
-    op.drop_column("github_releases", "provider")
-    if op.get_context().dialect.name == "postgresql":
-        op.alter_column(
-            "github_releases",
-            "errors",
-            type_=sa.dialects.postgresql.JSON,
-            postgresql_using="errors::text::json",
-        )
-    op.create_unique_constraint(
-        op.f("uq_github_releases_release_id"),
-        table_name="github_releases",
-        columns=["release_id"],
-    )
-    # ### end Alembic commands ###
+    op.drop_table("vcs_repositories")

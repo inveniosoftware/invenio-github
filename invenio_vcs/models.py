@@ -268,8 +268,7 @@ class Release(db.Model, Timestamp):
         UniqueConstraint(
             "provider_id",
             "provider",
-            "tag",
-            name="uq_vcs_releases_provider_id_provider_tag",
+            name="uq_vcs_releases_provider_id_provider",
         ),
     )
 
