@@ -46,7 +46,6 @@ def test_webhook_post(
         db_repo = Repository.create(
             provider=provider_patcher.provider_factory().id,
             provider_id=generic_repo.id,
-            html_url=generic_repo.html_url,
             default_branch=generic_repo.default_branch,
             full_name=generic_repo.full_name,
             description=generic_repo.description,
@@ -105,7 +104,6 @@ def test_webhook_post_fail(
         db_repo = Repository.create(
             provider=provider_patcher.provider_factory().id,
             provider_id=generic_repo.id,
-            html_url=generic_repo.html_url,
             default_branch=generic_repo.default_branch,
             full_name=generic_repo.full_name,
             description=generic_repo.description,
@@ -123,13 +121,11 @@ def test_webhook_post_fail(
                 id="123",
                 full_name="fake_repo",
                 default_branch="fake_branch",
-                html_url="https://example.com",
             ),
             GenericRelease(
                 id="123",
                 tag_name="v123.345",
                 created_at=utcnow(),
-                html_url="https://example.com",
             ),
             GenericOwner(id="123", path_name="fake_user", type=GenericOwnerType.Person),
         )
