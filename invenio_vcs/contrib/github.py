@@ -143,7 +143,6 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
             tag_name=event_payload["release"]["tag_name"],
             tarball_url=event_payload["release"].get("tarball_url"),
             zipball_url=event_payload["release"].get("zipball_url"),
-            html_url=event_payload["release"]["html_url"],
             body=event_payload["release"].get("body"),
             created_at=dateutil.parser.parse(event_payload["release"]["created_at"]),
             published_at=release_published_at,
@@ -156,7 +155,6 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
         repo = GenericRepository(
             id=str(event_payload["repository"]["id"]),
             full_name=event_payload["repository"]["full_name"],
-            html_url=event_payload["repository"]["html_url"],
             description=event_payload["repository"].get("description"),
             default_branch=event_payload["repository"]["default_branch"],
             license_spdx=license_spdx,
@@ -164,15 +162,27 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
 
         return (release, repo)
 
-    def url_for_tag(self, repository_name, tag_name):
+    def url_for_repository(self, repository_name: str) -> str:
+        """URL to view a repository."""
+        return "{}/{}".format(self.base_url, repository_name)
+
+    def url_for_release(
+        self, repository_name: str, release_id: str, release_tag: str
+    ) -> str:
+        """URL to view a release."""
+        return "{}/{}/releases/tag/{}".format(
+            self.base_url, repository_name, release_tag
+        )
+
+    def url_for_tag(self, repository_name: str, tag_name: str):
         """URL to view a tag."""
         return "{}/{}/tree/{}".format(self.base_url, repository_name, tag_name)
 
-    def url_for_new_release(self, repository_name):
+    def url_for_new_release(self, repository_name: str):
         """URL for creating a new release."""
         return "{}/{}/releases/new".format(self.base_url, repository_name)
 
-    def url_for_new_file(self, repository_name, branch_name, file_name):
+    def url_for_new_file(self, repository_name: str, branch_name: str, file_name: str):
         """URL for creating a new file in the web editor."""
         return "{}/{}/new/{}?filename={}".format(
             self.base_url, repository_name, branch_name, file_name
@@ -215,7 +225,6 @@ class GitHubProvider(RepositoryServiceProvider):
                     id=str(repo.id),
                     full_name=repo.full_name,
                     description=repo.description,
-                    html_url=repo.html_url,
                     default_branch=repo.default_branch,
                     license_spdx=GitHubProviderFactory._extract_license(repo.as_dict()),
                 )
@@ -268,7 +277,6 @@ class GitHubProvider(RepositoryServiceProvider):
             id=str(repo.id),
             full_name=repo.full_name,
             description=repo.description,
-            html_url=repo.html_url,
             default_branch=repo.default_branch,
             license_spdx=GitHubProviderFactory._extract_license(repo.as_dict()),
         )

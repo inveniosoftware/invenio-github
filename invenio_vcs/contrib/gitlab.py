@@ -143,6 +143,16 @@ class GitLabProviderFactory(RepositoryServiceProviderFactory):
         """Returns the GitLab-specific config dict."""
         return self._config
 
+    def url_for_repository(self, repository_name: str) -> str:
+        """URL for viewing a repository."""
+        return "{}/{}".format(self.base_url, repository_name)
+
+    def url_for_release(
+        self, repository_name: str, release_id: str, release_tag: str
+    ) -> str:
+        """URL for viewing a release."""
+        return "{}/{}/-/releases/{}".format(self.base_url, repository_name, release_tag)
+
     def url_for_tag(self, repository_name, tag_name) -> str:
         """The URL for viewing a tag."""
         return "{}/{}/-/tags/{}".format(self.base_url, repository_name, tag_name)
@@ -200,7 +210,6 @@ class GitLabProviderFactory(RepositoryServiceProviderFactory):
         release = GenericRelease(
             id=str(event_payload["id"]),
             tag_name=event_payload["tag"],
-            html_url=event_payload["url"],
             name=event_payload["name"],
             body=event_payload["description"],
             zipball_url=zipball_url,
@@ -227,7 +236,6 @@ class GitLabProviderFactory(RepositoryServiceProviderFactory):
             id=str(proj_attrs["id"]),
             full_name=proj_attrs["path_with_namespace"],
             default_branch=proj_attrs["default_branch"],
-            html_url=proj_attrs["web_url"],
             description=proj_attrs["description"],
             license_spdx=GitLabProviderFactory._extract_license(proj_attrs),
         )
@@ -260,7 +268,6 @@ class GitLabProvider(RepositoryServiceProvider):
                 id=str(project.id),
                 full_name=project.path_with_namespace,
                 default_branch=project.default_branch,
-                html_url=project.web_url,
                 description=project.description,
                 # TODO: license is not returned in the projects list (only when querying an individual project).
                 # This would be super slow. Do we really need license here?

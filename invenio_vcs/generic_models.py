@@ -40,7 +40,6 @@ class GenericRepository:
     id: str
     full_name: str
     default_branch: str
-    html_url: str
     description: str | None = None
     license_spdx: str | None = None
 
@@ -51,7 +50,6 @@ class GenericRepository:
             id=model.provider_id,
             full_name=model.full_name,
             default_branch=model.default_branch,
-            html_url=model.html_url,
             description=model.description,
             license_spdx=model.license_spdx,
         )
@@ -78,7 +76,6 @@ class GenericRelease:
     id: str
     tag_name: str
     created_at: datetime
-    html_url: str
     name: str | None = None
     body: str | None = None
     tarball_url: str | None = None

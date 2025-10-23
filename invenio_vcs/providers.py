@@ -97,21 +97,36 @@ class RepositoryServiceProviderFactory(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def url_for_tag(self, repository_name, tag_name) -> str:
+    def url_for_repository(self, repository_name: str) -> str:
+        """Generates the URL for the UI homepage of a repository."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def url_for_release(
+        self, repository_name: str, release_id: str, release_tag: str
+    ) -> str:
+        """Generates the URL for the UI page of the details of a release."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def url_for_tag(self, repository_name: str, tag_name: str) -> str:
         """
         Generates the URL for the UI page showing the file tree for the latest commit with a given named tag.
 
-        This is not the page showing the details of a corresponding release.
+        If the VCS does not implement a separate page for the release details and its tree, then `url_for_release` may
+        return the same value as `url_for_tag`.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def url_for_new_release(self, repository_name) -> str:
+    def url_for_new_release(self, repository_name: str) -> str:
         """Generates the URL for the UI page through which the user can create a new release for a specific repository."""
         raise NotImplementedError
 
     @abstractmethod
-    def url_for_new_file(self, repository_name, branch_name, file_name) -> str:
+    def url_for_new_file(
+        self, repository_name: str, branch_name: str, file_name: str
+    ) -> str:
         """
         Generates the URL for the UI pages through which a new file with a specific name on a specific branch in a specific repository can be created.
 
