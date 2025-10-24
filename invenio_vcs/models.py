@@ -21,30 +21,6 @@ from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy_utils.models import Timestamp
 from sqlalchemy_utils.types import ChoiceType, JSONType, UUIDType
 
-RELEASE_STATUS_TITLES = {
-    "RECEIVED": _("Received"),
-    "PROCESSING": _("Processing"),
-    "PUBLISHED": _("Published"),
-    "FAILED": _("Failed"),
-    "DELETED": _("Deleted"),
-}
-
-RELEASE_STATUS_ICON = {
-    "RECEIVED": "spinner loading icon",
-    "PROCESSING": "spinner loading icon",
-    "PUBLISHED": "check icon",
-    "FAILED": "times icon",
-    "DELETED": "times icon",
-}
-
-RELEASE_STATUS_COLOR = {
-    "RECEIVED": "warning",
-    "PROCESSING": "warning",
-    "PUBLISHED": "positive",
-    "FAILED": "negative",
-    "DELETED": "negative",
-}
-
 
 class ReleaseStatus(Enum):
     """Constants for possible status of a Release."""
@@ -76,21 +52,6 @@ class ReleaseStatus(Enum):
     def __str__(self):
         """Return its value."""
         return self.value
-
-    @property
-    def title(self):
-        """Return human readable title."""
-        return RELEASE_STATUS_TITLES[self.name]
-
-    @property
-    def icon(self):
-        """Font Awesome status icon."""
-        return RELEASE_STATUS_ICON[self.name]
-
-    @property
-    def color(self):
-        """UI status color."""
-        return RELEASE_STATUS_COLOR[self.name]
 
 
 repository_user_association = db.Table(
