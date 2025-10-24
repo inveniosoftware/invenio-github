@@ -152,14 +152,12 @@ class VCSService:
 
         return extra_data["last_sync"]
 
-    def get_repository(self, repo_id=None, repo_name=None):
+    def get_repository(self, repo_id):
         """Retrieves one repository.
 
         Checks for access permission.
         """
-        repo = Repository.get(
-            self.provider.factory.id, provider_id=repo_id, full_name=repo_name
-        )
+        repo = Repository.get(self.provider.factory.id, provider_id=repo_id)
         if not repo:
             raise RepositoryNotFoundError(repo_id)
 

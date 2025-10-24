@@ -71,7 +71,6 @@ class VCSReceiver(Receiver):
             repo = Repository.get(
                 self.provider_factory.id,
                 provider_id=generic_repo.id,
-                full_name=generic_repo.full_name,
             )
             if not repo:
                 raise RepositoryNotFoundError(generic_repo.full_name)
