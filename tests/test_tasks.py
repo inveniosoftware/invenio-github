@@ -38,7 +38,7 @@ def test_real_process_release_task(
 
     generic_repo = test_generic_repositories[0]
     vcs_service.enable_repository(generic_repo.id)
-    db_repo = vcs_service.get_repository(repo_id=generic_repo.id)
+    db_repo = vcs_service.get_repository(generic_repo.id)
 
     event = Event(
         # Receiver ID is same as provider ID

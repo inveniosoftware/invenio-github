@@ -74,7 +74,7 @@ def test_vcs_service_get_repository(
     vcs_service: VCSService, test_generic_repositories: list[GenericRepository]
 ):
     vcs_service.sync()
-    repository = vcs_service.get_repository(repo_id=test_generic_repositories[0].id)
+    repository = vcs_service.get_repository(test_generic_repositories[0].id)
     assert repository is not None
     assert repository.provider_id == test_generic_repositories[0].id
 
