@@ -8,6 +8,7 @@
 """Models for the VCS integration."""
 
 import uuid
+from datetime import datetime, timezone
 from enum import Enum
 
 from invenio_accounts.models import User
@@ -104,6 +105,8 @@ repository_user_association = db.Table(
     db.Column(
         "user_id", db.Integer, db.ForeignKey("accounts_user.id"), primary_key=True
     ),
+    db.Column("created", db.DateTime, nullable=False),
+    db.Column("updated", db.DateTime, nullable=False),
 )
 
 
@@ -202,8 +205,9 @@ class Repository(db.Model, Timestamp):
 
     def add_user(self, user_id: int):
         """Add permission for a user to access the repository."""
+        now = datetime.now(tz=timezone.utc)
         stmt = insert(repository_user_association).values(
-            repository_id=self.id, user_id=user_id
+            repository_id=self.id, user_id=user_id, created=now, updated=now
         )
         db.session.execute(stmt)
 
