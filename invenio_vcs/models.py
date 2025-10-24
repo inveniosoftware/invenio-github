@@ -79,11 +79,6 @@ class Repository(db.Model, Timestamp):
     __table_args__ = (
         UniqueConstraint(
             "provider",
-            "name",
-            name="uq_vcs_repositories_provider_name",
-        ),
-        UniqueConstraint(
-            "provider",
             "provider_id",
             name="uq_vcs_repositories_provider_provider_id",
         ),
@@ -180,30 +175,18 @@ class Repository(db.Model, Timestamp):
         db.session.execute(stmt)
 
     @classmethod
-    def get(cls, provider, provider_id=None, full_name=None):
-        """Return a repository given its name or provider id.
+    def get(cls, provider: str, provider_id: str):
+        """Return a repository given its provider ID.
 
         :param str provider: Registered ID of the VCS provider.
         :param str provider_id: VCS provider repository identifier.
-        :param str name: Repository full name.
         :returns: The repository object.
         :raises: :py:exc:`~sqlalchemy.orm.exc.NoResultFound`: if the repository
                  doesn't exist.
-        :raises: :py:exc:`~sqlalchemy.orm.exc.MultipleResultsFound`: if
-                 multiple repositories with the specified provider id and/or name
-                 exist.
         """
-        repo = None
-        if provider_id:
-            repo = cls.query.filter(
-                Repository.provider_id == provider_id, Repository.provider == provider
-            ).one_or_none()
-        if not repo and full_name is not None:
-            repo = cls.query.filter(
-                Repository.full_name == full_name, Repository.provider == provider
-            ).one_or_none()
-
-        return repo
+        return cls.query.filter(
+            Repository.provider_id == provider_id, Repository.provider == provider
+        ).one_or_none()
 
     @property
     def enabled(self):

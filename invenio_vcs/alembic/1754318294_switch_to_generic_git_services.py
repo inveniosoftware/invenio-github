@@ -55,11 +55,6 @@ def upgrade():
             "provider_id",
             name=op.f("uq_vcs_repositories_provider_provider_id"),
         ),
-        sa.UniqueConstraint(
-            "provider",
-            "name",
-            name=op.f("uq_vcs_repositories_provider_name"),
-        ),
     )
 
     op.create_table(
