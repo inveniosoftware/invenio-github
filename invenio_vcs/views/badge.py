@@ -103,10 +103,11 @@ def latest_doi(provider, provider_id):
     return redirect(release.record_url)
 
 
+# TODO: Do we really need this? If we get rid of it, we can remove the index on `name` on vcs_repositories
+"""
 # Kept for backward compatibility
 @blueprint.route("/latestdoi/<int:user_id>/<path:repo_name>")
 def latest_doi_old(provider, user_id, repo_name):
-    """Redirect to the newest record version."""
     svc = VCSService.for_provider_and_user(provider, user_id)
     repo = svc.get_repository(repo_name=repo_name)
     release = svc.get_repo_latest_release(repo)
@@ -115,3 +116,4 @@ def latest_doi_old(provider, user_id, repo_name):
 
     # record.url points to DOI url or HTML url if Datacite is not enabled.
     return redirect(release.record_url)
+"""
