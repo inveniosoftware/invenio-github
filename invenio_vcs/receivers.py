@@ -61,6 +61,7 @@ class VCSReceiver(Receiver):
             # Check if the release already exists
             existing_release = Release.query.filter_by(
                 provider_id=generic_release.id,
+                provider=self.provider_factory.id,
             ).first()
 
             if existing_release:

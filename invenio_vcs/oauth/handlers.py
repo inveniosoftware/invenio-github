@@ -72,7 +72,7 @@ class OAuthHandlers:
             for repo in repos:
                 if repo.hook is not None:
                     repos_with_hooks.append((repo.provider_id, repo.hook))
-                svc.mark_repo_disabled(repo.provider_id)
+                svc.mark_repo_disabled(repo)
 
             # Commit any changes before running the ascynhronous task
             db.session.commit()

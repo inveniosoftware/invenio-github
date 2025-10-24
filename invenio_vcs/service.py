@@ -276,12 +276,15 @@ class VCSService:
             .all()
         )
 
+        # Make sure we don't run the user sync step more than once for any repo
+        user_synced_repo_ids: set[str] = set()
         for db_repo in db_repos:
             vcs_repo = vcs_repos.get(db_repo.provider_id)
             if not vcs_repo:
                 continue
 
             changed_users = self.sync_repo_users(db_repo)
+            user_synced_repo_ids.add(db_repo.provider_id)
             changed_model = vcs_repo.to_model(db_repo)
             if changed_users or changed_model:
                 db.session.add(db_repo)
@@ -316,9 +319,10 @@ class VCSService:
                     license_spdx=vcs_repo.license_spdx,
                 )
 
-            # In any case (even if we already have the repo) we need to sync its member users
-            # E.g. maybe the repo is in our DB but the user for which this sync has been trigerred isn't registered as a member
-            self.sync_repo_users(corresponding_db_repo)
+            if vcs_repo.id not in user_synced_repo_ids:
+                # In any case (even if we already have the repo) we need to sync its member users unless we have already done so.
+                # E.g. maybe the repo is in our DB but the user for which this sync has been trigerred isn't registered as a member
+                self.sync_repo_users(corresponding_db_repo)
 
         # Update last sync
         self.provider.remote_account.extra_data.update(
