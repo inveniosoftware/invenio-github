@@ -41,7 +41,7 @@ class RepositoryServiceProviderFactory(ABC):
     usually in the `invenio.cfg` file. It contains general settings and methods that are impossible
     to generalise and must be specified on a provider-specific level.
 
-    All methods within this class (except the constructor) should be pure functions.
+    All methods within this class (except the constructor and update_config_override) should be pure functions.
     """
 
     def __init__(
@@ -58,6 +58,7 @@ class RepositoryServiceProviderFactory(ABC):
         repository_name_plural: str,
     ):
         """Initialize the repository service provider factory."""
+
         self.provider = provider
         self.base_url = base_url
         self.webhook_receiver_url = webhook_receiver_url
@@ -68,6 +69,28 @@ class RepositoryServiceProviderFactory(ABC):
         self.credentials_key = credentials_key
         self.repository_name = repository_name
         self.repository_name_plural = repository_name_plural
+
+    def update_config_override(self, config_override: dict):
+        """After the application is initialised, this method is called to override the provider configuration using VCS_PROVIDER_CONFIG_DICT if specified.
+
+        This cannot happen in the constructor, as we don't have access to other config variables there yet since the app is not initialised.
+        """
+        self.base_url = config_override.get("base_url", self.base_url)
+        self.webhook_receiver_url = config_override.get(
+            "webhook_receiver_url", self.webhook_receiver_url
+        )
+        self.name = config_override.get("name", self.name)
+        self.description = config_override.get("description", self.description)
+        self.icon = config_override.get("icon", self.icon)
+        self.credentials_key = config_override.get(
+            "credentials_key", self.credentials_key
+        )
+        self.repository_name = config_override.get(
+            "repository_name", self.repository_name
+        )
+        self.repository_name_plural = config_override.get(
+            "repository_name_plural", self.repository_name_plural
+        )
 
     @property
     @abstractmethod

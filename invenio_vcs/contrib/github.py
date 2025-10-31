@@ -67,6 +67,11 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
         )
         self._config.update(config)
 
+    def update_config_with_override(self, config_override: dict):
+        """Allow overriding GitHub-specific config options."""
+        super().update_config_override(config_override)
+        self._config.update(config_override.get("config", {}))
+
     @property
     def remote_config(self):
         """

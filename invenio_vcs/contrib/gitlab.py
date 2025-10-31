@@ -83,9 +83,15 @@ class GitLabProviderFactory(RepositoryServiceProviderFactory):
             repository_name="project",
             repository_name_plural="projects",
         )
+
         self._config = dict()
         self._config.update(shared_validation_token="")
         self._config.update(config)
+
+    def update_config_override(self, config_override: dict):
+        """Allow overriding GitLab-specific config options."""
+        super().update_config_override(config_override)
+        self._config.update(config_override.get("config", {}))
 
     def _account_info_handler(self, remote, resp: dict):
         """Helper for the OAuth client."""
