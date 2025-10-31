@@ -7,6 +7,8 @@
 
 """Models for the VCS integration."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
@@ -15,7 +17,7 @@ from invenio_accounts.models import User
 from invenio_db import db
 from invenio_i18n import lazy_gettext as _
 from invenio_webhooks.models import Event
-from sqlalchemy import UniqueConstraint, delete, insert
+from sqlalchemy import UniqueConstraint, delete, insert, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy_utils.models import Timestamp
@@ -174,15 +176,19 @@ class Repository(db.Model, Timestamp):
         )
         db.session.execute(stmt)
 
+    def list_users(self):
+        """Return a list of users with access to the repository."""
+        return db.session.execute(
+            select(repository_user_association).filter_by(repository_id=self.id)
+        )
+
     @classmethod
-    def get(cls, provider: str, provider_id: str):
+    def get(cls, provider: str, provider_id: str) -> Repository | None:
         """Return a repository given its provider ID.
 
         :param str provider: Registered ID of the VCS provider.
         :param str provider_id: VCS provider repository identifier.
-        :returns: The repository object.
-        :raises: :py:exc:`~sqlalchemy.orm.exc.NoResultFound`: if the repository
-                 doesn't exist.
+        :returns: The repository object or None if one with the given ID and provider doesn't exist.
         """
         return cls.query.filter(
             Repository.provider_id == provider_id, Repository.provider == provider
