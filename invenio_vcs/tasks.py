@@ -19,7 +19,7 @@ from invenio_oauthclient.models import RemoteAccount
 from invenio_oauthclient.proxies import current_oauthclient
 
 from invenio_vcs.config import get_provider_by_id
-from invenio_vcs.errors import CustomVCSMetadataError, RepositoryAccessError
+from invenio_vcs.errors import CustomVCSReleaseNoRetryError, RepositoryAccessError
 from invenio_vcs.models import Release, ReleaseStatus
 from invenio_vcs.proxies import current_vcs
 
@@ -35,12 +35,6 @@ def _get_err_obj(msg):
     return err
 
 
-def release_gh_metadata_handler(release: "VCSRelease", ex):
-    """Handler for CustomvcsMetadataError."""
-    release.db_release.errors = _get_err_obj(str(ex))
-    db.session.commit()
-
-
 def release_default_exception_handler(release: "VCSRelease", ex):
     """Default handler."""
     release.db_release.errors = _get_err_obj(str(ex))
@@ -48,7 +42,7 @@ def release_default_exception_handler(release: "VCSRelease", ex):
 
 
 DEFAULT_ERROR_HANDLERS = [
-    (CustomVCSMetadataError, release_gh_metadata_handler),
+    (CustomVCSReleaseNoRetryError, release_default_exception_handler),
     (Exception, release_default_exception_handler),
 ]
 
