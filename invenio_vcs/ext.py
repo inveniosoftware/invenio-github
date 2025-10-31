@@ -15,7 +15,7 @@ from invenio_theme.proxies import current_theme_icons
 from six import string_types
 from werkzeug.utils import cached_property, import_string
 
-from invenio_vcs.config import get_provider_list
+from invenio_vcs.config import get_provider_config_override, get_provider_list
 from invenio_vcs.receivers import VCSReceiver
 from invenio_vcs.service import VCSRelease
 from invenio_vcs.utils import obj_or_import_string
@@ -52,6 +52,7 @@ class InvenioVCS(object):
     def init_app(self, app):
         """Flask application initialization."""
         self.init_config(app)
+        self.init_config_overrides(app)
         app.extensions["invenio-vcs"] = self
 
     def init_config(self, app):
@@ -64,6 +65,13 @@ class InvenioVCS(object):
         for k in dir(config):
             if k.startswith("VCS_"):
                 app.config.setdefault(k, getattr(config, k))
+
+    def init_config_overrides(self, app):
+        """Update each provider to allow overriding its settings via a dict config variable."""
+        providers = get_provider_list(app)
+        for provider in providers:
+            config_override = get_provider_config_override(provider.id, app)
+            provider.update_config_override(config_override)
 
 
 def finalize_app_ui(app):
