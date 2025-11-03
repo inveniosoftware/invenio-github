@@ -94,11 +94,9 @@ class ReleaseAlreadyReceivedError(GitHubError):
 class CustomVCSReleaseNoRetryError(VCSError):
     """An error prevented the release from being published, but the publish should not be retried.."""
 
-    message = _("The metadata file is not valid JSON.")
-
     def __init__(self, message=None):
         """Constructor."""
-        super().__init__(message or self.message)
+        super().__init__(message)
 
 
 class GithubTokenNotFound(GitHubError):
