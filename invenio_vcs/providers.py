@@ -234,7 +234,15 @@ class RepositoryServiceProvider(ABC):
         if self._access_token is not None:
             return self._access_token
 
-        return RemoteToken.get(self.user_id, self.factory.remote.consumer_key)
+        token = RemoteToken.get(self.user_id, self.factory.remote.consumer_key)
+
+        if token is None:
+            return None
+
+        if token.is_expired:
+            token.refresh_access_token()
+
+        return token
 
     @cached_property
     def webhook_url(self):
