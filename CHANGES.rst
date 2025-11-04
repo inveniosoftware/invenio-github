@@ -1,6 +1,6 @@
 ..
     This file is part of Invenio.
-    Copyright (C) 2016-2024 CERN.
+    Copyright (C) 2016-2025 CERN.
     Copyright (C) 2024-2025 Graz University of Technology.
 
     Invenio is free software; you can redistribute it
@@ -25,6 +25,11 @@
 
 Changes
 =======
+
+Version v4.0.0 (released 2025-XX-XX)
+
+- setup: bump major version of `invenio-oauthclient`
+- api: optimize sync process with batch task execution
 
 Version v3.0.1 (released 2025-07-30)
 
