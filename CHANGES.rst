@@ -26,7 +26,7 @@
 Changes
 =======
 
-Version v4.0.0 (released 2025-XX-XX)
+Version v4.0.0 (released 2025-11-12)
 
 - setup: bump major version of `invenio-oauthclient`
 - api: optimize sync process with batch task execution
