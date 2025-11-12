@@ -31,72 +31,44 @@
       }}
 
       <div class="ui segment">
-        <div class="ui grid">
-          <div class="sixteen wide centered column">
-            <h3 class="ui large header mt-10">
-              <i class="{{ vocabulary["icon"] }} icon" aria-hidden="true"></i>{{ _("Get started") }}
-            </h3>
-          </div>
+        {%- block get_started %}
+          <div class="ui grid">
+            <div class="sixteen wide centered column">
+              <h3 class="ui large header mt-10">
+                <i class="{{ vocabulary["icon"] }} icon" aria-hidden="true"></i>{{ _("Get started") }}
+              </h3>
+            </div>
 
-          <div class="three column stackable tablet-mobile row">
-            <div class="column">
-              <h4 class="ui medium header">1 {{ _("Flip the switch") }}</h4>
-              <div class="ui divider"></div>
-              <p>
-                {{ _('Select the repository you want to preserve, and toggle
-                the switch below to turn on automatic preservation of your software.') }}
-              </p>
-
-              <div class="text-align-center rel-mt-1">
-                <div class="ui toggle on-off checkbox">
-                  <input
-                    id="example-switch"
-                    name="example-switch"
-                    type="checkbox"
-                    checked
-                  >
-                  <label for="example-switch">
-                    <small class="text-muted ml-5">
-                      {{ _("(example)") }}
-                    </small>
-                  </label>
-                </div>
+            <div class="three column stackable tablet-mobile row">
+              <div class="column">
+                <h4 class="ui medium header">1 {{ _("Flip the switch") }}</h4>
+                <div class="ui divider"></div>
+                <p>
+                  {{ _('Select the repository you want to preserve, and toggle
+                  the switch below to turn on automatic preservation of your software.') }}
+                </p>
               </div>
-            </div>
 
-            <div class="column">
-              <h4 class="ui medium header">2 {{ _("Create a release") }}</h4>
-              <div class="ui divider"></div>
-              <p>
-                {{ _('Go to %(name)s and <a href="https://help.github.com/articles/creating-releases" target="_blank">create a release <i class="small icon external" aria-hidden="true"></i></a>. %(site_name)s will automatically download a .zip-ball of each new release and register a DOI.',
-                name=vocabulary["name"], site_name=config.THEME_SITENAME | default('System')) }}
-              </p>
-            </div>
+              <div class="column">
+                <h4 class="ui medium header">2 {{ _("Create a release") }}</h4>
+                <div class="ui divider"></div>
+                <p>
+                  {{ _('Go to %(name)s and <a href="https://help.github.com/articles/creating-releases" target="_blank">create a release <i class="small icon external" aria-hidden="true"></i></a>. %(site_name)s will automatically download a .zip-ball of each new release and register a DOI.',
+                  name=vocabulary["name"], site_name=config.THEME_SITENAME | default('System')) }}
+                </p>
+              </div>
 
-            <div class="column">
-              <h4 class="ui medium header">3 {{ _("Get the badge") }}</h4>
-              <div class="ui divider"></div>
-              <p>
-                {{ _('After your first release, a DOI badge that you can include in your %(name)s
-                README will appear next to your repository below.', name=vocabulary["name"]) }}
-              </p>
-
-              <div class="flex align-items-center justify-center rel-mt-1">
-                {#- TODO remove hardcoding Zenodo stuff #}
-                <a href="https://doi.org/10.5281/zenodo.8475">
-                  <img
-                    src="{{ url_for('invenio_formatter_badges.badge', title='doi', value='10.5281/zenodo.8475', ext='svg') }}"
-                    alt="{{ _('Example DOI:') }} 10.5281/zenodo.8475"
-                    class="mt-5 mr-5"
-                  >
-                </a>
-                <small class="text-muted">
-                  {{ _("(example)") }}
-                </small>
+              <div class="column">
+                <h4 class="ui medium header">3 {{ _("Get the badge") }}</h4>
+                <div class="ui divider"></div>
+                <p>
+                  {{ _('After your first release, a DOI badge that you can include in your %(name)s
+                  README will appear next to your repository below.', name=vocabulary["name"]) }}
+                </p>
               </div>
             </div>
           </div>
-        </div>
+        {%- endblock %}
       </div>
       {{ helpers.panel_end() }}
     {%- endblock %}
