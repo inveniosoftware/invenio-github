@@ -352,23 +352,6 @@ class GitLabProvider(RepositoryServiceProvider):
         )
 
     @_gl_response_error_handler
-    def list_repository_webhooks(
-        self, repository_id: str
-    ) -> list[GenericWebhook] | None:
-        """Convert the repository's webhooks to a generic list."""
-        assert repository_id.isdigit()
-        proj = self._gl.projects.get(int(repository_id), lazy=True)
-        hooks: list[GenericWebhook] = []
-        for hook in proj.hooks.list(iterator=True):
-            hooks.append(
-                GenericWebhook(
-                    id=str(hook.id),
-                    repository_id=str(hook.project_id),
-                    url=hook.url,
-                )
-            )
-        return hooks
-
     def list_repository_user_ids(self, repository_id: str) -> list[str] | None:
         """See https://docs.gitlab.com/api/members/#list-all-members-of-a-group-or-project-including-inherited-and-invited-members."""
         user_ids: list[str] = []
@@ -380,6 +363,25 @@ class GitLabProvider(RepositoryServiceProvider):
         return user_ids
 
     @_gl_response_error_handler
+    def list_repository_webhooks(
+        self, repository_id: str
+    ) -> list[GenericWebhook] | None:
+        """Convert the repository's webhooks to a generic list."""
+        assert repository_id.isdigit()
+        proj = self._gl.projects.get(int(repository_id), lazy=True)
+        hooks: list[GenericWebhook] = []
+        for hook in proj.hooks.list(iterator=True):
+            print("hook", hook)
+            hooks.append(
+                GenericWebhook(
+                    id=str(hook.id),
+                    repository_id=str(hook.project_id),
+                    url=hook.url,
+                )
+            )
+        return hooks
+
+    @_gl_response_error_handler
     def create_webhook(self, repository_id: str) -> str | None:
         """Create a webhook with a metadata description to avoid confusion."""
         assert repository_id.isdigit()
@@ -389,7 +391,10 @@ class GitLabProvider(RepositoryServiceProvider):
             "url": self.webhook_url,
             "token": self.factory.config.get("shared_validation_token"),
             "releases_events": True,
-            "description": "Managed by {}".format(
+            # For some reason, we need to specify this as False explicitly. A default value of True seems to be
+            # assumed but is not documented anywhere. For all other event types, default is False.
+            "push_events": False,
+            "description": "Managed by {}. Please do not edit.".format(
                 current_app.config.get("THEME_SITENAME", "Invenio")
             ),
         }
