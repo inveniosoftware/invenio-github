@@ -1,0 +1,138 @@
+{# -*- coding: utf-8 -*-
+
+  This file is part of Invenio.
+  Copyright (C) 2023 CERN.
+
+  Invenio is free software; you can redistribute it and/or modify it
+  under the terms of the MIT License; see LICENSE file for more details.
+#}
+
+{%- from "invenio_vcs/helpers.html" import doi_badge with context -%}
+
+{%- macro panel_start(
+    title,
+    icon="",
+    btn_help_text='',
+    btn_text='',
+    btn_loading_text='',
+    btn_icon='',
+    btn_href='',
+    btn_class='',
+    btn_id='',
+    btn_name='',
+    provider='',
+    loaded_message_id='',
+    id="",
+    panel_extra_class="secondary"
+  )
+%}
+  {%- block panel_start scoped %}
+    <section aria-label="{{ title }}" class="ui segments" {% if id %} id="{{ id }}" {% endif %}>
+      <div class="ui segment {{ panel_extra_class }}">
+
+        {%- block panel_heading scoped %}
+          <div class="ui equal width grid">
+            <div class="middle aligned column">
+
+              {% if latest_release %}
+                <div class="ui grid">
+                  <div class="sixteen wide mobile three wide computer two wide large screen two wide widescreen middle aligned column pr-0">
+              {% endif %}
+
+                    <h2 class="ui tiny header mt-0 mb-0 {{ 'flex align-items-center' if icon }}">
+                      {% if icon %}<i class="small {{ icon }}" aria-hidden="true"></i>{% endif %}{{ title }}
+                    </h2>
+
+              {% if latest_release %}
+                  </div>
+
+                  <div class="sixteen wide mobile thirteen wide computer fourteen wide large screen fourteen wide widescreen middle aligned column">
+                    {%- if latest_release.record %}
+                      {%- set latest_release_record_doi = latest_release.record.pids.get('doi', {}).get('identifier') %}
+                      {%- set conceptid_doi_url = latest_release.record.links.parent_doi %}
+                    {%- endif %}
+
+                    {%- if latest_release_record_doi %}
+                      {{ doi_badge(latest_release_record_doi, doi_url=conceptid_doi_url, provider=provider, provider_id=repo.provider_id) }}
+                    {%- endif %}
+                  </div>
+                </div>
+              {% endif %}
+
+            </div>
+
+            <div class="right floated right aligned column">
+              <div>
+                {%- if btn_text and (btn_href or btn_help_text) -%}
+                  {%- if btn_help_text %}
+                    <p class="mt-5 mb-5 inline-computer">
+                      <small>{{ btn_help_text }}</small>
+                    </p>
+                  {%- endif %}
+
+                  {%- if btn_href %}
+                    <a class="ui basic tiny button {{ btn_class }} ml-10" href="{{ btn_href }}" target="_blank">
+                      {% if btn_icon %}
+                        <i class="{{ btn_icon }}" aria-hidden="true"></i>
+                      {% endif %}
+                      {{ btn_text }}
+                    </a>
+                  {%- elif btn_name and btn_id %}
+                    <button
+                      id="{{ btn_id }}"
+                      name="{{ btn_name }}"
+                      data-loading-text="{{ btn_loading_text }}"
+                      data-provider="{{ provider }}"
+                      class="ui compact tiny button {{ btn_class }} ml-10"
+                    >
+                      {% if btn_icon %}
+                        <i id="loader_icon" class="{{ btn_icon }}" aria-hidden="true"></i>
+                      {% endif %}
+                      <span id="{{ btn_id }}_btn_text" class="btn-text">
+                        {{ btn_text }}
+                      </span>
+                    </button>
+                  {%- endif %}
+                {%- endif -%}
+              </div>
+            </div>
+          </div>
+        {%- endblock %}
+
+      </div>
+      <div
+        id="{{ loaded_message_id }}"
+        class="ui bottom attached fluid icon message rel-pl-1 rel-pr-1 pt-10 pb-10 mb-0 no-border-radius hidden"
+      >
+        <i class="icon" aria-hidden="true"></i>
+        <p role="alert" class="content m-0"></p>
+      </div>
+  {%- endblock %}
+{%- endmacro %}
+
+{%- macro panel_end() %}
+  {%- block panel_end scoped %}
+      </section>
+  {%- endblock %}
+{%- endmacro %}
+
+{%- macro repo_switch(repo, repo_id, provider) %}
+  {%- block repo_switch scoped %}
+    {%- set inaccessible = (repo and repo.user_id and (repo.user_id != current_user.id)) %}
+    <div
+      class="ui toggle on-off checkbox"
+      {% if inaccessible %} data-tooltip="{{ _('This repository is managed by another user of your organization.') }}" {% endif %}
+      >
+      <input
+        type="checkbox"
+        {{' disabled' if inaccessible}}{{ ' checked' if repo and repo.enabled }}
+        data-repo-id="{{ repo_id }}"
+        data-provider="{{ provider }}"
+        data-checked-aria-label="{{ _('Disable') }} {{ repo.name if repo }}"
+        data-unchecked-aria-label="{{ _('Enable') }} {{ repo.name if repo }}"
+        aria-label="{{ 'disable' if repo and repo.enabled else 'enable' }} {{ repo.name if repo }}"
+      />
+      <label aria-hidden="true"></label>
+    </div>
+  {%- endblock %}
+{%- endmacro %}

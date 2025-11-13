@@ -1,0 +1,156 @@
+{# -*- coding: utf-8 -*-
+
+  This file is part of Invenio.
+  Copyright (C) 2023 CERN.
+
+  Invenio is free software; you can redistribute it and/or modify it
+  under the terms of the MIT License; see LICENSE file for more details.
+#}
+{%- import "invenio_vcs/settings/helpers.html" as helpers with context %}
+{%- if not request.is_xhr %}
+  {%- extends config.VCS_SETTINGS_TEMPLATE %}
+{%- endif %}
+
+{%- block settings_content %}
+  {%- if connected %}
+    {%- block repositories_get_started %}
+      {{
+        helpers.panel_start(
+          _('Repositories'),
+          icon=vocabulary["icon"] + " icon",
+          btn_text=_('Sync now'),
+          btn_loading_text=_('Syncing'),
+          btn_icon='sync alternate icon',
+          btn_id='sync_repos',
+          btn_name='sync-repos',
+          btn_help_text=_('(updated {})').format(last_sync|naturaltime),
+          provider=provider,
+          loaded_message_id='sync-result-message',
+          id="vcs-view",
+        )
+      }}
+
+      <div class="ui segment">
+        {%- block get_started %}
+          <div class="ui grid">
+            <div class="sixteen wide centered column">
+              <h3 class="ui large header mt-10">
+                <i class="{{ vocabulary["icon"] }} icon" aria-hidden="true"></i>{{ _("Get started") }}
+              </h3>
+            </div>
+
+            <div class="three column stackable tablet-mobile row">
+              <div class="column">
+                <h4 class="ui medium header">1 {{ _("Flip the switch") }}</h4>
+                <div class="ui divider"></div>
+                <p>
+                  {{ _('Select the repository you want to preserve, and toggle
+                  the switch below to turn on automatic preservation of your software.') }}
+                </p>
+              </div>
+
+              <div class="column">
+                <h4 class="ui medium header">2 {{ _("Create a release") }}</h4>
+                <div class="ui divider"></div>
+                <p>
+                  {{ _('Go to %(name)s and <a href="https://help.github.com/articles/creating-releases" target="_blank">create a release <i class="small icon external" aria-hidden="true"></i></a>. %(site_name)s will automatically download a .zip-ball of each new release and register a DOI.',
+                  name=vocabulary["name"], site_name=config.THEME_SITENAME | default('System')) }}
+                </p>
+              </div>
+
+              <div class="column">
+                <h4 class="ui medium header">3 {{ _("Get the badge") }}</h4>
+                <div class="ui divider"></div>
+                <p>
+                  {{ _('After your first release, a DOI badge that you can include in your %(name)s
+                  README will appear next to your repository below.', name=vocabulary["name"]) }}
+                </p>
+              </div>
+            </div>
+          </div>
+        {%- endblock %}
+      </div>
+      {{ helpers.panel_end() }}
+    {%- endblock %}
+
+    {%- if repos %}
+      {%- block enabled_repositories %}
+        {{ helpers.panel_start(_('Enabled Repositories')) }}
+
+        <ul class="ui segments no-border no-border-radius-top no-style-list m-0 p-0">
+          {%- for repo_id, repo in repos.items() if repo.instance and repo.instance.hook %}
+            <li class="ui segment {{ 'no-border-radius-top' if loop.last else 'no-border-radius' }} left-border positive m-0">
+              {% include "invenio_vcs/settings/index_item.html" with context %}
+            </li>
+          {%- endfor %}
+        </ul>
+
+        {{ helpers.panel_end() }}
+      {%- endblock %}
+    {% endif %}
+
+    {%- block disabled_repositories %}
+      {{ helpers.panel_start(_('Repositories')) }}
+
+      {%- block repositories_tooltip %}
+        <p class="ui segment m-0">
+          <small>
+            <!-- TODO: what do we do about this? -->
+            {{ _('If your organization\'s repositories do not show up in the list, please
+            ensure you have enabled <a href="https://help.github.com/articles/approving-third-party-applications-for-your-organization/" target="_blank">third-party
+            access <i class="small icon external" aria-hidden="true"></i></a> to the {} application. Private repositories are not supported.')
+            .format(config.THEME_SITENAME | default('Invenio')) }}
+          </small>
+        </p>
+      {%- endblock %}
+
+      {%- if not repos %}
+        <p class="ui segment">
+          {{ _('You have no repositories on %(name)s.', name=vocabulary["name"]) }}
+          <br />
+          <br />
+          {{_('Go to <a href="%(url)s" target="_blank">%(name)s <i class="small icon external" aria-hidden="true"></i></a> and create your first or
+          click the Sync button to synchronize the latest changes from %(name)s.', name=vocabulary["name"], url=new_repo_url)}}
+        </p>
+      {%- else %}
+        <ul class="ui segments no-border no-border-radius-top no-style-list m-0 p-0">
+          {%- for repo_id, repo in repos.items() if not repo.instance or not repo.instance.hook %}
+            <li class="ui segment {{ 'no-border-radius-top' if loop.last else 'no-border-radius' }}">
+              {% include "invenio_vcs/settings/index_item.html" with context %}
+            </li>
+          {%- endfor %}
+        </ul>
+      {% endif %}
+
+      {{ helpers.panel_end() }}
+    {%- endblock %}
+
+  {#- If the user has not connected their VCS account... #}
+  {%- else %}
+    {%- block connect_to_vcs_account %}
+      {{ helpers.panel_start(_('%(name)s', name=vocabulary["name"]), icon=vocabulary["icon"] + " icon") }}
+      <div class="ui segment">
+        <div class="ui centered container">
+          <h2 class="ui huge header">{{ _('Software preservation made simple!') }}</h2>
+          <a
+            class="ui basic button rel-mt-1"
+            href="{{ url_for('invenio_oauthclient.login', remote_app=provider, next=url_for('invenio_vcs.get_repositories', provider=provider)) }}"
+            aria-label="{{ _('Connect your %(name)s account', name=vocabulary["name"]) }}"
+          >
+            <i class="{{ vocabulary["icon"] }} icon" aria-hidden="True"></i>
+            {{ _('Connect') }}
+          </a>
+          <p class="rel-mt-2">
+            {{ _('To get started, click "Connect" and we will get a list of your %(repositories)s from %(name)s.', repositories=vocabulary["repository_name_plural"], name=vocabulary["name"]) }}
+          </p>
+        </div>
+      </div>
+      {{ helpers.panel_end() }}
+    {%- endblock %}
+  {%- endif %}
+{%- endblock %}
+
+{%- block javascript %}
+  {{ super() }}
+  {{ webpack['invenio-vcs-init.js'] }}
+{%- endblock javascript %}

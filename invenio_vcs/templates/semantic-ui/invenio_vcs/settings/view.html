@@ -1,0 +1,144 @@
+{# -*- coding: utf-8 -*-
+
+  This file is part of Invenio.
+  Copyright (C) 2023 CERN.
+
+  Invenio is free software; you can redistribute it and/or modify it
+  under the terms of the MIT License; see LICENSE file for more details.
+#}
+
+{%- import "invenio_vcs/settings/helpers.html" as helpers with context %}
+{%- from "invenio_vcs/helpers.html" import doi_badge with context -%}
+
+{%- extends config.VCS_SETTINGS_TEMPLATE %}
+
+{%- block settings_content %}
+  {% set active = true %}
+
+  {%- block repo_details_header scoped %}
+    <section class="repository-item" aria-label="{{ _('Header') }}">
+      <div class="ui segment">
+        <div class="ui grid">
+          <div class="ten wide middle aligned column">
+            <div class="flex wrap align-items-center">
+              <div class="ui small header m-0">
+                <a
+                  class="mt-5 mb-5"
+                  href="{{ url_for('invenio_vcs.get_repositories', provider=provider) }}"
+                  aria-label="{{ _('Go back to all repositories') }}"
+                >
+                  {{ _("Repositories") }}
+                </a>
+                <span class="breadcrumb-icon">
+                  <i class="right angle icon mr-0" aria-hidden="true"></i>
+                </span>
+                <h2 class="ui small header mt-5 mb-5 inline-computer rel-mr-1">
+                  <i class="{{ vocabulary["icon"] }} small icon mr-5" aria-hidden="true"></i>{{ repo.full_name }}
+                </h2>
+              </div>
+            </div>
+          </div>
+          <div class="six wide right aligned middle aligned column">
+            {{ helpers.repo_switch(repo, repo.provider_id, provider) }}
+          </div>
+        </div>
+
+        <div>
+          <div class="repo-switch-message ui compact icon message hidden rel-mt-1">
+            <i class="icon" aria-hidden="true"></i>
+            <p role="alert" class="content m-0"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  {%- endblock %}
+
+  {{
+    helpers.panel_start(
+      _('Releases'),
+      btn_text=_('Create release'),
+      btn_icon=vocabulary["icon"] + ' icon',
+      btn_href=new_release_url,
+    )
+  }}
+  <div class="ui segment {{ 'p-0' if releases }}">
+    {%- if not releases %}
+      {%- if repo.enabled %}
+
+        {%- block enabled_repo_get_started scoped %}
+          <div class="ui centered container">
+            <h2 class="ui large header mt-10">{{ _("Get started!") }}</h2>
+            <p class="rel-mt-1">{{ _("Go to %(name)s and make your first release.", name=vocabulary["name"]) }}</p>
+            <a class="ui positive large icon button rel-mt-1 mr-0" href="{{ new_release_url }}" target="_blank">
+              <i class="{{ vocabulary["icon"] }} icon" aria-hidden="true"></i>
+              {{ repo.full_name }}
+            </a>
+          </div>
+        {%- endblock enabled_repo_get_started %}
+
+      {%- else -%}
+
+        {%- block disabled_repo_getstarted scoped %}
+          <div class="ui grid repository-item">
+            <div class="centered sixteen wide column">
+              <h2 class="ui large header mt-10">{{ _("Get started!") }}</h2>
+            </div>
+            <div class="two column stackable tablet-mobile row">
+              <div class="column">
+                <h2 class="ui medium header">1 {{ _("Flip the switch") }}</h2>
+                <div class="ui divider"></div>
+                <p>
+                  {{ _("Toggle the switch below to turn on/off automatic preservation of your repository.") }}
+                </p>
+                <div class="text-align-center rel-mt-1">
+                  {{ helpers.repo_switch(repo, repo.provider_id) }}
+                </div>
+
+                <div class="repo-switch-message ui compact icon message hidden rel-mt-1">
+                  <i class="icon" aria-hidden="true"></i>
+                  <p role="alert" class="content m-0"></p>
+                </div>
+              </div>
+
+              <div class="column">
+                <h2 class="ui medium header">2 {{ _("Create a release") }}</h2>
+                <div class="ui divider"></div>
+                <p>
+                  {{ _('Go to {} and create a release. {}
+                  will automatically download a .zip-ball of each new release and register a DOI.')
+                  .format(vocabulary["name"], config.THEME_SITENAME | default('Invenio')) }}
+                </p>
+
+                <div class="text-align-center rel-mt-1">
+                  <a class="ui positive medium icon button" href="{{ new_release_url }}">
+                    <i class="{{ vocabulary["icon"] }} icon"></i>
+                    {{ repo.full_name }}
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        {%- endblock disabled_repo_getstarted %}
+
+      {%- endif -%}
+    {%- else %}
+      {%- block repo_releases scoped %}
+        <ul class="ui segments no-border no-border-radius-top no-style-list m-0 p-0">
+
+          {%- for release in releases %}
+            {% set is_last = loop.last %}
+            {% set list_index = loop.index %}
+            {% include "invenio_vcs/settings/release_item.html" with context %}
+          {%- endfor %}
+        </ul>
+      {%- endblock repo_releases %}
+    {%- endif %}
+  </div>
+  {{ helpers.panel_end() }}
+{%- endblock %}
+
+{%- block javascript %}
+  {{ super() }}
+  {{ webpack['invenio-vcs-init.js'] }}
+{%- endblock javascript %}

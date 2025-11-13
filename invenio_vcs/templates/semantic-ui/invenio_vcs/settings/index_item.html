@@ -1,0 +1,59 @@
+{# -*- coding: utf-8 -*-
+
+  This file is part of Invenio.
+  Copyright (C) 2023 CERN.
+
+  Invenio is free software; you can redistribute it and/or modify it
+  under the terms of the MIT License; see LICENSE file for more details.
+#}
+{%- from "invenio_vcs/helpers.html" import doi_badge with context -%}
+{%- set release = repo.get('latest') %}
+
+{%- block repository_item %}
+  <div class="ui grid repository-item">
+    <div class="thirteen wide computer thirteen wide tablet twelve wide mobile column">
+      <div class="flex column-mobile column-tablet justify-space-between">
+        <div class="flex align-items-center justify-space-between wrap mt-5 mb-5 rel-mr-1">
+          <div class="flex align-items-center mb-5 mt-5">
+            <a
+              href="{{ repo_url(repo.full_name) }}"
+              data-tooltip="{{ _('View repository on %(name)s', name=vocabulary["name"]) }}"
+              aria-label="{{ _('View repository on %(name)s:', name=vocabulary["name"]) }} {{ repo.full_name }}"
+              target="_blank"
+            >
+              <i class="{{ vocabulary["icon"] }} icon" aria-hidden="true"></i>
+            </a>
+
+            <a
+              href="{{ url_for('.get_repository', provider=provider, repo_id=repo.id) }}"
+              class="rel-mr-1"
+            >
+              <b>{{ repo.full_name }}</b>
+            </a>
+          </div>
+
+          {%- if release and release.record %}
+            {%- set release_record_doi = release.record.pids.get('doi', {}).get('identifier') %}
+            {%- set conceptid_doi_url = release.record.links.parent_doi %}
+          {%- endif %}
+
+          {%- if release_record_doi %}
+            {{ doi_badge(release_record_doi, doi_url=conceptid_doi_url, provider=provider, provider_id=repo_id) }}
+          {%- endif %}
+        </div>
+
+
+        <div>
+          <div class="repo-switch-message ui tiny compact icon message pt-10 pb-10 rel-pr-1 rel-pl-1 mt-5 mb-5 hidden">
+            <i class="icon" aria-hidden="true"></i>
+            <p role="alert" class="content m-0"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="three wide computer three wide tablet four wide mobile middle aligned right aligned column">
+      {{ helpers.repo_switch(repo.instance, repo_id, provider) }}
+    </div>
+  </div>
+{%- endblock %}
