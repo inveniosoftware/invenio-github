@@ -26,6 +26,13 @@
 Changes
 =======
 
+Version v3.0.2 (released 2025-11-26)
+
+- api: optimize sync process with batch task execution
+    * prevent GitHub page timeout with 504 after sync
+    * optimize sync process with batch task execution
+    * add tests for sync() and sync_repo_hooks() methods
+
 Version v3.0.1 (released 2025-07-30)
 
 - api: fix set alternate zipball URL when tag and branch having same name
