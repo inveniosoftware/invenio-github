@@ -223,15 +223,12 @@ class VCSService:
 
             vcs_user_identities.append(user_identity)
 
-        is_changed = False
-
         # Create user associations that exist in the VCS but not in the DB
         for user_identity in vcs_user_identities:
             if not any(
                 db_user.id == user_identity.id_user for db_user in db_repo.users
             ):
                 db_repo.add_user(user_identity.id_user)
-                is_changed = True
 
         # Remove user associations that exist in the DB but not in the VCS
         for db_user in db_repo.users:
@@ -240,9 +237,6 @@ class VCSService:
                 for user_identity in vcs_user_identities
             ):
                 db_repo.remove_user(db_user.id)
-                is_changed = True
-
-        return is_changed
 
     def sync(self, hooks=True, async_hooks=True):
         """Synchronize user repositories.
@@ -261,9 +255,6 @@ class VCSService:
         if vcs_repos is None:
             vcs_repos = {}
 
-        if hooks:
-            self._sync_hooks(vcs_repos.keys(), asynchronous=async_hooks)
-
         # Update changed names for repositories stored in DB
         db_repos = (
             Repository.query.join(repository_user_association)
@@ -281,11 +272,9 @@ class VCSService:
             if not vcs_repo:
                 continue
 
-            changed_users = self.sync_repo_users(db_repo)
+            self.sync_repo_users(db_repo)
             user_synced_repo_ids.add(db_repo.provider_id)
-            changed_model = vcs_repo.to_model(db_repo)
-            if changed_users or changed_model:
-                db.session.add(db_repo)
+            vcs_repo.to_model(db_repo)
 
         # Remove ownership from repositories that the user has no longer
         # 'admin' permissions, or have been deleted.
@@ -331,18 +320,15 @@ class VCSService:
         self.provider.remote_account.extra_data.changed()
         db.session.add(self.provider.remote_account)
 
-    def _sync_hooks(self, repo_ids, asynchronous=True):
+        if hooks:
+            k = list(vcs_repos.keys())
+            self._sync_hooks(k, asynchronous=async_hooks)
+
+    def _sync_hooks(self, repo_ids: list[str], asynchronous=True):
         """Check if a hooks sync task needs to be started."""
         if not asynchronous:
             for repo_id in repo_ids:
-                try:
-                    self.sync_repo_hook(repo_id)
-                except RepositoryAccessError:
-                    current_app.logger.warning(
-                        str(RepositoryAccessError), exc_info=True
-                    )
-                except NoResultFound:
-                    pass  # Repository not in DB yet
+                self.sync_repo_hook(repo_id)
         else:
             # If hooks will run asynchronously, we need to commit any changes done so far
             db.session.commit()
@@ -350,33 +336,27 @@ class VCSService:
                 self.provider.factory.id, self.provider.user_id, list(repo_ids)
             )
 
-    def sync_repo_hook(self, repo_id):
-        """Sync a VCS repo's hook with the locally stored repo."""
+    def sync_repo_hook(self, repo_id: str):
+        """Sync a VCS repo's hook with the locally stored repo.
+
+        The repository referred to by `repo_id` must already exist.
+        """
         # Get the hook that we may have set in the past
         hook = self.provider.get_first_valid_webhook(repo_id)
-        vcs_repo = self.provider.get_repository(repo_id)
-        assert vcs_repo is not None
 
         # If hook on the VCS exists, get or create corresponding db object and
         # enable the hook. Otherwise remove the old hook information.
         db_repo = Repository.get(self.provider.factory.id, provider_id=repo_id)
 
-        if hook:
-            if not db_repo:
-                db_repo = Repository.create(
-                    provider=self.provider.factory.id,
-                    provider_id=repo_id,
-                    default_branch=vcs_repo.default_branch,
-                    full_name=vcs_repo.full_name,
-                    description=vcs_repo.description,
-                    license_spdx=vcs_repo.license_spdx,
-                )
-                self.sync_repo_users(db_repo)
-            if not db_repo.enabled:
-                self.mark_repo_enabled(db_repo, hook.id)
-        else:
-            if db_repo:
-                self.mark_repo_disabled(db_repo)
+        if not db_repo:
+            # This method is always called after the main sync, so we
+            # expect `repo_id` to exist already.
+            raise RepositoryNotFoundError(repo_id)
+
+        if hook and not db_repo.enabled:
+            self.mark_repo_enabled(db_repo, hook.id)
+        elif hook is None and db_repo.enabled:
+            self.mark_repo_disabled(db_repo)
 
     def mark_repo_disabled(self, db_repo: Repository):
         """Marks a repository as disabled."""
@@ -443,14 +423,13 @@ class VCSService:
 
     def disable_repository(self, repository_id, hook_id=None):
         """Deletes the hook for a repository and marks it as disabled."""
+        # We look up the repo from `user_available_repositories` because at this point
+        # we have already marked it as disabled (i.e. removed the hook ID from the DB).
         db_repo = self.user_available_repositories.filter(
             Repository.provider_id == repository_id
         ).first()
         if db_repo is None:
             raise RepositoryNotFoundError(repository_id)
-
-        if not db_repo.enabled:
-            raise RepositoryDisabledError(repository_id)
 
         if not self.provider.delete_webhook(repository_id, hook_id):
             return False

@@ -70,7 +70,7 @@ class OAuthHandlers:
             repos = svc.user_enabled_repositories.all()
             repos_with_hooks = []
             for repo in repos:
-                if repo.hook is not None:
+                if repo.enabled:
                     repos_with_hooks.append((repo.provider_id, repo.hook))
                 svc.mark_repo_disabled(repo)
 
