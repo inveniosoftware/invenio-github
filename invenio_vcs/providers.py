@@ -56,6 +56,9 @@ class RepositoryServiceProviderFactory(ABC):
         credentials_key: str,
         repository_name: str,
         repository_name_plural: str,
+        release_docs_link: str,
+        repo_list_message: str | None = None,
+        repo_list_info_link: str | None = None,
     ):
         """Initialize the repository service provider factory."""
 
@@ -69,6 +72,9 @@ class RepositoryServiceProviderFactory(ABC):
         self.credentials_key = credentials_key
         self.repository_name = repository_name
         self.repository_name_plural = repository_name_plural
+        self.release_docs_link = release_docs_link
+        self.repo_list_message = repo_list_message
+        self.repo_list_info_link = repo_list_info_link
 
     def update_config_override(self, config_override: dict):
         """After the application is initialised, this method is called to override the provider configuration using VCS_PROVIDER_CONFIG_DICT if specified.
@@ -90,6 +96,15 @@ class RepositoryServiceProviderFactory(ABC):
         )
         self.repository_name_plural = config_override.get(
             "repository_name_plural", self.repository_name_plural
+        )
+        self.release_docs_link = config_override.get(
+            "release_docs_links", self.release_docs_link
+        )
+        self.repo_list_message = config_override.get(
+            "repo_list_message", self.repo_list_message
+        )
+        self.repo_list_info_link = config_override.get(
+            "repo_list_info_link", self.repo_list_info_link
         )
 
     @property
@@ -194,6 +209,9 @@ class RepositoryServiceProviderFactory(ABC):
             "name": self.name,
             "repository_name": self.repository_name,
             "repository_name_plural": self.repository_name_plural,
+            "release_docs_link": self.release_docs_link,
+            "repo_list_message": self.repo_list_message,
+            "repo_list_info_link": self.repo_list_info_link,
             "icon": self.icon,
         }
 

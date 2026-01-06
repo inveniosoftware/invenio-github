@@ -82,6 +82,11 @@ class GitLabProviderFactory(RepositoryServiceProviderFactory):
             icon="gitlab",
             repository_name="project",
             repository_name_plural="projects",
+            # The base URL inside this doesn't get updated if `base_url` is overrided in update_config_override.
+            # If you change the base URL after calling the constructor, make sure to change this too.
+            release_docs_link="{}/help/user/project/releases/_index.md".format(
+                base_url
+            ),
         )
 
         self._config = dict()
@@ -371,7 +376,6 @@ class GitLabProvider(RepositoryServiceProvider):
         proj = self._gl.projects.get(int(repository_id), lazy=True)
         hooks: list[GenericWebhook] = []
         for hook in proj.hooks.list(iterator=True):
-            print("hook", hook)
             hooks.append(
                 GenericWebhook(
                     id=str(hook.id),

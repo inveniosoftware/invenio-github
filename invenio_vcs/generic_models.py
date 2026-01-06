@@ -56,17 +56,13 @@ class GenericRepository:
 
     def to_model(self, model: Repository):
         """Update a Repository model with this generic repository's data."""
-        changed = False
         for key, value in asdict(self).items():
             if key in ["id"]:
                 continue
 
             db_value = getattr(model, key)
             if db_value != value:
-                changed = True
                 setattr(model, key, value)
-
-        return changed
 
 
 @dataclass

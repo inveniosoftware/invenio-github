@@ -58,6 +58,9 @@ class GitHubProviderFactory(RepositoryServiceProviderFactory):
             icon="github",
             repository_name="repository",
             repository_name_plural="repositories",
+            release_docs_link="https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository",
+            repo_list_message="If your organization's repositories do not show up in the list, please ensure you have enabled third-party access.",
+            repo_list_info_link="https://docs.github.com/en/organizations/managing-oauth-access-to-your-organizations-data/approving-oauth-apps-for-your-organization",
         )
 
         self._config = dict()
@@ -262,6 +265,8 @@ class GitHubProvider(RepositoryServiceProvider):
             return None
 
         user_ids: list[str] = []
+        # This API route has a `permission` param but it's not supported by github3.py
+        # https://docs.github.com/en/rest/collaborators/collaborators?apiVersion=2022-11-28#list-repository-collaborators
         for collaborator in repo.collaborators():
             if not collaborator.permissions["admin"]:
                 continue
