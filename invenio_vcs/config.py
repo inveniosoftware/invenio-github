@@ -40,6 +40,16 @@ VCS_CITATION_METADATA_SCHEMA = None
 VCS_ZIPBALL_TIMEOUT = 300
 """Timeout for the zipball download, in seconds."""
 
+VCS_SYNC_BATCH_SIZE = 20
+"""Number of repositories to be processed in a single batch when syncing hooks and users.
+
+If the user has more than 20 repositories, multiple tasks will be created,
+syncing them in parallel. Thereby the sync process should finish in a timely
+manner and we avoid timeouts on platforms like Zenodo.
+
+Decrease this value if you experience task timeouts.
+"""
+
 
 def get_provider_list(app=current_app) -> list["RepositoryServiceProviderFactory"]:
     """Get a list of configured VCS provider factories."""

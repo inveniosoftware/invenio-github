@@ -99,6 +99,31 @@ def sync_hooks(provider, user_id, repositories):
         sync_hooks.retry(exc=exc)
 
 
+@shared_task(max_retries=6, default_retry_delay=10 * 60, rate_limit="100/m")
+def sync_repo_users(provider, user_id, repo_provider_ids):
+    """Sync the Invenio users that have access to a repo.
+
+    A user ID is still required so we know which user's OAuth credentials to use.
+    """
+
+    from .service import VCSService
+
+    try:
+        svc = VCSService.for_provider_and_user(provider, user_id)
+
+        for repo_id in repo_provider_ids:
+            try:
+                with db.session.begin_nested():
+                    svc.sync_repo_users(repo_id)
+                db.session.commit()
+            except RepositoryAccessError as e:
+                current_app.logger.warning(str(e), exc_info=True)
+                pass
+    except Exception as exc:
+        current_app.logger.warning(str(exc), exc_info=True)
+        raise sync_repo_users.retry(exc=exc)
+
+
 @shared_task(ignore_result=True, max_retries=5, default_retry_delay=10 * 60)
 def process_release(provider, release_id):
     """Process a received Release."""

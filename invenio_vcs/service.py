@@ -20,7 +20,6 @@ from invenio_i18n import gettext as _
 from invenio_oauth2server.models import Token as ProviderToken
 from invenio_oauthclient import oauth_link_external_id
 from sqlalchemy import delete
-from sqlalchemy.exc import NoResultFound
 from werkzeug.utils import cached_property
 
 from invenio_vcs.config import get_provider_by_id
@@ -28,7 +27,6 @@ from invenio_vcs.errors import (
     RemoteAccountDataNotSet,
     RemoteAccountNotFound,
     RepositoryAccessError,
-    RepositoryDisabledError,
     RepositoryNotFoundError,
     UserInfoNoneError,
 )
@@ -41,6 +39,7 @@ from invenio_vcs.models import (
 )
 from invenio_vcs.proxies import current_vcs
 from invenio_vcs.tasks import sync_hooks as sync_hooks_task
+from invenio_vcs.tasks import sync_repo_users as sync_repo_users_task
 from invenio_vcs.utils import iso_utcnow
 
 if TYPE_CHECKING:
@@ -194,7 +193,97 @@ class VCSService:
             repo_id=db_repo.provider_id,
         )
 
-    def sync_repo_users(self, db_repo: Repository):
+    def sync(self, hooks=True, async_hooks=True):
+        """Synchronize user repositories.
+
+        :param bool hooks: True for syncing hooks.
+        :param bool async_hooks: True for sending of an asynchronous task to
+                                 sync hooks.
+
+        .. note::
+
+            Syncing happens from the VCS' direction only. This means that we
+            consider the information on VCS as valid, and we overwrite our
+            own state based on this information.
+        """
+        vcs_repos = self.provider.list_repositories()
+        if vcs_repos is None:
+            vcs_repos = {}
+
+        # Get the list of repos the user currently has access to in the DB
+        db_repos = (
+            Repository.query.join(repository_user_association)
+            .filter(
+                repository_user_association.c.user_id == self.provider.user_id,
+                Repository.provider == self.provider.factory.id,
+            )
+            .all()
+        )
+        # Update the DB repos with any new data from the VCS repos
+        for db_repo in db_repos:
+            vcs_repo = vcs_repos.get(db_repo.provider_id)
+            if not vcs_repo:
+                continue
+            vcs_repo.to_model(db_repo)
+
+        # Remove ownership from repositories that the user has no longer
+        # access to or have been deleted.
+        delete_stmt = delete(repository_user_association).where(
+            repository_user_association.c.user_id == self.provider.user_id,
+            Repository.provider == self.provider.factory.id,
+            ~Repository.provider_id.in_(vcs_repos.keys()),
+            repository_user_association.c.repository_id == Repository.id,
+        )
+        db.session.execute(delete_stmt)
+
+        # Add new repos from VCS to the DB (without the hook activated)
+        for _, vcs_repo in vcs_repos.items():
+            # We cannot just check the repo from the existing `db_repos` list as this only includes the repos to which the user
+            # already has access. E.g. a repo from the VCS might already exist in our DB but the user doesn't yet have access to it.
+            corresponding_db_repo = Repository.query.filter(
+                Repository.provider_id == vcs_repo.id,
+                Repository.provider == self.provider.factory.id,
+            ).first()
+
+            if corresponding_db_repo is None:
+                # We do not yet have this repo registered for any user at all in our DB, so we need to create it.
+                corresponding_db_repo = Repository.create(
+                    provider=self.provider.factory.id,
+                    provider_id=vcs_repo.id,
+                    default_branch=vcs_repo.default_branch,
+                    full_name=vcs_repo.full_name,
+                    description=vcs_repo.description,
+                    license_spdx=vcs_repo.license_spdx,
+                )
+
+        # Update last sync
+        self.provider.remote_account.extra_data.update(
+            dict(
+                last_sync=iso_utcnow(),
+            )
+        )
+        self.provider.remote_account.extra_data.changed()
+        db.session.add(self.provider.remote_account)
+
+        k = list(vcs_repos.keys())
+        if hooks:
+            self._sync_hooks(k, asynchronous=async_hooks)
+        self._sync_repo_users(k)
+
+    def _sync_repo_users(self, repo_provider_ids: list[str]):
+        """Start the async tasks for syncing repo users."""
+
+        # The sync will run asynchronously, so we need to commit everything so far
+        db.session.commit()
+        batch_size = current_app.config["VCS_SYNC_BATCH_SIZE"]
+        for i in range(0, len(repo_provider_ids), batch_size):
+            sync_repo_users_task.delay(
+                self.provider.factory.id,
+                self.provider.user_id,
+                repo_provider_ids[i : i + batch_size],
+            )
+
+    def sync_repo_users(self, repo_provider_id: str):
         """
         Synchronises the member users of the repository.
 
@@ -206,6 +295,12 @@ class VCSService:
 
         :return: boolean of whether any changed were made to the DB
         """
+        db_repo = Repository.get(self.provider.factory.id, provider_id=repo_provider_id)
+        if not db_repo:
+            # This method is always called after the main sync, so we
+            # expect `repo_provider_id` to exist already.
+            raise RepositoryNotFoundError(repo_provider_id)
+
         vcs_user_ids = self.provider.list_repository_user_ids(db_repo.provider_id)
         if vcs_user_ids is None:
             return
@@ -238,103 +333,21 @@ class VCSService:
             ):
                 db_repo.remove_user(db_user.id)
 
-    def sync(self, hooks=True, async_hooks=True):
-        """Synchronize user repositories.
-
-        :param bool hooks: True for syncing hooks.
-        :param bool async_hooks: True for sending of an asynchronous task to
-                                 sync hooks.
-
-        .. note::
-
-            Syncing happens from the VCS' direction only. This means that we
-            consider the information on VCS as valid, and we overwrite our
-            own state based on this information.
-        """
-        vcs_repos = self.provider.list_repositories()
-        if vcs_repos is None:
-            vcs_repos = {}
-
-        # Update changed names for repositories stored in DB
-        db_repos = (
-            Repository.query.join(repository_user_association)
-            .filter(
-                repository_user_association.c.user_id == self.provider.user_id,
-                Repository.provider == self.provider.factory.id,
-            )
-            .all()
-        )
-
-        # Make sure we don't run the user sync step more than once for any repo
-        user_synced_repo_ids: set[str] = set()
-        for db_repo in db_repos:
-            vcs_repo = vcs_repos.get(db_repo.provider_id)
-            if not vcs_repo:
-                continue
-
-            self.sync_repo_users(db_repo)
-            user_synced_repo_ids.add(db_repo.provider_id)
-            vcs_repo.to_model(db_repo)
-
-        # Remove ownership from repositories that the user has no longer
-        # 'admin' permissions, or have been deleted.
-        delete_stmt = delete(repository_user_association).where(
-            repository_user_association.c.user_id == self.provider.user_id,
-            Repository.provider == self.provider.factory.id,
-            ~Repository.provider_id.in_(vcs_repos.keys()),
-            repository_user_association.c.repository_id == Repository.id,
-        )
-        db.session.execute(delete_stmt)
-
-        # Add new repos from VCS to the DB (without the hook activated)
-        for _, vcs_repo in vcs_repos.items():
-            # We cannot just check the repo from the existing `db_repos` list as this only includes the repos to which the user
-            # already has access. E.g. a repo from the VCS might already exist in our DB but the user doesn't yet have access to it.
-            corresponding_db_repo = Repository.query.filter(
-                Repository.provider_id == vcs_repo.id,
-                Repository.provider == self.provider.factory.id,
-            ).first()
-
-            if corresponding_db_repo is None:
-                # We do not yet have this repo registered for any user at all in our DB, so we need to create it.
-                corresponding_db_repo = Repository.create(
-                    provider=self.provider.factory.id,
-                    provider_id=vcs_repo.id,
-                    default_branch=vcs_repo.default_branch,
-                    full_name=vcs_repo.full_name,
-                    description=vcs_repo.description,
-                    license_spdx=vcs_repo.license_spdx,
-                )
-
-            if vcs_repo.id not in user_synced_repo_ids:
-                # In any case (even if we already have the repo) we need to sync its member users unless we have already done so.
-                # E.g. maybe the repo is in our DB but the user for which this sync has been trigerred isn't registered as a member
-                self.sync_repo_users(corresponding_db_repo)
-
-        # Update last sync
-        self.provider.remote_account.extra_data.update(
-            dict(
-                last_sync=iso_utcnow(),
-            )
-        )
-        self.provider.remote_account.extra_data.changed()
-        db.session.add(self.provider.remote_account)
-
-        if hooks:
-            k = list(vcs_repos.keys())
-            self._sync_hooks(k, asynchronous=async_hooks)
-
-    def _sync_hooks(self, repo_ids: list[str], asynchronous=True):
+    def _sync_hooks(self, repo_provider_ids: list[str], asynchronous=True):
         """Check if a hooks sync task needs to be started."""
         if not asynchronous:
-            for repo_id in repo_ids:
+            for repo_id in repo_provider_ids:
                 self.sync_repo_hook(repo_id)
         else:
             # If hooks will run asynchronously, we need to commit any changes done so far
             db.session.commit()
-            sync_hooks_task.delay(
-                self.provider.factory.id, self.provider.user_id, list(repo_ids)
-            )
+            batch_size = current_app.config["VCS_SYNC_BATCH_SIZE"]
+            for i in range(0, len(repo_provider_ids), batch_size):
+                sync_hooks_task.delay(
+                    self.provider.factory.id,
+                    self.provider.user_id,
+                    repo_provider_ids[i : i + batch_size],
+                )
 
     def sync_repo_hook(self, repo_id: str):
         """Sync a VCS repo's hook with the locally stored repo.
