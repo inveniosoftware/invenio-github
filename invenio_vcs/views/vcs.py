@@ -168,7 +168,7 @@ def register_api_routes(blueprint):
             POST /account/settings/github/hook
         """
         svc = VCSService.for_provider_and_user(provider, current_user.id)
-        svc.sync(async_hooks=False)
+        svc.sync()
         db.session.commit()
 
         return "", 200
