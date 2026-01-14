@@ -186,4 +186,4 @@ def sync_account(provider, user_id):
     # Start a nested transaction so every data writing inside sync is executed atomically
     with db.session.begin_nested():
         svc = VCSService.for_provider_and_user(provider, user_id)
-        svc.sync(hooks=False, async_hooks=False)
+        svc.sync(hooks=False)

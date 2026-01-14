@@ -193,7 +193,7 @@ class VCSService:
             repo_id=db_repo.provider_id,
         )
 
-    def sync(self, hooks=True, async_hooks=True):
+    def sync(self, hooks=True):
         """Synchronize user repositories.
 
         :param bool hooks: True for syncing hooks.
@@ -256,6 +256,11 @@ class VCSService:
                     license_spdx=vcs_repo.license_spdx,
                 )
 
+                # We need to flush to generate the ID for the repo, otherwise adding the user relation will fail.
+                db.session.flush()
+                # Add the user that triggered the sync now to avoid making them wait for the async tasks.
+                corresponding_db_repo.add_user(self.provider.user_id)
+
         # Update last sync
         self.provider.remote_account.extra_data.update(
             dict(
@@ -265,16 +270,16 @@ class VCSService:
         self.provider.remote_account.extra_data.changed()
         db.session.add(self.provider.remote_account)
 
+        # Hooks and user sync will run asynchronously, so we need to commit any changes done so far
+        db.session.commit()
+
         k = list(vcs_repos.keys())
         if hooks:
-            self._sync_hooks(k, asynchronous=async_hooks)
+            self._sync_hooks(k)
         self._sync_repo_users(k)
 
     def _sync_repo_users(self, repo_provider_ids: list[str]):
         """Start the async tasks for syncing repo users."""
-
-        # The sync will run asynchronously, so we need to commit everything so far
-        db.session.commit()
         batch_size = current_app.config["VCS_SYNC_BATCH_SIZE"]
         for i in range(0, len(repo_provider_ids), batch_size):
             sync_repo_users_task.delay(
@@ -333,21 +338,15 @@ class VCSService:
             ):
                 db_repo.remove_user(db_user.id)
 
-    def _sync_hooks(self, repo_provider_ids: list[str], asynchronous=True):
+    def _sync_hooks(self, repo_provider_ids: list[str]):
         """Check if a hooks sync task needs to be started."""
-        if not asynchronous:
-            for repo_id in repo_provider_ids:
-                self.sync_repo_hook(repo_id)
-        else:
-            # If hooks will run asynchronously, we need to commit any changes done so far
-            db.session.commit()
-            batch_size = current_app.config["VCS_SYNC_BATCH_SIZE"]
-            for i in range(0, len(repo_provider_ids), batch_size):
-                sync_hooks_task.delay(
-                    self.provider.factory.id,
-                    self.provider.user_id,
-                    repo_provider_ids[i : i + batch_size],
-                )
+        batch_size = current_app.config["VCS_SYNC_BATCH_SIZE"]
+        for i in range(0, len(repo_provider_ids), batch_size):
+            sync_hooks_task.delay(
+                self.provider.factory.id,
+                self.provider.user_id,
+                repo_provider_ids[i : i + batch_size],
+            )
 
     def sync_repo_hook(self, repo_id: str):
         """Sync a VCS repo's hook with the locally stored repo.
