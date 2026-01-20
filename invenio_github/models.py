@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2023 CERN.
+# Copyright (C) 2026 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -32,7 +33,6 @@ from invenio_db import db
 from invenio_i18n import lazy_gettext as _
 from invenio_webhooks.models import Event
 from sqlalchemy.dialects import postgresql
-from sqlalchemy_utils.models import Timestamp
 from sqlalchemy_utils.types import ChoiceType, JSONType, UUIDType
 
 RELEASE_STATUS_TITLES = {
@@ -107,7 +107,7 @@ class ReleaseStatus(Enum):
         return RELEASE_STATUS_COLOR[self.name]
 
 
-class Repository(db.Model, Timestamp):
+class Repository(db.Model, db.Timestamp):
     """Information about a GitHub repository."""
 
     __tablename__ = "github_repositories"
@@ -203,7 +203,7 @@ class Repository(db.Model, Timestamp):
         return "<Repository {self.name}:{self.github_id}>".format(self=self)
 
 
-class Release(db.Model, Timestamp):
+class Release(db.Model, db.Timestamp):
     """Information about a GitHub release."""
 
     __tablename__ = "github_releases"

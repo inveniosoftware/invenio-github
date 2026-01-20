@@ -3,6 +3,7 @@
 # This file is part of Invenio.
 # Copyright (C) 2023 CERN.
 # Copyright (C) 2024 KTH Royal Institute of Technology.
+# Copyright (C) 2026 Graz University of Technology.
 #
 # Invenio is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -154,7 +155,7 @@ def refresh_accounts(expiration_threshold=None):
     :param expiration_threshold: Dictionary containing timedelta parameters
     referring to the maximum inactivity time.
     """
-    expiration_date = datetime.datetime.utcnow() - datetime.timedelta(
+    expiration_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
         **(expiration_threshold or {"days": 6 * 30})
     )
 
