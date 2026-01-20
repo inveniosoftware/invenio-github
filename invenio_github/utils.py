@@ -2,6 +2,7 @@
 #
 # This file is part of Invenio.
 # Copyright (C) 2023 CERN.
+# Copyright (C) 2026 Graz University of Technology.
 #
 # Invenio is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -19,17 +20,16 @@
 
 """Various utility functions."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import dateutil.parser
-import pytz
 import six
 from werkzeug.utils import import_string
 
 
 def utcnow():
     """UTC timestamp (with timezone)."""
-    return datetime.now(tz=pytz.utc)
+    return datetime.now(tz=timezone.utc)
 
 
 def iso_utcnow():
@@ -41,7 +41,7 @@ def parse_timestamp(x):
     """Parse ISO8601 formatted timestamp."""
     dt = dateutil.parser.parse(x)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=pytz.utc)
+        dt = dt.replace(tzinfo=timezone.utc)
     return dt
 
 
