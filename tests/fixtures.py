@@ -21,6 +21,7 @@
 # or submit itself to any jurisdiction.
 
 """Define fixtures for tests."""
+
 import os
 from base64 import b64encode
 from zipfile import ZipFile

@@ -5,6 +5,7 @@
 # Invenio-Github is free software; you can redistribute it and/or modify
 # it under the terms of the MIT License; see LICENSE file for more details.
 """Test invenio-github views."""
+
 from flask_security import login_user
 from invenio_accounts.testutils import login_user_via_session
 from invenio_oauthclient.models import RemoteAccount
