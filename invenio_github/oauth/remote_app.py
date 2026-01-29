@@ -6,7 +6,6 @@
 # it under the terms of the MIT License; see LICENSE file for more details.
 """Github oauth app implementation for github integration."""
 
-
 from invenio_oauthclient.contrib.github import GitHubOAuthSettingsHelper
 
 from invenio_github.oauth.handlers import account_setup_handler, disconnect_handler
