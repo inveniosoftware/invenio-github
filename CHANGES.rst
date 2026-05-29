@@ -26,6 +26,10 @@
 Changes
 =======
 
+Version v6.0.0 (released 2026-05-29)
+
+- chore(setup): bump dependencies
+
 Version v5.0.0 (released 2026-01-29)
 
 - chore(black): update formatting to >= 26.0
