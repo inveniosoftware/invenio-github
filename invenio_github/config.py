@@ -1,24 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# This file is part of Invenio.
-# Copyright (C) 2023 CERN.
-#
-# Invenio is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Invenio is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Invenio. If not, see <http://www.gnu.org/licenses/>.
-#
-# In applying this licence, CERN does not waive the privileges and immunities
-# granted to it by virtue of its status as an Intergovernmental Organization
-# or submit itself to any jurisdiction.
+# SPDX-FileCopyrightText: 2023 CERN.
+# SPDX-License-Identifier: MIT
 
 """Configuration for GitHub module."""
 
@@ -42,10 +23,10 @@ This configuration variable must be set explicitly. Example::
 """
 
 GITHUB_WEBHOOK_SYNC_BATCH_SIZE = 20
-"""Number of repositories to be processed in a single batch when syncing hooks. 
+"""Number of repositories to be processed in a single batch when syncing hooks.
 
-If the user has more than 20 repositories, multiple tasks will be created, 
-syncing them in parallel. Thereby the sync process should finish in a timely 
+If the user has more than 20 repositories, multiple tasks will be created,
+syncing them in parallel. Thereby the sync process should finish in a timely
 manner and we avoid timeouts on platforms like Zenodo.
 
 Decrease this value if you experience task timeouts.
