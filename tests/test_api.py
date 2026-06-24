@@ -112,6 +112,17 @@ def test_account_setup_handler_links_before_sync(
     sync_task.delay.assert_called_once_with(user_id)
 
 
+def test_init_account_stores_matched_email(app, test_user, github_api):
+    """init_account stores the verified+primary email, not the full list or profile."""
+    api = GitHubAPI(test_user.id)
+    api.init_account()
+    extra = api.account.extra_data
+
+    assert extra["email"] == "auser@inveniosoftware.org"
+    assert "emails" not in extra
+    assert "profile" not in extra
+
+
 # GithubRelease api tests
 
 

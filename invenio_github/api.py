@@ -157,6 +157,7 @@ class GitHubAPI(object):
             )
 
         ghuser = self.api.me()
+        emails = list(self.api.emails())
         # Setup local access tokens to be used by the webhooks
         hook_token = ProviderToken.create_personal(
             "github-webhook",
@@ -169,6 +170,7 @@ class GitHubAPI(object):
             id=ghuser.id,
             login=ghuser.login,
             name=ghuser.name,
+            email=next((e.email for e in emails if e.verified and e.primary), None),
             tokens=dict(
                 webhook=hook_token.id,
             ),
