@@ -11,10 +11,13 @@ import time
 from unittest.mock import patch
 
 import pytest
+from invenio_accounts.errors import AlreadyLinkedError
+from invenio_accounts.models import UserIdentity
 from invenio_webhooks.models import Event
 
 from invenio_github.api import GitHubAPI, GitHubRelease
 from invenio_github.models import Release, ReleaseStatus, Repository
+from invenio_github.oauth.handlers import account_setup_handler
 
 from .fixtures import PAYLOAD as github_payload_fixture
 
@@ -29,6 +32,84 @@ def test_github_api_create_hook(app, test_user, github_api):
     repo_name = "repo-1"
     hook_created = api.create_hook(repo_id=repo_id, repo_name=repo_name)
     assert hook_created
+
+
+def test_account_setup_handler_links_external_id(
+    app, db, github_remote_app, remote_token, github_api
+):
+    """Setup handler links the GitHub identity to the user via UserIdentity."""
+    user_id = remote_token.remote_account.user_id
+
+    # No external-id link exists before setup runs.
+    assert UserIdentity.query.filter_by(method="github", id_user=user_id).count() == 0
+
+    account_setup_handler(github_remote_app, remote_token, resp=None)
+
+    # The mock GitHub user id (1234) is now linked, so future logins resolve
+    # by external id instead of falling back to email matching.
+    identity = UserIdentity.query.filter_by(
+        method="github", id="1234", id_user=user_id
+    ).one_or_none()
+    assert identity is not None
+
+
+def test_account_setup_handler_idempotent_for_same_user(
+    app, db, github_remote_app, remote_token, github_api
+):
+    """Re-running setup when already linked to the same user is a no-op."""
+    user_id = remote_token.remote_account.user_id
+    UserIdentity.create(remote_token.remote_account.user, "github", "1234")
+    db.session.commit()
+
+    account_setup_handler(github_remote_app, remote_token, resp=None)
+
+    assert (
+        UserIdentity.query.filter_by(
+            method="github", id="1234", id_user=user_id
+        ).count()
+        == 1
+    )
+
+
+def test_account_setup_handler_conflict_other_user(
+    app, db, github_remote_app, remote_token, github_api, unlinked_user
+):
+    """A GitHub id already linked to another user raises and is left intact."""
+    UserIdentity.create(unlinked_user, "github", "1234")
+    db.session.commit()
+
+    with pytest.raises(AlreadyLinkedError):
+        account_setup_handler(github_remote_app, remote_token, resp=None)
+
+    # The link still points to the other user; the token's user got none.
+    owner = UserIdentity.query.filter_by(method="github", id="1234").one()
+    assert owner.id_user == unlinked_user.id
+    assert (
+        UserIdentity.query.filter_by(
+            method="github", id_user=remote_token.remote_account.user_id
+        ).count()
+        == 0
+    )
+
+
+def test_account_setup_handler_links_before_sync(
+    app, db, github_remote_app, remote_token, github_api
+):
+    """A sync failure does not undo the link; a retry task is scheduled instead."""
+    user_id = remote_token.remote_account.user_id
+
+    with (
+        patch.object(GitHubAPI, "sync", side_effect=Exception("boom")),
+        patch("invenio_github.oauth.handlers.sync_account") as sync_task,
+    ):
+        account_setup_handler(github_remote_app, remote_token, resp=None)
+
+    # Linked despite the sync failure...
+    assert UserIdentity.query.filter_by(
+        method="github", id="1234", id_user=user_id
+    ).one_or_none()
+    # ...and a retry was scheduled.
+    sync_task.delay.assert_called_once_with(user_id)
 
 
 # GithubRelease api tests

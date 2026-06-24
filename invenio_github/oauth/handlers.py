@@ -24,23 +24,49 @@
 
 from flask import current_app, redirect, url_for
 from flask_login import current_user
+from invenio_accounts.errors import AlreadyLinkedError
+from invenio_accounts.models import UserIdentity
 from invenio_db import db
 from invenio_oauth2server.models import Token as ProviderToken
-from invenio_oauthclient import oauth_unlink_external_id
+from invenio_oauthclient import oauth_link_external_id, oauth_unlink_external_id
 
 from invenio_github.api import GitHubAPI
-from invenio_github.tasks import disconnect_github
+from invenio_github.tasks import disconnect_github, sync_account
 
 
 def account_setup_handler(remote, token, resp):
     """Perform post initialization."""
+    account = token.remote_account
     try:
-        gh = GitHubAPI(user_id=token.remote_account.user_id)
+        gh = GitHubAPI(user_id=account.user_id)
         gh.init_account()
+
+        # Link the identity (and commit) before the repo sync, so we don't end up with
+        # an unlinked account
+        gh_id = str(account.extra_data["id"])
+        existing = UserIdentity.query.filter_by(
+            method=remote.name, id=gh_id
+        ).one_or_none()
+        if existing is not None and existing.id_user == account.user_id:
+            return
+        oauth_link_external_id(account.user, {"id": gh_id, "method": remote.name})
+        db.session.commit()
+    except AlreadyLinkedError:
+        # The GitHub ID belongs to another user, or this user is already linked to a
+        # different GitHub ID. Surface it so the OAuth flow flashes a message, and the
+        # user resolves it by unlinking first.
+        raise
+    except Exception:
+        current_app.logger.exception("Failed to link GitHub identity")
+        return
+
+    # Sync repos/hooks, and retry asynchronously on failure
+    try:
         gh.sync()
         db.session.commit()
-    except Exception as e:
-        current_app.logger.warning(str(e), exc_info=True)
+    except Exception:
+        current_app.logger.exception("Failed to sync GitHub account")
+        sync_account.delay(account.user_id)
 
 
 def disconnect_handler(remote):
