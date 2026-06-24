@@ -232,6 +232,26 @@ def _create_github_api_mock(
         github_user_metadata(login="auser", email="auser@inveniosoftware.org"),
         mock_api.session,
     )
+    mock_api.emails.return_value = [
+        github3.users.Email(
+            {
+                "email": "auser@inveniosoftware.org",
+                "primary": True,
+                "verified": True,
+                "visibility": "public",
+            },
+            mock_api.session,
+        ),
+        github3.users.Email(
+            {
+                "email": "secondary@inveniosoftware.org",
+                "primary": False,
+                "verified": False,
+                "visibility": None,
+            },
+            mock_api.session,
+        ),
+    ]
 
     repo_1 = github3.repos.Repository(
         github_repo_metadata(
