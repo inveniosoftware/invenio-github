@@ -26,6 +26,11 @@
 Changes
 =======
 
+Version v6.1.0 (released 2026-06-24)
+
+- feat(github): store matched email in account extra_data
+- fix(oauth): link GitHub identity to user on account setup
+
 Version v6.0.0 (released 2026-05-29)
 
 - chore(setup): bump dependencies
