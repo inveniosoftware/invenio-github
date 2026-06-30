@@ -1,3 +1,171 @@
+# SPDX-FileCopyrightText: 2023-2025 CERN.
+# SPDX-FileCopyrightText: 2023-2026 Graz University of Technology.
+# SPDX-FileCopyrightText: 2026 TU Wien.
+# SPDX-License-Identifier: MIT
+
+[project]
+name = "invenio-github"
+description = "Invenio module that adds GitHub integration to the platform."
+readme = "README.rst"
+requires-python = ">= 3.9"
+license = "MIT"
+authors = [
+  { name = "CERN", email = "info@inveniosoftware.org" },
+]
+keywords = [
+  "github",
+  "invenio",
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+]
+dependencies = [
+  "email-validator>=1.0.5",
+  "flask-menu>=2.0.0,<3.0.0",
+  "github3.py>=4.0.1,<5.0.0",
+  "humanize>=0.5.1",
+  "invenio-accounts>=9.0.0,<10.0.0",
+  "invenio-assets>=4.0.0,<5.0.0",
+  "invenio-celery>=2.0.0,<3.0.0",
+  "invenio-db>=2.2.0,<3.0.0",
+  "invenio-formatter>=5.0.0,<6.0.0",
+  "invenio-i18n>=4.0.0,<5.0.0",
+  "invenio-oauth2server>=6.0.0,<7.0.0",
+  "invenio-oauthclient>=9.0.0,<10.0.0",
+  "invenio-pidstore>=4.0.0,<5.0.0",
+  "invenio-records-resources>=11.0.0,<12.0.0",
+  "invenio-records-rest>=6.0.0,<7.0.0",
+  "invenio-webhooks>=4.0.0,<5.0.0",
+  "mistune>=0.7.2",
+  "pyyaml>=5.4.1",
+  "six>=1.12.0",
+  "uritemplate>=3.0.1",
+]
+dynamic = ["version"]
+
+[project.urls]
+Repository = "https://github.com/inveniosoftware/invenio-github"
+
+[project.entry-points."invenio_assets.webpack"]
+invenio_github = "invenio_github.webpack:theme"
+
+[project.entry-points."invenio_base.api_apps"]
+invenio_github = "invenio_github:InvenioGitHub"
+
+[project.entry-points."invenio_base.api_blueprints"]
+invenio_github = "invenio_github.views.github:create_api_blueprint"
+
+[project.entry-points."invenio_base.apps"]
+invenio_github = "invenio_github:InvenioGitHub"
+
+[project.entry-points."invenio_base.blueprints"]
+invenio_github_badge = "invenio_github.views.badge:blueprint"
+invenio_github_github = "invenio_github.views.github:create_ui_blueprint"
+
+[project.entry-points."invenio_base.finalize_app"]
+invenio_github = "invenio_github.ext:finalize_app"
+
+[project.entry-points."invenio_celery.tasks"]
+invenio_github = "invenio_github.tasks"
+
+[project.entry-points."invenio_db.alembic"]
+invenio_github = "invenio_github:alembic"
+
+[project.entry-points."invenio_db.models"]
+invenio_github = "invenio_github.models"
+
+[project.entry-points."invenio_i18n.translations"]
+messages = "invenio_github"
+
+[project.entry-points."invenio_webhooks.receivers"]
+github = "invenio_github.receivers:GitHubReceiver"
+
+[project.optional-dependencies]
+elasticsearch7 = [
+  "invenio-search[elasticsearch7]>=3.0.0,<4.0.0",
+]
+opensearch1 = [
+  "invenio-search[opensearch1]>=3.0.0,<4.0.0",
+]
+opensearch2 = [
+  "invenio-search[opensearch2]>=3.0.0,<4.0.0",
+]
+tests = [
+  "httpretty>=0.8.14",
+  "invenio-app>=3.0.0,<4.0.0",
+  "invenio-db[postgresql,mysql]>=2.2.0,<3.0.0",
+  "invenio-files-rest>=6.0.0,<7.0.0",
+  "isort>=4.2.2",
+  "mock>=2.0.0",
+  "pytest-black>=0.6.0",
+  "pytest-invenio>=4.0.0,<5.0.0",
+  "pytest-mock>=2.0.0",
+  "sphinx>=4.5.0",
+]
+
 [build-system]
-requires = ["setuptools", "wheel", "babel>2.8"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# see https://babel.pocoo.org/en/latest/messages.html#toml-configuration-format
+[tool.babel]
+[tool.babel.compile_catalog]
+directory = "invenio_github/translations/"
+use_fuzzy = true
+
+[tool.babel.extract_messages]
+copyright_holder = "CERN"
+msgid_bugs_address = "info@inveniosoftware.org"
+mapping_file = "pyproject.toml"
+output_file = "invenio_github/translations/messages.pot"
+add_comments = "NOTE"
+
+[tool.babel.init_catalog]
+input_file = "invenio_github/translations/messages.pot"
+output_dir = "invenio_github/translations/"
+
+[[tool.babel.mappings]]
+method = "javascript"
+pattern = "**.js"
+encoding = "utf-8"
+extract_messages = "$._, jQuery._"
+
+[[tool.babel.mappings]]
+method = "python"
+pattern = "**.py"
+encoding = "utf-8"
+
+[[tool.babel.mappings]]
+method = "jinja2"
+pattern = "**/templates/**.html"
+encoding = "utf-8"
+
+[tool.hatch.version]
+path = "invenio_github/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/invenio_github",
+]
+
+[tool.isort]
+profile = "black"
+
+[tool.pydocstyle]
+add_ignore = "D401,D403"
+
+[tool.pytest.ini_options]
+addopts = "--black --isort --pydocstyle --ignore=docs --cov=invenio_github --cov-report=term-missing"
+testpaths = "tests invenio_github"
+live_server_scope = "module"
+
+# UV needs to be told explicitly which extras are conflicting:
+# https://docs.astral.sh/uv/concepts/projects/config/#conflicting-dependencies
+[tool.uv]
+conflicts = [
+  [
+    { extra = "opensearch1" },
+    { extra = "opensearch2" },
+    { extra = "elasticsearch7" },
+  ]
+]

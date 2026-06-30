@@ -60,3 +60,4 @@ target/
 
 # Test database
 test.db
+uv.lock
