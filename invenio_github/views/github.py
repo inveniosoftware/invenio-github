@@ -121,8 +121,8 @@ def register_ui_routes(blueprint):
             latest_release = github.repo_last_published_release(repo)
             default_branch = (
                 github.account.extra_data.get("repos", {})
-                .get(str(repo.github_id), None)
-                .get("default_branch", None)
+                .get(str(repo.github_id), {})
+                .get("default_branch", "master")
             )
             releases = github.get_repository_releases(repo=repo)
             return render_template(

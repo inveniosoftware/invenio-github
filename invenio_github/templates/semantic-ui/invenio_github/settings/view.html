@@ -229,7 +229,7 @@
                           <div id="citation-{{ loop.index }}-tab-panel" role="tabpanel" class="ui tab rel-p-1 {{ 'active' if active }}" data-tab="citation-{{ loop.index }}">
                             {%- block releasetab_cff %}
                               {% set repo_name = value %}
-                              {% set citation_cff_create_link = 'https://github.com/{0}/new/{1}?filename=CITATION.cff'.format(repo.name, (default_branch or 'master')) %}
+                              {% set citation_cff_create_link = 'https://github.com/{0}/new/{1}?filename=CITATION.cff'.format(repo.name, default_branch) %}
                               <div class="flex align-items-center justify-space-between rel-mb-1">
                                 <h3 class="ui header m-0">{{ _("Citation File") }}</h3>
                                 <a class="ui basic button" href="{{ citation_cff_create_link }}">
