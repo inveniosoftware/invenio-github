@@ -26,6 +26,11 @@
 Changes
 =======
 
+Version v7.1.1 (released 2026-07-16)
+
+- chore(setup): migrate from setuptools to hatchling
+- chore(cleanup): remove outdated and unnecessary files
+
 Version v7.1.0 (released 2026-06-24)
 
 - feat(github): store matched email in account extra_data
