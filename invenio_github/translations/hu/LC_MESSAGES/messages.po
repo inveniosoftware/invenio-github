@@ -5,8 +5,10 @@
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
 # 
 # Translators:
-# Tibor Simko <tibor.simko@cern.ch>, 2024
-# Jesús Martín <jesusmartin@sallep.net>, 2026
+# Dorottya Szemigán, 2022
+# Dora Szauter, 2025
+# Andrea Dömötör, 2025
+# Zoltán Kanász-Nagy, 2025
 # 
 #, fuzzy
 msgid ""
@@ -15,123 +17,120 @@ msgstr ""
 "Report-Msgid-Bugs-To: info@inveniosoftware.org\n"
 "POT-Creation-Date: 2026-06-22 20:44+0000\n"
 "PO-Revision-Date: 2016-08-18 09:25+0000\n"
-"Last-Translator: Jesús Martín <jesusmartin@sallep.net>, 2026\n"
-"Language-Team: Spanish (https://app.transifex.com/inveniosoftware/teams/23537/es/)\n"
+"Last-Translator: Zoltán Kanász-Nagy, 2025\n"
+"Language-Team: Hungarian (https://app.transifex.com/inveniosoftware/teams/23537/hu/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
-"Language: es\n"
-"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;\n"
+"Language: hu\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: invenio_github/api.py:139
 msgid "Webhook data not found for user tokens (remote data)."
-msgstr ""
-"No se encontraron datos de webhook para los tokens de usuario (datos "
-"remotos)."
+msgstr "Nem található webhook-adat a felhasználói tokenekhez (távoli adatok)."
 
 #: invenio_github/api.py:150
 msgid "You must set GITHUB_WEBHOOK_RECEIVER_URL."
-msgstr "Debe configurar GITHUB_WEBHOOK_RECEIVER_URL."
+msgstr "Állítsa be a GITHUB_WEBHOOK_RECEIVER_URL-t!"
 
 #: invenio_github/api.py:156
 msgid "Remote account was not found for user."
-msgstr "No se encontró la cuenta remota para el usuario."
+msgstr "Nem található távoli fiók a felhasználóhoz."
 
 #: invenio_github/api.py:435
 msgid "Last sync data is not set for user (remote data)."
 msgstr ""
-"Los últimos datos de sincronización no están configurados para el usuario "
-"(datos remotos)."
+"Az utolsó szinkronizálási adatok nincsenek beállítva a felhasználó számára "
+"(távoli adatok)."
 
 #: invenio_github/api.py:584
 #, python-format
 msgid "Github returned unexpected code: %(status)s for release %(repo_id)s"
 msgstr ""
-"Github devolvió un código inesperado: %(status)s para el lanzamiento "
-"%(repo_id)s"
+"A Github váratlan kódot adott vissza: %(status)sa kiadáshoz%(repo_id)s"
 
 #: invenio_github/errors.py:38
 msgid "The user cannot access the github repository"
-msgstr "El usuario no puede acceder al repositorio de github"
+msgstr "A felhasználónak nincs hozzáférése a github repozitóriumhoz"
 
 #: invenio_github/errors.py:52
 msgid "This repository is not enabled for webhooks."
-msgstr "Este repositorio no está habilitado para webhooks."
+msgstr "Ez a repozitórium nem engedélyezi a webhookok használatát."
 
 #: invenio_github/errors.py:63
 msgid "The repository does not exist."
-msgstr "El repositorio no existe."
+msgstr "A repozitórium nem létezik."
 
 #: invenio_github/errors.py:74
 msgid "Invalid sender for event"
-msgstr "Remitente no válido para el evento"
+msgstr "Érvénytelen beküldő az eseményhez"
 
 #: invenio_github/errors.py:86
 msgid "The release has already been received."
-msgstr "El comunicado ya fue recibido."
+msgstr "A kiadás már beérkezett."
 
 #: invenio_github/errors.py:97
 msgid "The metadata file is not valid JSON."
-msgstr "El archivo de metadatos no es un JSON válido."
+msgstr "A metaadat fájl nem érvényes JSON."
 
 #: invenio_github/errors.py:108
 msgid "The oauth session token was not found."
-msgstr "No se encontró el token de sesión oauth."
+msgstr "The oauth session token nem található."
 
 #: invenio_github/errors.py:119
 msgid "RemoteAccount not found for user"
-msgstr "RemoteAccount no encontrado para el usuario"
+msgstr "Nem található távoli fiók a felhasználóhoz."
 
 #: invenio_github/errors.py:130
 msgid "RemoteAccount extra data not set for user."
-msgstr "Datos adicionales de RemoteAccount no establecidos para el usuario."
+msgstr "A RemoteAccount extra adat nincs beállítva a felhasználó számára."
 
 #: invenio_github/errors.py:141
 msgid "Release does not exist."
-msgstr "El lanzamiento no existe."
+msgstr "A kiadás nem létezik."
 
 #: invenio_github/errors.py:151
 msgid "Github API returned an unexpected error."
-msgstr "La API de Github devolvió un error inesperado."
+msgstr "A Github API váratlan hibát jelzett."
 
 #: invenio_github/errors.py:161
 msgid "Error fetching release zipball file."
-msgstr "Error al obtener el archivo zipball de la versión."
+msgstr ""
 
 #: invenio_github/ext.py:96
 #, python-format
 msgid "%(icon)s GitHub"
-msgstr "%(icon)s GitHub"
+msgstr "%(icon)sGitHub"
 
 #: invenio_github/models.py:39
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:268
 msgid "Received"
-msgstr "Recibido"
+msgstr "Megérkezett"
 
 #: invenio_github/models.py:40
 msgid "Processing"
-msgstr "Procesándose"
+msgstr "Feldolgozás alatt"
 
 #: invenio_github/models.py:41
 msgid "Published"
-msgstr "Publicado"
+msgstr "Publikálva"
 
 #: invenio_github/models.py:42
 msgid "Failed"
-msgstr "Falló"
+msgstr "Sikertelen"
 
 #: invenio_github/models.py:43
 msgid "Deleted"
-msgstr "Borrado"
+msgstr "Törölve"
 
 #: invenio_github/tasks.py:88
 msgid "Deleted hook from github repository."
-msgstr "Hook eliminado del repositorio de github."
+msgstr "A GitHub repozitóriumból törölve lett a hook."
 
 #: invenio_github/templates/semantic-ui/invenio_github/helpers.html:32
 msgid "DOI Badge"
-msgstr "Distintivo DOI"
+msgstr "DOI jelvény"
 
 #: invenio_github/templates/semantic-ui/invenio_github/helpers.html:37
 msgid ""
@@ -139,10 +138,9 @@ msgid ""
 "want a DOI badge for a specific release, please follow the DOI link for one "
 "of the specific releases and grab badge from the archived record."
 msgstr ""
-"Este distintivo señala la última versión publicada de su repositorio. Si "
-"desea un distintivo DOI para una versión específica, siga el enlace DOI para"
-" una de las versiones específicas y obtenga el distintivo del registro "
-"archivado."
+"Ez a jelvény a repozitórium legfrissebb kiadására mutat. Ha egy adott "
+"kiadáshoz szeretne DOI jelvényt, kövesse az adott kiadás DOI hivatkozását, "
+"és töltse le a jelvényt az archivált rekordból."
 
 #: invenio_github/templates/semantic-ui/invenio_github/helpers.html:42
 msgid "DOI"
@@ -150,65 +148,65 @@ msgstr "DOI"
 
 #: invenio_github/templates/semantic-ui/invenio_github/helpers.html:50
 msgid "Close"
-msgstr "Cerrar"
+msgstr "Bezárás"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/helpers.html:122
 msgid ""
 "This repository is managed by another user of your GitHub organization."
 msgstr ""
-"Este repositorio está gestionado por otro usuario de su organización GitHub."
+"Ezt az adattárat egy másik felhasználó kezeli az Ön GitHub szervezetéből."
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/helpers.html:128
 msgid "Disable"
-msgstr "Desactivado"
+msgstr "Letilt"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/helpers.html:129
 msgid "Enable"
-msgstr "Activado"
+msgstr "Engedélyez"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:19
 msgid "GitHub Repositories"
-msgstr "Repositorios GitHub"
+msgstr "GitHub repozitóriumok"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:21
 msgid "Sync now"
-msgstr "Sincronizar ahora"
+msgstr "Szinkronizálás most"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:22
 msgid "Syncing"
-msgstr "Sincronizando"
+msgstr "Szinkronizálás..."
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:26
 #, python-brace-format
 msgid "(updated {})"
-msgstr "(actualizado {})"
+msgstr "(frissítve {})"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:36
 msgid "Get started"
-msgstr "Iniciar"
+msgstr "Kezdés"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:42
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:90
 msgid "Flip the switch"
-msgstr "Accionar el interruptor"
+msgstr "Kapcsoló átállítása"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:45
 msgid ""
 "Select the repository you want to preserve, and toggle\n"
 "                the switch below to turn on automatic preservation of your software."
 msgstr ""
-"Seleccione el repositorio que desea conservar y active\n"
-"                a continuación el interruptor para activar la preservación automática de su software."
+"Válassza ki a megőrizni kívánt repozitóriumot, és kapcsolja be az\n"
+"                alábbi kapcsolót a szoftver automatikus megőrzéséhez."
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:59
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:94
 msgid "(example)"
-msgstr "(ejemplo)"
+msgstr "(példa)"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:67
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:106
 msgid "Create a release"
-msgstr "Crear una versión"
+msgstr "Kiadás létrehozása"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:70
 #, python-brace-format
@@ -216,33 +214,33 @@ msgid ""
 "Go to GitHub and <a href=\"https://help.github.com/articles/creating-releases\" target=\"_blank\">create a release <i class=\"small icon external\" aria-hidden=\"true\"></i></a>. {}\n"
 "                will automatically download a .zip-ball of each new release and register a DOI."
 msgstr ""
-"Vaya a GitHub y<a href=\"https://help.github.com/articles/creating-releases\" target=\"_blank\">cree una versión <i class=\"small icon external\" aria-hidden=\"true\"></i></a>. {}\n"
-"                automáticamente descargará un archivo .zip de cada nueva versión y registrará un DOI."
+"Menjen a GitHubra és <a href=\"https://help.github.com/articles/creating-releases\" target=\"_blank\">hozzon létre egy kiadást<i class=\"small icon external\" aria-hidden=\"true\"></i></a> . Az {} \n"
+"automatikusan letölti az egyes új kiadások .zip-csomagját, és DOI-t regisztrál hozzájuk."
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:77
 msgid "Get the badge"
-msgstr "Obtener el distintivo"
+msgstr "Jelvény megszerzése"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:80
 msgid ""
 "After your first release, a DOI badge that you can include in GitHub\n"
 "                README will appear next to your repository below."
 msgstr ""
-"Tras su primera versión, un distintivo DOI que puede incluir en GitHub\n"
-"                README aparecerá junto a su repositorio debajo."
+"Az első kiadást követően a DOI jelvény elérhetővé válik a GitHub számára\n"
+"                A README meg fog jelenni az alábbi repozitórium mellett."
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:89
 msgid "Example DOI:"
-msgstr "Ejemplo DOI:"
+msgstr "Példa DOI:"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:106
 msgid "Enabled Repositories"
-msgstr "Repositorios activados"
+msgstr "Engedélyezett repozitóriumok"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:121
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:31
 msgid "Repositories"
-msgstr "Repositorios"
+msgstr "Repozitóriumok"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:126
 #, python-brace-format
@@ -251,21 +249,21 @@ msgid ""
 "            ensure you have enabled <a href=\"https://help.github.com/articles/approving-third-party-applications-for-your-organization/\" target=\"_blank\">third-party\n"
 "            access <i class=\"small icon external\" aria-hidden=\"true\"></i></a> to the {} application. Private repositories are not supported."
 msgstr ""
-"Si los repositorios de su organización no aparecen en la lista, por favor\n"
-"            asegúrese de que ha activado el acceso de <a href=\"https://help.github.com/articles/approving-third-party-applications-for-your-organization/\" target=\"_blank\">terceros\n"
-"             <i class=\"small icon external\" aria-hidden=\"true\"></i></a> a la aplicación {}. No se admiten repositorios privados."
+"Amennyiben a szervezetéhez tartozó repozitóriumok nem listázódnak, kérjük\n"
+"            bizonyosodjon meg, hogy engedélyezte a <a href=\"https://help.github.com/articles/approving-third-party-applications-for-your-organization/\" target=\"_blank\">third-party\n"
+"            hozzáférést<i class=\"small icon external\" aria-hidden=\"true\"></i></a> a(z) {} alkalmazás számára. Privát repozitóriumok nem támogatottak."
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:136
 msgid "You have no repositories on GitHub."
-msgstr "No tiene repositorios en GitHub."
+msgstr "Önnek nincsenek repozitóriumai a GitHubon."
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:139
 msgid ""
 "Go to <a href=\"https://github.com/new\" target=\"_blank\">GitHub <i class=\"small icon external\" aria-hidden=\"true\"></i></a> and create your first or\n"
 "          click Sync-button to synchronize latest changes from GitHub."
 msgstr ""
-"Vaya a <a href=\"https://github.com/new\" target=\"_blank\">GitHub <i class=\"small icon external\" aria-hidden=\"true\"></i></a> y cree su primer o\n"
-"         haga clic en el botón Sincronizar para sincronizar los últimos cambios de GitHub."
+"Navigáljon <a href=\"https://github.com/new\" target=\"_blank\">a GitHub oldalára <i class=\"small icon external\" aria-hidden=\"true\"></i></a> és hozza létre az első kiadást vagy\n"
+"          kattintson a Szinkronizálás gombra a legutóbbi változások GitHub-ról történő frissítéséhez."
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:158
 msgid "GitHub"
@@ -273,64 +271,64 @@ msgstr "GitHub"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:161
 msgid "Software preservation made simple!"
-msgstr "¡La preservación del software de forma sencilla!"
+msgstr "Szoftvermegőrzés egyszerűen!"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:165
 msgid "Connect your GitHub account"
-msgstr "Conecte su cuenta de GitHub"
+msgstr "GitHub fiók összekapcsolása"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:168
 msgid "Connect"
-msgstr "Conectar"
+msgstr "Kapcsolódás"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index.html:171
 msgid ""
 "To get started, click \"Connect\" and we will get a list of your "
 "repositories from GitHub."
 msgstr ""
-"Para comenzar, haga clic en \"Conectar\" y obtendremos una lista de sus "
-"repositorios de GitHub."
+"A kezdéshez kattintson a \"Kapcsolódás\" feliratú gombra és listázódni "
+"fognak az Ön GitHub repozitóriumai."
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index_item.html:20
 msgid "Go to GitHub."
-msgstr "Ir a GitHub."
+msgstr "Ugrás a GitHubra"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/index_item.html:21
 msgid "Visit repository on GitHub:"
-msgstr "Visitar el repositorio en GitHub:"
+msgstr "Repozitórium megtekintése a GitHubon:"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:20
 msgid "Header"
-msgstr "Cabecera"
+msgstr "Fejléc"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:29
 msgid "Go back to all repositories"
-msgstr "Volver a todos los repositorios"
+msgstr "Vissza az összes repozitóriumhoz"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:60
 msgid "Releases"
-msgstr "Versiones"
+msgstr "Kiadás"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:61
 msgid "Create release"
-msgstr "Crear versión"
+msgstr "Kiadás létrehozása"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:72
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:86
 msgid "Get started!"
-msgstr "¡Empezar!"
+msgstr "Kezdjük!"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:73
 msgid "Go to GitHub and make your first release."
-msgstr "Ir a GitHub y crear su primera versión."
+msgstr "Továbblépés a GitHubra és első kiadás létrehozása"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:93
 msgid ""
 "Toggle the switch below to turn on/off automatic preservation of your "
 "repository."
 msgstr ""
-"Mueva el interruptor a continuación para activar o desactivar la "
-"preservación automática de su repositorio."
+"Kapcsold be vagy ki az alábbi kapcsolóval a repozitórium automatikus "
+"megőrzését."
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:109
 #, python-brace-format
@@ -338,68 +336,68 @@ msgid ""
 "Go to GitHub and create a release. {}\n"
 "                  will automatically download a .zip-ball of each new release and register a DOI."
 msgstr ""
-"Vaya a GitHub y cree una versión. {}\n"
-"                  descargará automáticamente un .zip de cada nueva versión y registrará un DOI."
+"Lépj a GitHub-ra, és hozz létre egy kiadást. {}\n"
+"                  Automatikusan letölti az egyes új kiadások .zip-csomagját, és DOI-t regisztrál hozzájuk."
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:177
 msgid "See release on GitHub"
-msgstr "Ver versión en GitHub"
+msgstr "Kiadás megtekintése a GitHubon"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:206
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:234
 msgid "Citation File"
-msgstr "Archivo de citación"
+msgstr "Idézési fájl"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:211
 msgid "Payload"
-msgstr "Carga útil"
+msgstr "Payload"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:220
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:289
 msgid "Errors"
-msgstr "Errores"
+msgstr "Hibák"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:236
 msgid "Create CITATION.cff"
-msgstr "Crear CITATION.cff"
+msgstr "CITATION.cff létrehozása"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:240
 msgid ""
 "files are plain text files with human-\n"
 "                                  and machine-readable citation information for software. Code developers can include them in their repositories to let others know how to correctly cite their software."
 msgstr ""
-"archivos son textos sin formato con información\n"
-"                                 legible para el software de citación.  Los desarrolladores de código pueden incluirlos en sus repositorios para que otros sepan cómo citar correctamente su software."
+"fájlok egyszerű szöveges állományok, amelyek ember\n"
+"                                  és gép által is olvasható hivatkozási információkat tartalmaznak a szoftverhez. A fejlesztők ezeket elhelyezhetik a repozitóriumukban, hogy mások tudják, hogyan hivatkozzanak helyesen a szoftverükre."
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:243
 msgid "An example of the CITATION.cff for this release can be found below:"
 msgstr ""
-"A continuación se puede encontrar un ejemplo de CITATION.cff para esta "
-"versión:"
+"Az alábbiakban egy példa látható a CITATION.cff fájlra ehhez a kiadáshoz:"
 
 #: invenio_github/templates/semantic-ui/invenio_github/settings/view.html:266
 msgid "GitHub Payload"
-msgstr "Carga útil en GitHub"
+msgstr "GitHub Payload"
 
 #: invenio_github/views/github.py:51
 msgid "Github session token is requested"
-msgstr "Se solicita el token de sesión de Github"
+msgstr "Github session token kérvényezése"
 
 #: invenio_github/views/github.py:201
 msgid "Failed to enable repository."
-msgstr "No se pudo habilitar el repositorio."
+msgstr "Nem sikerült engedélyezni a repozitóriumot."
 
 #: invenio_github/views/github.py:212
 msgid "Failed to enable repository, hook creation not successful."
 msgstr ""
-"No se pudo habilitar el repositorio, la creación del hook no tuvo éxito."
+"Nem sikerült engedélyezni a repozitóriumot, a hook létrehozása sikertelen "
+"volt."
 
 #: invenio_github/views/github.py:242
 msgid "Failed to disable repository."
-msgstr "No se pudo deshabilitar el repositorio."
+msgstr "Nem sikerült letiltani a repozitóriumot."
 
 #: invenio_github/views/github.py:255
 msgid "Failed to disable repository, hook removal not successful."
 msgstr ""
-"No se pudo deshabilitar el repositorio; la eliminación del hook no tuvo "
-"éxito."
+"Nem sikerült letiltani a repozitóriumot, a hook eltávolítása sikertelen "
+"volt."
