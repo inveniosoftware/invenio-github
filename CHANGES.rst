@@ -26,6 +26,10 @@
 Changes
 =======
 
+Version v6.2.0 (released 2026-07-28)
+
+- i18n: pulled translations
+
 Version v6.1.0 (released 2026-06-24)
 
 - feat(github): store matched email in account extra_data
