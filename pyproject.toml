@@ -143,6 +143,11 @@ encoding = "utf-8"
 [tool.hatch.version]
 path = "invenio_github/__init__.py"
 
+[tool.hatch.build]
+artifacts = [
+  "*.mo",
+]
+
 [tool.hatch.build.targets.sdist]
 include = [
   "/invenio_github",
