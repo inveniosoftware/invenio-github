@@ -25,7 +25,7 @@
 
 from __future__ import absolute_import
 
-from flask import Blueprint, abort, current_app, redirect, url_for
+from flask import Blueprint, abort, redirect, url_for
 from flask_login import current_user
 
 from invenio_github.api import GitHubAPI
@@ -65,7 +65,11 @@ def index(repo_github_id):
         value=release.badge_value,
         ext="svg",
     )
-    return redirect(badge_url)
+    response = redirect(badge_url)
+    response.cache_control.no_cache = True
+    response.cache_control.no_store = True
+    response.cache_control.must_revalidate = True
+    return response
 
 
 # Kept for backward compatibility
