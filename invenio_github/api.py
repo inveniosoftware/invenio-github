@@ -657,18 +657,17 @@ class GitHubRelease(object):
                 "GitHub zipball URL {url} not found, trying unauthenticated request.",
                 extra={"url": response.url},
             )
-            self.validate_zipball_url(url)
             response = requests.head(url, allow_redirects=True)
             # If this response is successful we want to use the finally resolved URL to
             # fetch the ZIP from.
             if response.status_code == 200:
-                self.validate_zipball_url(url)
+                self.validate_zipball_url(response.url)
                 return response.url
 
         if response.status_code != 200:
             raise ReleaseZipballFetchError()
 
-        self.validate_zipball_url(url)
+        self.validate_zipball_url(response.url)
         if cache:
             self._resolved_zipball_url = response.url
 
