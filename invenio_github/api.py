@@ -605,6 +605,16 @@ class GitHubRelease(object):
         latest_release = self.repository_object.latest_release(ReleaseStatus.PUBLISHED)
         return True if not latest_release else False
 
+    def validate_zipball_url(self, url):
+        """Validate that the zipball URL is using the HTTPS scheme on a github.com subdomain."""
+        url_parts = urlparse(url)
+        if url_parts.scheme != "https":
+            raise ReleaseZipballFetchError()
+        if url_parts.netloc != "github.com" and not url_parts.netloc.endswith(
+            ".github.com"
+        ):
+            raise ReleaseZipballFetchError()
+
     def test_zipball(self):
         """Test if the zipball URL is accessible and return the resolved URL."""
         return self.resolve_zipball_url()
@@ -626,6 +636,7 @@ class GitHubRelease(object):
         url = self.release_zipball_url
 
         # Execute a HEAD request to the zipball url to test if it is accessible.
+        self.validate_zipball_url(url)
         response = self.gh.api.session.head(url, allow_redirects=True)
 
         # In case where there is a tag and branch with the same name, we might get back
@@ -635,6 +646,7 @@ class GitHubRelease(object):
             alternate_url = response.links.get("alternate", {}).get("url")
             if alternate_url:
                 url = alternate_url  # Use the alternate URL
+                self.validate_zipball_url(url)
                 response = self.gh.api.session.head(url, allow_redirects=True)
 
         # Another edge-case, is when the access token we have does not have the
@@ -649,11 +661,13 @@ class GitHubRelease(object):
             # If this response is successful we want to use the finally resolved URL to
             # fetch the ZIP from.
             if response.status_code == 200:
+                self.validate_zipball_url(response.url)
                 return response.url
 
         if response.status_code != 200:
             raise ReleaseZipballFetchError()
 
+        self.validate_zipball_url(response.url)
         if cache:
             self._resolved_zipball_url = response.url
 
@@ -697,6 +711,7 @@ class GitHubRelease(object):
         session = self.gh.api.session
         timeout = current_app.config.get("GITHUB_ZIPBALL_TIMEOUT", 300)
         zipball_url = self.resolve_zipball_url()
+        self.validate_zipball_url(zipball_url)
         with session.get(zipball_url, stream=True, timeout=timeout) as resp:
             yield resp.raw
 
