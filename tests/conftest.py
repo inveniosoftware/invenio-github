@@ -54,7 +54,7 @@ def app_config(app_config):
         # HTTPretty doesn't play well with Redis.
         # See gabrielfalcao/HTTPretty#110
         APP_THEME=[],
-        CACHE_TYPE="simple",
+        CACHE_TYPE="SimpleCache",
         CELERY_ALWAYS_EAGER=True,
         CELERY_CACHE_BACKEND="memory",
         CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
