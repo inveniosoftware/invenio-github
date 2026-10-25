@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 CERN.
+# SPDX-License-Identifier: MIT
+
+extends:
+  - '@inveniosoftware/eslint-config-invenio'
+  - '@inveniosoftware/eslint-config-invenio/prettier'
+
+parser: '@babel/eslint-parser'

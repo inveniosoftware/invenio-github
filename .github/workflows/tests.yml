@@ -31,3 +31,8 @@ on:
 jobs:
   Tests:
     uses: inveniosoftware/workflows/.github/workflows/tests-python.yml@master
+
+  JS:
+    uses: inveniosoftware/workflows/.github/workflows/tests-js.yml@master
+    with:
+      js-working-directory: ./invenio_github/assets/semantic-ui/js/invenio_github

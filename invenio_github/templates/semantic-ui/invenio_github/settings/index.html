@@ -101,6 +101,8 @@
       {{ helpers.panel_end() }}
     {%- endblock %}
 
+    {#- The frontend re-renders this container after a sync or an enable/disable. #}
+    <div id="github-repositories">
     {%- if repos %}
       {%- block enabled_repositories %}
         {{ helpers.panel_start(_('Enabled Repositories')) }}
@@ -151,6 +153,7 @@
 
       {{ helpers.panel_end() }}
     {%- endblock %}
+    </div>
 
   {#- If the user has not connected his GitHub account... #}
   {%- else %}

@@ -64,7 +64,7 @@
               <div>
                 {%- if btn_text and (btn_href or btn_help_text) -%}
                   {%- if btn_help_text %}
-                    <p class="mt-5 mb-5 inline-computer">
+                    <p {% if btn_id %}id="{{ btn_id }}_help_text" {% endif %}class="mt-5 mb-5 inline-computer">
                       <small>{{ btn_help_text }}</small>
                     </p>
                   {%- endif %}

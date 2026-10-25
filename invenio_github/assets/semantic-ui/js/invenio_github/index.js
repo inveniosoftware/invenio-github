@@ -1,15 +1,21 @@
 // This file is part of InvenioGithub
-// Copyright (C) 2023 CERN.
+// Copyright (C) 2023-2026 CERN.
 //
 // Invenio Github is free software; you can redistribute it and/or modify it
 // under the terms of the MIT License; see LICENSE file for more details.
 import $ from "jquery";
 
 function addResultMessage(element, color, icon, message) {
-  element.classList.remove("hidden");
+  element.classList.remove("hidden", "positive", "negative", "warning");
   element.classList.add(color);
   element.querySelector(`.icon`).className = `${icon} small icon`;
   element.querySelector(".content").textContent = message;
+}
+
+function hideAfter(element, delay) {
+  setTimeout(function () {
+    element.classList.add("hidden");
+  }, delay);
 }
 
 // function from https://www.w3schools.com/js/js_cookies.asp
@@ -19,10 +25,10 @@ function getCookie(cname) {
   let ca = decodedCookie.split(";");
   for (let i = 0; i < ca.length; i++) {
     let c = ca[i];
-    while (c.charAt(0) == " ") {
+    while (c.charAt(0) === " ") {
       c = c.substring(1);
     }
-    if (c.indexOf(name) == 0) {
+    if (c.indexOf(name) === 0) {
       return c.substring(name.length, c.length);
     }
   }
@@ -34,53 +40,172 @@ const REQUEST_HEADERS = {
   "X-CSRFToken": getCookie("csrftoken"),
 };
 
-const sync_button = document.getElementById("sync_repos");
-if (sync_button) {
-  sync_button.addEventListener("click", function () {
+// Ids rendered by settings/index.html and settings/helpers.html.
+const REPOSITORIES_ID = "github-repositories";
+const LAST_SYNC_ID = "sync_repos_help_text";
+
+function initDoiBadgeModals(container) {
+  $(container)
+    .find(".doi-badge-modal")
+    .modal({
+      selector: {
+        close: ".close.button",
+      },
+      onShow: function () {
+        const modalId = $(this).attr("id");
+        $(`#${modalId}-trigger`).attr("aria-expanded", true);
+      },
+      onHide: function () {
+        const modalId = $(this).attr("id");
+        $(`#${modalId}-trigger`).attr("aria-expanded", false);
+      },
+    });
+}
+
+/**
+ * Replace the content of a container, keeping keyboard focus on the same
+ * control (a switch, a badge or a link) if it was inside.
+ */
+function replaceKeepingFocus(container, html) {
+  const focused = document.activeElement;
+  let selector = null;
+  if (container.contains(focused) && focused !== container) {
+    if (focused.dataset.repoId) {
+      selector = `input[data-repo-id="${focused.dataset.repoId}"]`;
+    } else if (focused.id) {
+      selector = `[id="${focused.id}"]`;
+    } else if (focused.getAttribute("href")) {
+      selector = `[href="${focused.getAttribute("href")}"]`;
+    }
+  }
+  container.innerHTML = html;
+  if (selector) {
+    container.querySelector(selector)?.focus();
+  }
+}
+
+/**
+ * Re-render the repository lists and the last sync time from the server.
+ *
+ * Resolves to false, and never throws, when the page cannot be refreshed in
+ * place: when it was rendered by templates without the refresh ids, when the
+ * session expired or when the request failed. Callers then ask the user to
+ * reload the page instead.
+ */
+async function refreshRepositoryLists() {
+  const lists = document.getElementById(REPOSITORIES_ID);
+  if (!lists) {
+    return false;
+  }
+
+  try {
+    const response = await fetch(window.location.href, {
+      cache: "no-store",
+      credentials: "same-origin",
+    });
+    if (!response.ok) {
+      console.warn(`Repository lists not refreshed: HTTP ${response.status}`);
+      return false;
+    }
+    const page = new DOMParser().parseFromString(
+      await response.text(),
+      "text/html"
+    );
+    const freshLists = page.getElementById(REPOSITORIES_ID);
+    if (!freshLists) {
+      console.warn("Repository lists not refreshed: no lists in the response");
+      return false;
+    }
+
+    // Initialised modals live in the page dimmer, outside of the lists; remove
+    // them so that their re-rendered copies do not duplicate their ids.
+    $(".doi-badge-modal").remove();
+    replaceKeepingFocus(lists, freshLists.innerHTML);
+    initDoiBadgeModals(lists);
+
+    const lastSync = document.getElementById(LAST_SYNC_ID);
+    const freshLastSync = page.getElementById(LAST_SYNC_ID);
+    if (lastSync && freshLastSync) {
+      lastSync.innerHTML = freshLastSync.innerHTML;
+    }
+    return true;
+  } catch (error) {
+    console.warn("Repository lists not refreshed:", error);
+    return false;
+  }
+}
+
+const syncButton = document.getElementById("sync_repos");
+
+/**
+ * Allow one sync or enable/disable at a time.
+ *
+ * Each of them re-renders the lists when it completes, which would replace the
+ * switch of another request still in flight and lose its result.
+ */
+function setBusy(busy) {
+  if (syncButton) {
+    syncButton.disabled = busy;
+    syncButton.classList.toggle("disabled", busy);
+  }
+  if (busy) {
+    // Switches the server rendered as disabled are left alone.
+    document
+      .querySelectorAll(".repository-item input[data-repo-id]:not(:disabled)")
+      .forEach((toggle) => {
+        toggle.disabled = true;
+        toggle.dataset.busy = "true";
+      });
+  } else {
+    document
+      .querySelectorAll(".repository-item input[data-busy]")
+      .forEach((toggle) => {
+        toggle.disabled = false;
+        delete toggle.dataset.busy;
+      });
+  }
+}
+
+function fetchWithTimeout(url, options, timeout = 100000) {
+  /** Timeout set to 100000 ms = 1m40s .*/
+  return Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("timeout")), timeout)
+    ),
+  ]);
+}
+
+if (syncButton) {
+  syncButton.addEventListener("click", function () {
     const resultMessage = document.getElementById("sync-result-message");
     const loaderIcon = document.getElementById("loader_icon");
     const buttonTextElem = document.getElementById("sync_repos_btn_text");
     const buttonText = buttonTextElem.innerHTML;
-    const loadingText = sync_button.dataset.loadingText;
-
-    const url = "/api/user/github/repositories/sync";
-    const request = new Request(url, {
-      method: "POST",
-      headers: REQUEST_HEADERS,
-    });
+    const loadingText = syncButton.dataset.loadingText;
 
     buttonTextElem.innerHTML = loadingText;
     loaderIcon.classList.add("loading");
+    setBusy(true);
 
-    function fetchWithTimeout(url, options, timeout = 100000) {
-      /** Timeout set to 100000 ms = 1m40s .*/
-      return Promise.race([
-        fetch(url, options),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('timeout')), timeout)
-        )
-      ]);
-    }
+    syncRepos();
 
-    syncRepos(request);
-
-    async function syncRepos(request) {
+    async function syncRepos() {
       try {
-        const response = await fetchWithTimeout(request);
-        loaderIcon.classList.remove("loading");
-        sync_button.classList.add("disabled");
-        buttonTextElem.innerHTML = buttonText;
+        const response = await fetchWithTimeout(
+          "/api/user/github/repositories/sync",
+          { method: "POST", headers: REQUEST_HEADERS }
+        );
         if (response.ok) {
+          const refreshed = await refreshRepositoryLists();
           addResultMessage(
             resultMessage,
             "positive",
             "checkmark",
-            "Repositories synced successfully. Some items may still be updating, please reload the page in about a minute."
+            refreshed
+              ? "Repositories synced successfully."
+              : "Repositories synced successfully. Some items may still be updating, please reload the page in about a minute."
           );
-          sync_button.classList.remove("disabled");
-          setTimeout(function () {
-            resultMessage.classList.add("hidden");
-          }, 10000);
         } else {
           addResultMessage(
             resultMessage,
@@ -88,13 +213,9 @@ if (sync_button) {
             "cancel",
             `Request failed with status code: ${response.status}`
           );
-          setTimeout(function () {
-            resultMessage.classList.add("hidden");
-          }, 10000);
-          sync_button.classList.remove("disabled");
         }
+        hideAfter(resultMessage, 10000);
       } catch (error) {
-        loaderIcon.classList.remove("loading");
         if (error.message === "timeout") {
           addResultMessage(
             resultMessage,
@@ -102,132 +223,130 @@ if (sync_button) {
             "hourglass",
             "This action seems to take some time, refresh the page after several minutes to inspect the synchronisation."
           );
-        }
-        else {
+        } else {
           addResultMessage(
             resultMessage,
             "negative",
             "cancel",
             `There has been a problem: ${error}`
           );
-          setTimeout(function () {
-            resultMessage.classList.add("hidden");
-          }, 7000);
+          hideAfter(resultMessage, 7000);
         }
+      } finally {
+        loaderIcon.classList.remove("loading");
+        buttonTextElem.innerHTML = buttonText;
+        setBusy(false);
       }
     }
   });
 }
 
-const repositories = document.getElementsByClassName("repository-item");
-if (repositories) {
-  for (const repo of repositories) {
-    repo.addEventListener("change", function (event) {
-      sendEnableDisableRequest(event.target.checked, repo);
-    });
-  }
+function switchMessageOf(toggle) {
+  return toggle
+    .closest(".repository-item")
+    .querySelector(".repo-switch-message");
 }
 
-function sendEnableDisableRequest(checked, repo) {
-  const repo_id = repo
-    .querySelector("input[data-repo-id]")
-    .getAttribute("data-repo-id");
-  const switchMessage = repo.querySelector(".repo-switch-message");
+function showSwitchResult(toggle, color, icon, message, delay) {
+  const switchMessage = switchMessageOf(toggle);
+  addResultMessage(switchMessage, color, icon, message);
+  hideAfter(switchMessage, delay);
+}
 
-  let url;
-  if (checked === true) {
-    url = "/api/user/github/repositories/" + repo_id + "/enable";
+function revertToggle(toggle) {
+  toggle.checked = !toggle.checked;
+  updateToggleAriaLabel(toggle);
+}
+
+async function toggleRepository(toggle) {
+  const repoId = toggle.dataset.repoId;
+  const enable = toggle.checked;
+  const action = enable ? "enable" : "disable";
+
+  setBusy(true);
+  let failure = null;
+  try {
+    const response = await fetch(
+      `/api/user/github/repositories/${repoId}/${action}`,
+      { method: "POST", headers: REQUEST_HEADERS }
+    );
+    if (!response.ok) {
+      failure = `Request failed with status code: ${response.status}`;
+    }
+  } catch (error) {
+    failure = `There has been a problem: ${error}`;
+  }
+
+  // Only a successful request changed the server state worth re-rendering.
+  const refreshed = !failure && (await refreshRepositoryLists());
+  setBusy(false);
+
+  let result;
+  if (failure) {
+    revertToggle(toggle);
+    result = ["negative", "cancel", failure, 7000];
+  } else if (refreshed) {
+    const text = enable ? "Repository enabled." : "Repository disabled.";
+    result = ["positive", "checkmark", text, 10000];
   } else {
-    if (checked === false) {
-      url = "/api/user/github/repositories/" + repo_id + "/disable";
-    }
+    const text = "Repository synced successfully. Please reload the page.";
+    result = ["positive", "checkmark", text, 10000];
   }
 
-  const request = new Request(url, {
-    method: "POST",
-    headers: REQUEST_HEADERS,
-  });
-
-  sendRequest(request);
-
-  async function sendRequest(request) {
-    try {
-      const response = await fetch(request);
-      if (response.ok) {
-        addResultMessage(
-          switchMessage,
-          "positive",
-          "checkmark",
-          "Repository synced successfully. Please reload the page."
-        );
-        setTimeout(function () {
-          switchMessage.classList.add("hidden");
-        }, 10000);
-      } else {
-        addResultMessage(
-          switchMessage,
-          "negative",
-          "cancel",
-          `Request failed with status code: ${response.status}`
-        );
-        setTimeout(function () {
-          switchMessage.classList.add("hidden");
-        }, 5000);
-      }
-    } catch (error) {
-      addResultMessage(
-        switchMessage,
-        "negative",
-        "cancel",
-        `There has been a problem: ${error}`
-      );
-      setTimeout(function () {
-        switchMessage.classList.add("hidden");
-      }, 7000);
-    }
+  // Look the switch up again: a refresh replaces it, in its new list.
+  const current = document.querySelector(
+    `.repository-item input[data-repo-id="${repoId}"]`
+  );
+  if (!current) {
+    // Gone from the refreshed lists, e.g. deleted on GitHub meanwhile.
+    const resultMessage = document.getElementById("sync-result-message");
+    addResultMessage(resultMessage, ...result.slice(0, 3));
+    hideAfter(resultMessage, result[3]);
+    return;
   }
+  // Keep the user's place on the repository, unless they moved on meanwhile.
+  const focused = document.activeElement;
+  if (!focused || focused === document.body || focused === current) {
+    current.focus();
+  }
+  showSwitchResult(current, ...result);
 }
+
+// Delegated, so that switches keep working after the lists are re-rendered.
+document.addEventListener("change", function (event) {
+  if (event.target.matches(".repository-item input[data-repo-id]")) {
+    toggleRepository(event.target);
+  }
+});
 
 // DOI badge modal
-$(".doi-badge-modal").modal({
-  selector: {
-    close: ".close.button",
-  },
-  onShow: function () {
-    const modalId = $(this).attr("id");
-    const $modalTrigger = $(`#${modalId}-trigger`);
-    $modalTrigger.attr("aria-expanded", true);
-  },
-  onHide: function () {
-    const modalId = $(this).attr("id");
-    const $modalTrigger = $(`#${modalId}-trigger`);
-    $modalTrigger.attr("aria-expanded", false);
-  },
-});
+initDoiBadgeModals(document);
 
-$(".doi-modal-trigger").on("click", function (event) {
-  const modalId = $(event.target).attr("aria-controls");
+function showDoiBadgeModal(trigger) {
+  const modalId = $(trigger).attr("aria-controls");
   $(`#${modalId}.doi-badge-modal`).modal("show");
+}
+
+// Delegated, so that badges keep working after the lists are re-rendered.
+$(document).on("click", ".doi-modal-trigger", function (event) {
+  showDoiBadgeModal(event.target);
 });
 
-$(".doi-modal-trigger").on("keydown", function (event) {
+$(document).on("keydown", ".doi-modal-trigger", function (event) {
   if (event.key === "Enter") {
-    const modalId = $(event.target).attr("aria-controls");
-    $(`#${modalId}.doi-badge-modal`).modal("show");
+    showDoiBadgeModal(event.target);
   }
 });
 
 // ON OFF toggle a11y
-const $onOffToggle = $(".toggle.on-off");
+function updateToggleAriaLabel(toggle) {
+  const $toggle = $(toggle);
+  const label = toggle.checked
+    ? $toggle.data("checked-aria-label")
+    : $toggle.data("unchecked-aria-label");
+  $toggle.attr("aria-label", label);
+}
 
-$onOffToggle &&
-  $onOffToggle.on("change", (event) => {
-    const target = $(event.target);
-    const $onOffToggleCheckedAriaLabel = target.data("checked-aria-label");
-    const $onOffToggleUnCheckedAriaLabel = target.data("unchecked-aria-label");
-    if (event.target.checked) {
-      target.attr("aria-label", $onOffToggleCheckedAriaLabel);
-    } else {
-      target.attr("aria-label", $onOffToggleUnCheckedAriaLabel);
-    }
-  });
+$(document).on("change", ".toggle.on-off input", function (event) {
+  updateToggleAriaLabel(event.target);
+});

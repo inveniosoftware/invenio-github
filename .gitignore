@@ -61,3 +61,5 @@ target/
 # Test database
 test.db
 uv.lock
+node_modules/
+package-lock.json
