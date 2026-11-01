@@ -709,7 +709,10 @@ class GitHubRelease(object):
         raise NotImplementedError
 
     def resolve_record(self):
-        """Resolves a record from the release. To be implemented by the API class implementation."""
+        """Resolves a record from the release. To be implemented by the API class implementation.
+
+        :returns: the record, or ``None`` if the release has no record or it was deleted.
+        """
         raise NotImplementedError
 
     def serialize_record(self):

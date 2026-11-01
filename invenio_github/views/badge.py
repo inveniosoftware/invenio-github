@@ -30,7 +30,7 @@ from flask_login import current_user
 
 from invenio_github.api import GitHubAPI
 from invenio_github.errors import ReleaseNotFound
-from invenio_github.models import ReleaseStatus, Repository
+from invenio_github.models import Release, ReleaseStatus, Repository
 from invenio_github.proxies import current_github
 
 blueprint = Blueprint(
@@ -40,6 +40,28 @@ blueprint = Blueprint(
     static_folder="../static",
     template_folder="../templates",
 )
+
+
+def _latest_release_with_record(repo):
+    """Return the newest published release whose record can still be read.
+
+    Deleting a record leaves its release marked as published, so the newest published
+    release may have nothing to point to.
+
+    :param repo: The repository model.
+    :returns: A release API object, or ``None`` if no published release has a record.
+    """
+    # ``id`` makes the order total, so the two queries below cannot disagree on ties.
+    published_releases = repo.releases.filter_by(
+        status=ReleaseStatus.PUBLISHED
+    ).order_by(Release.created.desc(), Release.id.desc())
+    # The newest release is almost always the right one, so load the others on a miss.
+    for releases in (published_releases.limit(1), published_releases.offset(1)):
+        for release_object in releases:
+            release = current_github.release_api_class(release_object)
+            if release.record is not None:
+                return release
+    return None
 
 
 #
@@ -101,11 +123,9 @@ def latest_doi(github_id):
     if not repo:
         abort(404)
 
-    latest_release = repo.latest_release(ReleaseStatus.PUBLISHED)
-    if not latest_release:
+    release = _latest_release_with_record(repo)
+    if not release:
         abort(404)
-
-    release = current_github.release_api_class(latest_release)
 
     # record.url points to DOI url or HTML url if Datacite is not enabled.
     return redirect(release.record_url)
@@ -117,7 +137,7 @@ def latest_doi_old(user_id, repo_name):
     """Redirect to the newest record version."""
     github_api = GitHubAPI(user_id)
     repo = github_api.get_repository(repo_name=repo_name)
-    release = github_api.repo_last_published_release(repo)
+    release = _latest_release_with_record(repo)
     if not release:
         abort(404)
 
